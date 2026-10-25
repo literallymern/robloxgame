@@ -1,0 +1,10 @@
+# Von Rojo gebaute Dateien
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+*.lock
+
+# System-Dateien
+.DS_Store
+Thumbs.db
