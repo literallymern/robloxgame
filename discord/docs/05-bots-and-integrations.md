@@ -123,6 +123,8 @@ The bot must run 24/7 so the daily tick happens at midnight. Requirements: Node.
 | Raspberry Pi or an always-on home PC | Free if you already have one | Power cuts and internet outages delay ticks (the bot catches up) |
 | "Free" bot hosts that sleep or wipe the disk | Not recommended | Lost database = lost economy; sleeping hosts miss midnight |
 
+For pm2 the bot ships a settings file, `bot/ecosystem.config.cjs` (`pm2 start ecosystem.config.cjs`, details in [07](07-setup-guide.md#step-8--start-the-bot)). It starts Node directly, which also works on Windows.
+
 If the bot is offline at midnight, nothing is lost: when it starts again it processes the missed days in order (late days collect obligations but skip penalties) and posts the newest report.
 
 **Backups:** daily automatic backups are kept on the same machine. Copy `data/backups/` to a second place now and then (for example once a week to your PC). `/econ-admin backup` makes an extra backup on demand.

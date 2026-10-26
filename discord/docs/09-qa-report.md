@@ -139,6 +139,9 @@ The Owner ran the setup on Windows. Building the server worked; starting the bot
 - **Bot start on Node.js 22.13–22.15:** the database code used a Node feature that only exists from 22.16, so the first start could fail with "cannot start a transaction within a transaction". The code no longer needs it.
 - **Unclear error on old Node.js versions:** every script now checks the Node.js version first and says which version is needed.
 - **Posting stopped at the first failing channel:** it now continues with the other channels and lists every failure with a hint at the end.
+- **The bot did not stay online with pm2 on Windows.** The guide said `pm2 start npm --name ro-nation -- start`. On Windows pm2 then loads `npm.cmd` as JavaScript and crashes with `SyntaxError: Unexpected token ':'`. The bot now has a pm2 settings file (`bot/ecosystem.config.cjs`) that starts Node directly; the guide uses `pm2 start ecosystem.config.cjs`. Tested with pm2 7.1 on Linux; on Windows the bot was confirmed to run with `npm start`, the pm2 settings file itself not yet.
+
+After these fixes the following ran without errors on the Owner's Windows PC (Node.js 24.22, 26 October 2026): `npm test` (67/67), `npm run setup-server` dry run (all 40 roles, 16 categories and 86 channels present), `npm run deploy-commands` (21 commands registered) and `npm start` (logged in, all roles and channels found).
 
 ## Problems found during development (all fixed)
 
@@ -156,11 +159,11 @@ The Owner ran the setup on Windows. Building the server worked; starting the bot
 
 | Item | Why | What to do |
 |---|---|---|
-| Running the setup on a real server | No Discord access | Owner: [07](07-setup-guide.md) Steps 4–6, then checklist [08 · H](08-build-checklist.md) |
+| Running the setup on a real server | Done by the Owner on 26 October 2026, see above. Locking down the bot role (Step 6) is still open | Owner: [07](07-setup-guide.md) Step 6, then checklist [08 · H](08-build-checklist.md) |
 | Real button clicks, ticket channels, transcripts, DMs | No Discord access | Owner test with a second account |
 | Posting the report and price board to Discord | No Discord access | Wait for the first midnight after the start |
 | Exact appearance of embeds and long messages | Not visible offline | Look once after `post-messages` and adjust texts if needed |
 | Real Discord permission behaviour | Checked with an offline copy of the algorithm, not on a live server | Owner test with the persona list in [03](03-permission-matrix.md) |
-| Running on Windows or macOS | Tested on Linux only | `npm test` on the hosting machine |
+| Running on Windows or macOS | Windows: tests, setup dry run, command registration and bot start work (see above). macOS not tested | `npm test` on the hosting machine |
 | Load with many players at once | Not tested; designed for 20–25 players (SQLite, one process) | Watch #bot-alerts in the first week |
 | Link between the Roblox game and the economy | Not built (out of scope) | Future work, see [10](10-summary.md) |
