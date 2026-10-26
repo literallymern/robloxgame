@@ -57,7 +57,7 @@ Canon facts the game depends on (no changes allowed without a proposal): Democra
 | National flag | Project files `lore/kagundi-flag.png`; `discord/assets/kagundi-flag.png`; PR #1 `lore/images/` | 1438 × 855 PNG | Flags on buildings and poles, UI accents |
 | National emblem (round, gold ring) = Ro-Nation logo | Project files `lore/kagundi-emblem.png`; `discord/assets/`; PR #1 | 1024 × 1024 PNG with transparency | Seal on government buildings, vehicles, uniforms, UI logo, game icon |
 
-Both have to be uploaded to Roblox as images before they can be used in the game (Justin, see 03). They are not uploaded yet.
+Both have to be uploaded to Roblox as images before they can be used in the game (Justin, see 03). Update 2026-10-26: Justin uploaded Roblox-sized versions (flag 1024 × 609, emblem 1024 × 1024): flag `104179974183727`, emblem `88703156887446`.
 
 ## 6. Statue avatar (Roblox user `2595858454`)
 

@@ -79,5 +79,5 @@ The Economy Bridge for the game will be added inside `discord/bot/src/` (planned
 |---|---|---|
 | Place file (terrain, buildings, statue) | Roblox, edited in Studio | Fresh Baseplate (confirmed) |
 | Experience owner | Group 60169080 | Decided (D2) |
-| Flag and emblem images | Roblox asset library (group) | Being uploaded by Justin; IDs pending |
+| Flag and emblem images | Roblox asset library (group) | Uploaded: flag `104179974183727`, emblem `88703156887446`; to be checked in Studio in Milestone 1 |
 | Group "Democratic Republic of Kagundi" | roblox.com, ID 60169080 | Exists, owned by LiterallyDrJustin |
