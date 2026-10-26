@@ -1,5 +1,5 @@
 {
-  "name": "robloxgame",
+  "name": "Ro-Nation",
   "tree": {
     "$className": "DataModel",
 
@@ -15,11 +15,29 @@
       }
     },
 
+    "ServerStorage": {
+      "StudioTools": {
+        "$path": "src/studio"
+      }
+    },
+
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {
           "$path": "src/client"
         }
+      }
+    },
+
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": true
+      }
+    },
+
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 14
       }
     }
   }

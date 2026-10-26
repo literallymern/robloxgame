@@ -1,6 +1,6 @@
 # 01 · Technical Architecture
 
-Status: **proposed in Milestone 0** (2026-10-26), milestone numbers follow the integration-aware plan in [MILESTONES.md](MILESTONES.md). Milestone 1 implements the code structure described here. The economy side is detailed in [05-economy-integration.md](05-economy-integration.md). Anything marked *proposal* is an implementation choice, not canon.
+Status: proposed in Milestone 0, **foundation built in Milestone 1** (2026-10-26). Milestone numbers follow the integration-aware plan in [MILESTONES.md](MILESTONES.md). The economy side is detailed in [05-economy-integration.md](05-economy-integration.md). Anything marked *proposal* is an implementation choice, not canon.
 
 ## 1. Guiding principles
 
@@ -26,75 +26,75 @@ Status: **proposed in Milestone 0** (2026-10-26), milestone numbers follow the i
 
 Rojo only syncs **from files to Studio**. The map is therefore never placed under a Rojo `$path`; otherwise Rojo could remove hand-built parts. Place-file backups: *File → Save to File As* (`.rbxl`) after every map milestone, kept outside Git (the `.gitignore` already excludes place files).
 
-## 3. Roblox hierarchy (target for Milestone 1)
+## 3. Roblox hierarchy
+
+Built in Milestone 1 (✓) and planned for later milestones (later):
 
 ```
 ReplicatedStorage
-  Shared/                 ← src/shared   (code both sides may read; no secrets)
-    Config/               GameConfig, Lore, MapLayout, Factions, Assets
-    Types/                shared Luau type definitions
-    Net/                  Remotes.luau: the one list of every remote + its argument rules
-    Util/                 Signal, Result, Log (client-safe), Money formatting
-  Remotes/                (created by the server at startup from Net/Remotes.luau)
+  Shared/                      ← src/shared   (both sides may read; never secrets)
+    Config/                    ✓ GameConfig, Lore, Assets   · later: MapLayout, Factions
+    Types/                     ✓ Economy (shapes of account data and remote replies)
+    Net/                       ✓ Remotes.luau: the one list of every remote and its arguments
+    Util/                      ✓ Log, Signal, Format (KGD amounts, times)
+  RoNationRemotes/             ✓ created by the server at startup from Net/Remotes.luau
 
 ServerScriptService
-  Server/                 ← src/server
-    Main.server.luau      the only server entry point; loads services in order
-    Services/             one ModuleScript per domain (Log, Remote, Permission, Profile, ...)
-    Persistence/          DataStore access, schema versions, migrations
-    Economy/              EconomyGateway (bridge client), pending-operation store
-    Packages/             vendored third-party modules (license file next to each)
+  Server/                      ← src/server
+    Main.server.luau           ✓ the only server entry point; loads services in order
+    Config/                    ✓ BridgeConfig (server only: bridge address, secret name, timeouts)
+    Services/                  ✓ PermissionService, RemoteService, EconomyGateway, AccountLinkService
+    Persistence/               later (Milestone 4): profiles, schema versions, migrations
+    Packages/                  later: vendored third-party modules (license file next to each)
 
 ServerStorage
-  StudioTools/            ← src/studio   (builders; refuse to run in a live game)
-  Templates/              vehicle / equipment / building templates (place-managed)
+  StudioTools/                 ← src/studio   ✓ CheckSetup (read-only setup report) · later: builders
+  Templates/                   later: vehicle / equipment / building templates (place-managed)
 
 StarterPlayer
   StarterPlayerScripts
-    Client/               ← src/client
-      Main.client.luau    the only client entry point
-      Controllers/        Interaction, UI, Notification, Camera, ...
-      UI/                 UI components
+    Client/                    ← src/client
+      Main.client.luau         ✓ the only client entry point
+      Controllers/             ✓ NotificationController, UIController, AccountController
+      Util/                    ✓ Ui (builds interface elements in code)
 
-Workspace                 (place-managed, see 02-map-plan.md)
+Workspace                      (place-managed, see 02-map-plan.md)
   Map/
     Roads/  Rural/  Infrastructure/  Districts/
     Cities/ Gundiville/ Stokondo/ Kagundali/ Oberdueshuson/
   Spawns/
-  Runtime/                vehicles and other objects created while the game runs
+  Runtime/                     vehicles and other objects created while the game runs
 ```
 
 Gameplay objects in the map (ATMs, doors, cells, garages, court benches, hospital beds) are found by **CollectionService tags and Attributes**, not by hard-coded paths. Example: a part tagged `BankTerminal` with attribute `Facility = "CentralBank"`. Builders and hand-built parts only need the right tag; the code finds them, also when instance streaming loads them later.
 
 ## 4. Service model
 
-Each server service is a ModuleScript with the same shape:
+Each server service is a ModuleScript with the same shape (client controllers have only `start`):
 
 ```lua
 local MyService = {}
-MyService.Name = "MyService"
-MyService.Dependencies = { "LogService", "PermissionService" }
 
-function MyService.init(services)  -- wire up, no yielding
+function MyService.init()   -- create objects, no yielding
 end
 
-function MyService.start()        -- may spawn loops and connect events
+function MyService.start()  -- may spawn loops, connect events, register remote handlers
 end
 
 return MyService
 ```
 
-`Main.server.luau` loads all services, sorts them by `Dependencies`, calls every `init` inside `pcall`, then every `start` in its own thread. A failure is logged with the service name and does not stop the others. The client uses the same pattern with controllers.
+`Main.server.luau` loads the services in a fixed order (a service may only `require` services listed before it), calls every `init` inside `pcall`, then every `start` in its own thread. A failure is logged with the service name and does not stop the others. Services that need each other `require` each other directly, which keeps the code checkable by the type checker. The client uses the same pattern with controllers.
 
 Planned services and the milestone that brings them:
 
 | Service | Job | Milestone |
 |---|---|---|
-| LogService | Levelled logging (`[RoNation][Service]`), error capture | 1 |
-| RemoteService | Creates remotes, validates arguments, rate limits per player | 1 |
-| PermissionService | Owner, staff and faction checks; one place that answers "may this player do X?" | 1 (Owner/staff), 6 (factions from `/roster` roles) |
-| EconomyGateway | The only door to money: bridge client with operation IDs, timeouts, retries, pending-operation store | 1 (prototype), 4, 7 |
-| AccountLinkService | Discord ↔ Roblox link status and the "Link Discord" flow | 1 |
+| Log (shared utility, `Util/Log`) | Prefixed logging (`[Ro-Nation:Tag]`); never logs secrets | 1 ✓ |
+| RemoteService | Creates remotes, rate limits per player, turns errors into safe replies (handlers validate their arguments) | 1 ✓ |
+| PermissionService | Owner, staff and faction checks; one place that answers "may this player do X?" | 1 ✓ (Owner/staff by group rank), 6 (factions from `/roster` roles) |
+| EconomyGateway | The only door to money: bridge client with operation IDs, timeouts, retries, pending-operation store | 1 ✓ (prototype), 4, 7 |
+| AccountLinkService | Discord ↔ Roblox link status, the "Link Discord" flow, read-only account view, staging test transfer | 1 ✓ |
 | ProfileService | Load, validate, migrate and save non-financial player profiles with session locking | 4 |
 | AuditService | Append-only records of consequential in-game actions | 4 |
 | Banking / Jobs / Property front-ends | First in-game terminals on top of the gateway | 4 |
@@ -104,11 +104,11 @@ Planned services and the milestone that brings them:
 
 ## 5. Networking and security rules
 
-- All remotes are declared in one file (`Shared/Net/Remotes.luau`) with argument types and limits. The server creates them; nothing else may create remotes.
+- All remotes are declared in one file (`Shared/Net/Remotes.luau`) with their arguments. The server creates them; nothing else may create remotes. Rate limits are set where the server registers each handler.
 - Client → server only. Remote functions are never invoked on the client by the server.
 - Every request is checked in this order: rate limit → argument types and ranges (reject NaN, infinity, huge strings) → permission → distance to the interaction point → business rules.
 - The server never accepts a price, payout, balance, rank or health value from the client. The client sends intent ("buy item 12"), the server looks up everything else.
-- Secrets (the bridge API key) are read on the server through Roblox's secrets store, never placed in scripts, attributes or ReplicatedStorage. *Verify the current Secrets API in Milestone 1.*
+- Secrets (the bridge API key) are read on the server with `HttpService:GetSecret` and attached as a header with `Secret:AddPrefix`; the value can never be printed. They are never placed in scripts, attributes or ReplicatedStorage. Checked against the Roblox documentation in Milestone 1: secrets are set in the Creator Dashboard (*Secrets*) for live servers and under *File > Experience Settings > Security > Local Secrets* for Studio; a secret can be bound to one domain.
 - Owner identity: Roblox user ID `2595858454` (the Owner's account, also used for the statue), stored server-side in config.
 
 ## 6. Sources of truth
@@ -144,10 +144,11 @@ Planned services and the milestone that brings them:
 
 | Level | Tool | Where | Notes |
 |---|---|---|---|
-| Project builds | `rojo build` | Claude's environment and Justin's PC | Verified in Milestone 0 with Rojo 7.7.1 |
-| Static analysis, lint, format | luau-lsp, selene, StyLua | Claude's environment (needs approval to run, see 04) and Justin's PC via Rokit | Added in Milestone 1 |
-| Unit tests for pure Luau modules | Lune | Claude's environment | Validation, money formatting, migrations, permission tables |
+| Project builds | `rojo build` | Claude's environment and Justin's PC | Verified in Milestones 0 and 1 with Rojo 7.7.1 |
+| Static analysis, lint, format | luau-lsp (strict, Roblox definitions, Rojo sourcemap), selene, StyLua | Claude's environment (built from source, approved 2026-10-26) and Justin's PC via Rokit (`selene src`, `stylua src`) | Milestone 1 code: 0 findings in all three |
+| Unit tests for pure Luau modules | Lune | Claude's environment | When pure modules with real logic exist (not pinned yet) |
 | Engine behaviour (DataStores, physics, UI, streaming) | Roblox Studio Play / Team Test | Justin | Each milestone ships a short test checklist |
-| Economy bot | `npm test` (67 tests, all passing on 2026-10-26) | Claude's environment | Bridge operations get their own tests |
+| Economy bot | `npm test` (89 tests with the Milestone 1 bot pull request, all passing on 2026-10-26) | Claude's environment | Includes the bridge, link and limit tests |
+| Game ↔ bridge | `npm run bridge-staging` + Studio Play | Justin's PC | [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md) |
 
 No test is reported as passed unless it was actually run.

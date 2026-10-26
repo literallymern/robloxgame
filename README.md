@@ -20,6 +20,7 @@ Wichtig: **Rojo schickt nur in eine Richtung, von den Dateien nach Studio.** Skr
 | `src/server` | ServerScriptService > Server | Code für den Server |
 | `src/client` | StarterPlayer > StarterPlayerScripts > Client | Code für den Spieler |
 | `src/shared` | ReplicatedStorage > Shared | Code, den beide benutzen |
+| `src/studio` | ServerStorage > StudioTools | Werkzeuge, die du in Studio über die Command Bar startest |
 
 Die Dateiendung bestimmt die Art des Skripts:
 
@@ -81,12 +82,19 @@ Studio neu starten. Oben im Tab **Plugins** sollte jetzt ein **Rojo**-Knopf sein
 Nach dem Verbinden auf **Play** drücken und das **Output**-Fenster öffnen (*View > Output*). Dort sollte stehen:
 
 ```
-[Server] Das Spiel ist gestartet.
-[Server] Hallo DeinName! Rojo funktioniert :)
-[Client] Hallo DeinName! Rojo funktioniert :)
+[Ro-Nation:Server] Ro-Nation 0.1.0 (Milestone 1) server started (4/4 services).
+[Ro-Nation:Client] Ro-Nation 0.1.0 (Milestone 1) client started for DeinName (3/3 controllers).
 ```
 
-Dann ist alles richtig eingerichtet.
+Dann ist alles richtig eingerichtet. Oben links erscheint außerdem der Knopf **Account**.
+
+Einstellungen prüfen: Im Studio-Menü *View > Command Bar* öffnen und eingeben:
+
+```
+require(game.ServerStorage.StudioTools.CheckSetup)()
+```
+
+Im Output steht dann für jede Einstellung `OK` oder `FIX`.
 
 ## Häufige Probleme
 
@@ -98,7 +106,8 @@ Dann ist alles richtig eingerichtet.
 ## Projekt-Dateien
 
 - `default.project.json` sagt Rojo, welcher Ordner wohin in Studio kommt.
-- `rokit.toml` legt die Rojo-Version fest.
-- `src/` enthält den ganzen Code.
+- `rokit.toml` legt die Versionen der Werkzeuge fest (Rojo, selene, StyLua).
+- `selene.toml`, `stylua.toml`: Einstellungen für die Prüf- und Formatierwerkzeuge (`selene src`, `stylua src`).
+- `src/` enthält den ganzen Code: `shared` (Server und Spieler), `server`, `client` und `studio` (Werkzeuge für Studio, landen in ServerStorage > StudioTools).
 - `docs/game/` enthält den Bauplan für Ro-Nation (Architektur, Kartenplan, Meilensteine). Start: [`docs/game/MILESTONES.md`](docs/game/MILESTONES.md).
 - `discord/` enthält den Discord-Server-Plan und den Wirtschafts-Bot.
