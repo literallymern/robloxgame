@@ -6,7 +6,7 @@ Status: Milestone 0, 2026-10-26. Items are removed or updated as they are confir
 
 | ID | Assumption | How it gets confirmed |
 |---|---|---|
-| A1 | The Studio place contains only the default Baseplate and the Rojo test scripts. | Justin mentions anything else before Milestone 1 |
+| A1 | The Studio place contains only the default Baseplate and the Rojo test scripts. | **Confirmed** by Justin (2026-10-26): nothing built yet |
 | A2 | The Owner's Roblox account is user `2595858454` (LiterallyDrJustin). It gets Owner rights in game and is the statue avatar. | Stated in the master prompt; group owner is the same account |
 | A3 | Normally one server with up to 25 players runs. The code must still be correct with two or more servers. | Design rule |
 | A4 | North = −Z, East = +X; 1 stud ≈ 0.28 m; city distances are compressed for gameplay. | Accepted with this blueprint |
@@ -40,7 +40,7 @@ These are additions needed to build the game. None of them changes an establishe
 | ID | Question | Recommendation | Needed by |
 |---|---|---|---|
 | D1 | Should the economy bot stay the only place where money exists, with the game connected through a bridge that is built before Milestone 7? | **Decided 2026-10-26: yes.** The minimum bridge comes with Milestones 6/7. | — |
-| D2 | Publish the experience under the group "Democratic Republic of Kagundi"? | Yes, before any saved player data exists | Milestone 6 |
+| D2 | Publish the experience under the group "Democratic Republic of Kagundi"? | **Decided 2026-10-26: yes, the game runs under the group.** Assets are uploaded under the group too. | — |
 | D3 | Statue direction and finish (P4, P5) | South-facing; original colours on a stone pedestal, confirmed after a test render in Studio | Milestone 3 |
 
 ## 4. Blockers and limits
@@ -50,6 +50,6 @@ These are additions needed to build the game. None of them changes an establishe
 | B1 | No Studio access for Claude | Claude cannot place parts, run Play tests or publish | Builder scripts + Studio checklists run by Justin |
 | B2 | Roblox web APIs are blocked from Claude's environment | The avatar data cannot be read from here | Justin's screenshot serves as the visual reference; the statue builder uses Roblox's engine functions inside Studio (Milestone 3) |
 | B3 | Running downloaded dev tools (luau-lsp, selene, StyLua, Lune) was blocked in this session | No automated Luau checks here yet | Ask for approval in Milestone 1; Justin can run them locally through Rokit |
-| B4 | The economy bot runs only while Justin's PC is on and has no HTTP bridge | No real money in game until both exist | Studio-only sandbox money for testing; bridge work as soon as hosting exists |
-| B5 | Flag and emblem are not uploaded to Roblox | Flags and seals cannot show in game | Justin uploads them (03, step 2); builders use plain colour placeholders until then |
-| B6 | Claude cannot see the current place file | Hand-built content could be missed | A1: Justin reports existing content |
+| B4 | The economy bot runs only while Justin's PC is on and has no HTTP bridge | No real money in game until both exist | Justin is arranging 24/7 hosting (2026-10-26); bridge built in Milestones 6/7; sandbox money for Studio tests until then |
+| B5 | Flag and emblem are not uploaded to Roblox yet | Flags and seals cannot show in game | Justin is uploading them under the group (2026-10-26) and sends the asset IDs; builders use plain colour placeholders until then |
+| B6 | Claude cannot see the current place file | Hand-built content could be missed | Resolved for now: Justin confirmed nothing is built (A1) |

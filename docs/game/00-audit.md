@@ -37,8 +37,8 @@ Pull requests: #1 "Kagundi Lore Bible (Revision 2)" is open. #2 (Discord package
 Claude cannot see the place file. From the Rojo setup and Justin's earlier tests:
 
 - Known content: the three Rojo test scripts above.
-- **Assumption:** apart from them, the place is a fresh Baseplate. Justin should mention anything he has built by hand so it is preserved.
-- Not yet decided: whether the experience is published under Justin's account or the group. See [03-dependencies-and-setup.md](03-dependencies-and-setup.md).
+- Apart from them, the place is a fresh Baseplate. **Confirmed by Justin** on 2026-10-26: nothing has been built yet.
+- The experience runs under the group "Democratic Republic of Kagundi" (Justin's decision, 2026-10-26). See [03-dependencies-and-setup.md](03-dependencies-and-setup.md).
 
 ## 4. Lore sources read
 

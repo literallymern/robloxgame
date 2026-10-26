@@ -12,7 +12,7 @@ Last update: 2026-10-26 (Milestone 0; decision D1 recorded).
 | 3 | Gundiville and the parliamentary plaza | Not started | Milestone 2; flag/emblem uploaded (03, step 2) | Government district and the Leader's statue |
 | 4 | The three secondary cities | Not started | Milestone 2 | Stokondo, Kagundali, Oberdueshuson facilities |
 | 5 | National infrastructure and map polish | Not started | Milestones 2–4 | Airport, customs, fuel, utilities, signage, vegetation |
-| 6 | Player identity and persistence | Not started | Milestone 1; D2 (experience owner) decided; Studio API access on | Session-locked, versioned profiles; account link and `EconomyGateway` (start of the minimum bridge) |
+| 6 | Player identity and persistence | Not started | Milestone 1; experience published under the group (D2 decided); Studio API access on | Session-locked, versioned profiles; account link and `EconomyGateway` (start of the minimum bridge) |
 | 7 | Banking, economy and business (in-game front-ends) | Not started | Milestone 6; minimum Economy Bridge live (bot reachable over HTTPS) | Terminals for bank, jobs, business, property, credit, AVK on top of the bot |
 | 8 | City Police, Gendarmerie and justice | Not started | Milestones 6 (records), 4 (Stokondo court) | Arrests, records, cases, appeals |
 | 9 | Military, Revolutionary Guard and Intelligence | Not started | Milestones 6, 4 (Oberdueshuson) | Membership, ranks, orders, facility access |
