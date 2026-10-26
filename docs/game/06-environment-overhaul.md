@@ -1,5 +1,27 @@
 # Highland environment overhaul
 
+## Scope and acceptance status
+
+This is a partial environment implementation. The requested professional visual target has
+not been demonstrated or accepted in Studio. Offline checks establish numerical behavior and
+some geometry constraints, not realistic rendered appearance.
+
+| Requested area | Delivered behavior | Remaining gap |
+| --- | --- | --- |
+| Lighting | Natural preset and weather/time composition; exact saved pre-overhaul lighting is migrated to prevent old bloom/saturation stacking | Custom lighting conflicts are reported and preserved; rendered comparison still required |
+| Weather and day/night | Five blended states, local rain, lightning, synchronized visual clock and marked streetlights | Runs during Play; automatic weather initially waits 6–11 minutes; Studio verification still required |
+| Trees and vegetation | More varied primitive crowns, joined forks and irregular avenues | No authored tree meshes, leaf transparency textures or bark texture maps; still stylized geometry |
+| Vegetation density | 5,218 trees, 4,109 shrubs and 2,688 rocks in 31,920 parts | Previous build had 8,207 trees in 30,464 vegetation parts; tree density was reduced to fund more geometry per tree |
+| Terrain | Local bank/sediment shape, shallow rural drainage and material patch changes | Main hills are unchanged; refresh does not apply terrain geometry changes |
+| Roads and bridges | Gravel shoulders, subtle repairs, open rails, supports and foundations | Engine collision/driving and visual integration still need inspection |
+| Rain and thunder sounds | Original WAV sources and runtime playback hooks | Silent until owner uploads assets and grants experience permissions |
+| Performance and gameplay | Bounded local effects, streaming models, part budgets and offline regressions | No lower-end-device or 20–25-player Studio profiling; existing gameplay needs engine verification |
+
+`Environment refreshed` means the selected generator groups were replaced successfully. It
+does not mean every original acceptance criterion has been met. The tool now prints the
+applied `highland-2` revision, actual generated counts, whether terrain was rebuilt, and any
+lighting components skipped due to custom conflicts.
+
 ## Inspection and priorities
 
 The existing map is generated in edit mode by `BuildMap`: `Land` and `Heightfield` establish
@@ -121,6 +143,10 @@ accept optional uploaded audio. Original generated WAV files and upload instruct
 remain empty until the owner uploads them with experience permissions. Audio is silent until
 configured. Custom Atmosphere/Clouds instances take precedence and are left unchanged, with
 an Output warning; review any custom post-processing alongside the reserved RoNation effects.
+In edit mode the builder recognizes the exact original project's Atmosphere/Bloom/SunRays/
+ColorCorrection preset, adopts it or removes a proven old duplicate, then applies the new
+values. Altered custom effects are preserved and reported as skipped. This prevents the old
+bright bloom and saturation from silently stacking with the new setup.
 
 ## Validation and remaining Studio checks
 
@@ -141,8 +167,8 @@ Executed in this workspace:
 
 | Check | Result |
 | --- | --- |
-| Full map suite, including terrain writes and repeated/partial refresh | Passed: 456 heightfield, 61 landscape, 5 river, 733 road/bridge, 7 vegetation and 53 full-builder checks; all 16 economic property definitions still match |
-| Environment math and actual server service under an offline coroutine scheduler | Passed: 16 model + 12 service checks |
+| Full map suite, including terrain writes and repeated/partial refresh | Passed: 456 heightfield, 61 landscape, 5 river, 733 road/bridge, 8 vegetation and 56 full-builder checks; all 16 economic property definitions still match |
+| Environment math, server service and saved lighting migration | Passed: 16 model + 12 service + 20 presentation checks |
 | Existing Discord/economy regression suite | Passed: 90 tests |
 | Luau compiler | All 55 source files compiled |
 | StyLua and whitespace checks | Passed |
@@ -163,7 +189,7 @@ offline tests do not constitute a full Roblox type/API analysis or a device perf
 | Terrain and vegetation | `src/studio/Map/Heightfield.luau`, `src/studio/Map/River.luau`, `src/studio/Map/Vegetation.luau`, `src/studio/Map/Builders/Vegetation.luau` |
 | Roads and bridges | `src/studio/Map/Builders/Roads.luau`, `src/studio/Map/Builders/Bridges.luau`, `src/studio/Map/Builders/RoadDetails.luau` |
 | Map tests | `tests/map/run.py`, `tests/map/test_all.py`, `tests/map/roblox-mock.luau`, `tests/map/builders.spec.luau`, `tests/map/landscape.spec.luau`, plus new `river-detail.spec.luau`, `roads-realism.spec.luau`, `vegetation-builders.spec.luau` |
-| Weather tests | `tests/environment/run.py`, `tests/environment/model.spec.luau`, `tests/environment/service.spec.luau` |
+| Weather tests | `tests/environment/run.py`, `tests/environment/model.spec.luau`, `tests/environment/service.spec.luau`, `tests/environment/presentation.spec.luau` |
 | Original audio and generation | `assets/audio/kagundi-rain-loop.wav`, `assets/audio/kagundi-thunder.wav`, `assets/audio/README.md`, `tools/generate-weather-audio.py` |
 | User documentation | `README.md`, this document |
 

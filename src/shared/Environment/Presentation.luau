@@ -12,41 +12,182 @@ local function colour(values: { number }): Color3
 	return Color3.new(values[1], values[2], values[3])
 end
 
-local function owned(parent: Instance, className: string, name: string, singleton: boolean): any
-	local named = parent:FindFirstChild(name)
-	if named then
-		if named:IsA(className) then
-			return named
+-- Exact pre-overhaul default.project.json values. Matching only a name is insufficient:
+-- edited user effects must never be mistaken for the old project baseline.
+local LEGACY = {
+	{
+		Name = "Atmosphere",
+		Class = "Atmosphere",
+		Target = "RoNationAtmosphere",
+		Properties = {
+			Density = 0.28,
+			Offset = 0.25,
+			Color = { 0.78, 0.83, 0.89 },
+			Decay = { 0.42, 0.45, 0.5 },
+			Glare = 0.15,
+			Haze = 1.4,
+		},
+	},
+	{
+		Name = "Bloom",
+		Class = "BloomEffect",
+		Target = "RoNationBloom",
+		Properties = {
+			Intensity = 0.6,
+			Size = 24,
+			Threshold = 1.6,
+		},
+	},
+	{
+		Name = "SunRays",
+		Class = "SunRaysEffect",
+		Target = "RoNationSunRays",
+		Properties = {
+			Intensity = 0.06,
+			Spread = 0.8,
+		},
+	},
+	{
+		Name = "ColorCorrection",
+		Class = "ColorCorrectionEffect",
+		Target = "RoNationColorCorrection",
+		Properties = {
+			Brightness = 0.01,
+			Contrast = 0.06,
+			Saturation = 0.08,
+			TintColor = { 1, 0.99, 0.96 },
+		},
+	},
+}
+
+local function matchesLegacy(instance: any, specification: any): boolean
+	if not instance:IsA(specification.Class) then
+		return false
+	end
+	if instance:IsA("PostEffect") and instance.Enabled == false then
+		return false -- preserve a user's decision to disable an effect
+	end
+	for property, expected in specification.Properties do
+		local actual = instance[property]
+		if type(expected) == "number" then
+			if type(actual) ~= "number" or math.abs(actual - expected) > 0.0001 then
+				return false
+			end
+		else
+			if
+				math.abs(actual.R - expected[1]) > 0.0001
+				or math.abs(actual.G - expected[2]) > 0.0001
+				or math.abs(actual.B - expected[3]) > 0.0001
+			then
+				return false
+			end
 		end
-		warn(`[Ro-Nation:Environment] Reserved name {name} is occupied; leaving it unchanged.`)
+	end
+	return true
+end
+
+-- Deliberate saved-place migration, called by the Studio environment tool, never the client.
+-- Proven old duplicates are removed only when their new reserved counterpart already exists.
+function Presentation.migrateLegacy(
+	log: ((string) -> ())?
+): { Adopted: number, RemovedDuplicates: number, KeptCustom: number }
+	assert(not game:GetService("RunService"):IsRunning(), "Legacy lighting migration requires Studio edit mode")
+	local report = { Adopted = 0, RemovedDuplicates = 0, KeptCustom = 0 }
+	local write = log or function(_message: string) end
+	for _, specification in LEGACY do
+		for _, instance in Lighting:GetChildren() do
+			if instance.Name ~= specification.Name then
+				continue
+			end
+			if not matchesLegacy(instance, specification) then
+				report.KeptCustom += 1
+				write(
+					`Kept custom/edited legacy lighting object {instance.Name}; automatic {specification.Class} changes may be skipped.`
+				)
+				continue
+			end
+			local counterpart = Lighting:FindFirstChild(specification.Target)
+			if counterpart and not counterpart:IsA(specification.Class) then
+				report.KeptCustom += 1
+				write(`Could not adopt {instance.Name}: reserved name {specification.Target} is occupied.`)
+			elseif counterpart then
+				instance:Destroy()
+				report.RemovedDuplicates += 1
+				write(`Removed proven pre-overhaul duplicate {specification.Name}; using {specification.Target}.`)
+			else
+				instance.Name = specification.Target
+				instance:SetAttribute("ManagedBy", "RoNationEnvironment")
+				report.Adopted += 1
+				write(`Adopted pre-overhaul {specification.Name} as {specification.Target}.`)
+			end
+		end
+	end
+	return report
+end
+
+local function owned(parent: Instance, className: string, name: string, skipped: { string }): any
+	local function skip(reason: string): any
+		table.insert(skipped, reason)
+		warn(`[Ro-Nation:Environment] {reason}`)
 		return nil
 	end
-	local existing = parent:FindFirstChildOfClass(className)
-	if singleton and existing then
-		if
-			existing:GetAttribute("GeneratedBy") == "BuildMap"
+	local named: any = parent:FindFirstChild(name)
+	if named and not named:IsA(className) then
+		return skip(`Reserved name {name} is occupied; leaving it unchanged.`)
+	end
+	local managed = nil
+	for _, existing in parent:GetChildren() do
+		if existing == named or not existing:IsA(className) then
+			continue
+		end
+		-- The separate transient lightning flash is intentionally additive, owned by our
+		-- local WeatherEffects module and never a competing baseline colour correction.
+		if existing:GetAttribute("RoNationEnvironment") == true then
+			continue
+		end
+		local ours = existing:GetAttribute("GeneratedBy") == "BuildMap"
 			or existing:GetAttribute("ManagedBy") == "RoNationEnvironment"
-		then
-			existing.Name = name
-			return existing
+		if ours then
+			if managed then
+				return skip(
+					`Multiple managed {className} instances exist; repair them in Studio before automatic changes.`
+				)
+			end
+			managed = existing
+		elseif not existing:IsA("PostEffect") or (existing :: any).Enabled ~= false then
+			-- A custom singleton can shadow the named handle; a custom post effect stacks
+			-- with it. Avoid both cases and never change the user's object.
+			if named and named:IsA("PostEffect") then
+				named.Enabled = false
+			end
+			return skip(`Custom {className} \"{existing.Name}\" kept; automatic {className} changes are skipped.`)
 		end
-		warn(`[Ro-Nation:Environment] Existing custom {className} kept; automatic {className} changes are skipped.`)
-		return nil
 	end
-	local created = Instance.new(className)
-	created.Name = name
-	created:SetAttribute("ManagedBy", "RoNationEnvironment")
-	created.Parent = parent
-	return created
+	if named and managed then
+		return skip(`Duplicate managed {className} instances exist; run the edit-mode legacy lighting migration.`)
+	end
+	local result: any = named or managed
+	if not result then
+		result = Instance.new(className)
+		result.Parent = parent
+	end
+	result.Name = name
+	result:SetAttribute("ManagedBy", "RoNationEnvironment")
+	if result:IsA("PostEffect") then
+		result.Enabled = true
+	end
+	return result
 end
 
 function Presentation.new(): any
+	local skipped: { string } = {}
 	return {
-		Atmosphere = owned(Lighting, "Atmosphere", "RoNationAtmosphere", true),
-		Clouds = owned(workspace.Terrain, "Clouds", "RoNationClouds", true),
-		Bloom = owned(Lighting, "BloomEffect", "RoNationBloom", false),
-		Rays = owned(Lighting, "SunRaysEffect", "RoNationSunRays", false),
-		Correction = owned(Lighting, "ColorCorrectionEffect", "RoNationColorCorrection", false),
+		Atmosphere = owned(Lighting, "Atmosphere", "RoNationAtmosphere", skipped),
+		Clouds = owned(workspace.Terrain, "Clouds", "RoNationClouds", skipped),
+		Bloom = owned(Lighting, "BloomEffect", "RoNationBloom", skipped),
+		Rays = owned(Lighting, "SunRaysEffect", "RoNationSunRays", skipped),
+		Correction = owned(Lighting, "ColorCorrectionEffect", "RoNationColorCorrection", skipped),
+		Skipped = skipped,
 	}
 end
 

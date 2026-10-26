@@ -50,6 +50,7 @@ export type RefreshOptions = {
 }
 
 local BuildMap = {}
+BuildMap.EnvironmentRevision = "highland-2"
 
 local function log(text: string)
 	print(`[Ro-Nation:BuildMap] {text}`)
@@ -69,6 +70,16 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 		return
 	end
 	local opts: RefreshOptions = options or {}
+	local report = {
+		Revision = BuildMap.EnvironmentRevision,
+		TerrainRebuilt = false,
+		RoadParts = 0,
+		BridgeParts = 0,
+		Trees = 0,
+		Bushes = 0,
+		Rocks = 0,
+		VegetationParts = 0,
+	}
 	local layout = require(ReplicatedStorage.Shared.Config.MapLayout) :: any
 	local staging = Util.detachedFolder("EnvironmentRefresh")
 	local selected: { [string]: boolean } = {
@@ -88,8 +99,8 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 	local ok, err = pcall(function()
 		local hf = Heightfield.new(layout, Util.yield)
 		if selected.Roads then
-			Roads.build(hf, layout, staging)
-			Bridges.build(hf, staging)
+			report.RoadParts = Roads.build(hf, layout, staging)
+			report.BridgeParts = Bridges.build(hf, staging)
 		end
 		if selected.RoadDetails or selected.Vegetation then
 			local details = RoadDetails.new(layout, hf)
@@ -97,7 +108,9 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 				RoadDetailsBuilder.build(details, staging)
 			end
 			if selected.Vegetation then
-				VegetationBuilder.build(Vegetation.new(layout, hf, details, Util.yield), staging)
+				local plants = Vegetation.new(layout, hf, details, Util.yield)
+				report.VegetationParts = VegetationBuilder.build(plants, staging)
+				report.Trees, report.Bushes, report.Rocks = #plants.trees, #plants.bushes, #plants.rocks
 			end
 		end
 	end)
@@ -124,8 +137,17 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 		replacement.Parent = map
 	end
 	staging:Destroy()
-	Environment.apply(log)
+	local skipped = Environment.apply(log)
+	map:SetAttribute("EnvironmentGeometryRevision", BuildMap.EnvironmentRevision)
+	map:SetAttribute("LastEnvironmentRefreshRebuiltTerrain", false)
+	map:SetAttribute("EnvironmentSkippedLighting", table.concat(skipped, ", "))
+	log(
+		`Refresh {report.Revision}: built {report.RoadParts} road parts, {report.BridgeParts} bridge parts, `
+			.. `{report.Trees} trees, {report.Bushes} bushes and {report.Rocks} rocks ({report.VegetationParts} vegetation parts).`
+	)
+	log("Terrain shape was not rebuilt. Weather and the day/night cycle run during Play.")
 	log("Environment refreshed. Terrain, places, signs, property plots and spawns retained. Save the place.")
+	return report
 end
 
 function BuildMap.run(options: Options?)
