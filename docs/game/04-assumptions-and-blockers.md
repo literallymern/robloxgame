@@ -16,9 +16,9 @@ Status: updated in Milestone 1, 2026-10-26. Items are removed or updated as they
 | A8 | All in-game text is English; German titles and Kagundisch words are used as flavour, as in the encyclopedia. | Canon |
 | A9 | The encyclopedia PDF of 26 Oct 2026 is the latest canon. Justin's city reference guide of the same date gives the visual direction and is not canon where it differs. | Justin sends a new version if it changes |
 | A10 | The bot behaves as recorded in [05-economy-integration.md](05-economy-integration.md), section 2, checked against the source code on the default branch at commit `b8e905e`. | **Re-checked in Milestone 1:** the bridge branch starts from `7caabc7`, and `discord/bot` has no changes between `b8e905e` and `7caabc7`; the 67 earlier tests still pass next to the new ones |
-| A11 | Roblox Studio lets game scripts call `http://localhost:8788` (the staging bridge on Justin's PC). The documentation asks for HTTPS; developer reports say Studio allows localhost. | Studio checklist, step "Link Discord". If refused: staging over an HTTPS tunnel or on the 24/7 host (`BridgeConfig.BaseUrl`) |
-| A12 | Roblox accepts a `Secret` in the `Authorization` header (`Secret:AddPrefix("Bearer ")`). | Studio checklist. If refused: `BridgeConfig.AuthHeader = "X-Api-Key"` without the prefix; the bridge accepts both |
-| A13 | A Local Secret can be bound to the domain `localhost`. | Studio checklist. If refused: domain `*`, acceptable only for the local staging key, never for the live key |
+| A11 | Roblox Studio lets game scripts call `http://localhost:8788` (the staging bridge on Justin's PC). The documentation asks for HTTPS; developer reports say Studio allows localhost. | **Confirmed 2026-10-26** in Justin's Studio test: `Economy status: available` against `http://localhost:8788` |
+| A12 | Roblox accepts a `Secret` in the `Authorization` header (`Secret:AddPrefix("Bearer ")`). | **Confirmed 2026-10-26:** the bridge checks the key on every route, including `/v1/health`, and answered with status 200 |
+| A13 | A Local Secret can be bound to the domain `localhost`. | **Confirmed 2026-10-26** (Studio shows a form: Name, Domain, value) |
 | A14 | `GroupService:GetRolesInGroupAsync` returns `IsMember` and the roles with their `Rank` (used for staff checks; `GetRankInGroup` is deprecated). | Studio checklist: the test buttons appear for the Owner; staff ranks are tested when staff join |
 | A15 | `StreamingEnabled` and `Lighting.ClockTime` can be set from `default.project.json` with `$properties`. | `CheckSetup` prints OK for streaming |
 
