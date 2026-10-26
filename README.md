@@ -96,6 +96,14 @@ require(game.ServerStorage.StudioTools.CheckSetup)()
 
 Im Output steht dann für jede Einstellung `OK` oder `FIX`.
 
+Landkarte bauen (Meilenstein 2): Vorher den Place sichern (*File > Save to File As…*). Dann im Bearbeitungsmodus (Play gestoppt) in die Command Bar:
+
+```
+require(game.ServerStorage.StudioTools.BuildMap).run()
+```
+
+Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke und den Spawn neu. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
+
 ## Häufige Probleme
 
 - **"Connect" geht nicht:** Läuft `rojo serve` noch? Das Fenster (Terminal oder VS Code) muss offen bleiben.
@@ -108,6 +116,7 @@ Im Output steht dann für jede Einstellung `OK` oder `FIX`.
 - `default.project.json` sagt Rojo, welcher Ordner wohin in Studio kommt.
 - `rokit.toml` legt die Versionen der Werkzeuge fest (Rojo, selene, StyLua).
 - `selene.toml`, `stylua.toml`: Einstellungen für die Prüf- und Formatierwerkzeuge (`selene src`, `stylua src`).
+- `tests/map/` enthält Tests für die Karten-Berechnung, die Claude ohne Studio ausführt (du brauchst sie nicht).
 - `src/` enthält den ganzen Code: `shared` (Server und Spieler), `server`, `client` und `studio` (Werkzeuge für Studio, landen in ServerStorage > StudioTools).
 - `docs/game/` enthält den Bauplan für Ro-Nation (Architektur, Kartenplan, Meilensteine). Start: [`docs/game/MILESTONES.md`](docs/game/MILESTONES.md).
 - `discord/` enthält den Discord-Server-Plan und den Wirtschafts-Bot.

@@ -8,7 +8,7 @@ Last update: 2026-10-26. The sequence below is the **integration-aware plan from
 |---|---|---|---|---|
 | 0 | Technical and repository audit | **Done** | — | `docs/game/` (this folder), incl. bot audit and system boundaries ([05](05-economy-integration.md)) |
 | 1 | Core architecture and integration prototype | **Done** (Studio staging test passed 2026-10-26) | Milestone 0; Studio API access and HTTP requests on (03, steps 4–5); a staging key | Roblox foundation (services, remotes, logging, permissions); bridge prototype in the bot (off by default); account linking; verified staging test: read an account and make one safe test transfer exactly once |
-| 2 | Complete country map blockout | Not started | Milestone 1; Justin runs builders and saves the place | Terrain, roads, footprints of all four cities, airport, border crossings |
+| 2 | Complete country map blockout | **In progress** (built and tested offline; waiting for Justin's Studio test) | Milestone 1; Justin runs builders and saves the place | Terrain, roads, footprints of all four cities, airport, border crossings |
 | 3 | Gundiville government district | Not started | Milestone 2; flag and emblem IDs (done) | General People's Congress, Hausali, Leader's residence, square, statue of Dr. Justin Wachmann |
 | 4 | First playable gameplay loop | Not started | Milestones 1–3; bot reachable over HTTPS for live tests | Spawning, navigation, one working vehicle, bank interface, one civilian job, one property interaction, connected to the bot where feasible; Roblox player profiles (non-financial) |
 | 5 | Secondary cities and infrastructure | Not started | Milestone 2 | Stokondo, Kagundali, Oberdueshuson, airport, customs, fuel, utilities, transport network |
@@ -52,11 +52,23 @@ Two pull requests: the game (branch `claude/project-thread-55jwuj`) and the bot 
 - **Found in the test:** CheckSetup must run in edit mode (checklist clarified); Local Secrets is a form, not a JSON box (docs corrected); flag and emblem IDs were decal IDs in swapped order; the image IDs are now in `Config/Assets` (B5 resolved).
 - **Deviations from the preview:** `InteractionController` moved to Milestone 4 (no interactive objects exist yet); `LogService` became the small utility `Util/Log`; `Util/Result` was not needed (the remotes use one `Reply` type); Lune not pinned (no pure-module tests yet); the test transaction is a 1 KGD bank ↔ cash movement on one's own account instead of a payment between two players, and `citizenPay` gets its key in Milestone 4 (P15).
 
-## Milestone 2 plan (preview)
+### Milestone 2 — Complete country map blockout (2026-10-26)
 
-Details are fixed when the milestone starts. Source: [02-map-plan.md](02-map-plan.md).
+One pull request (branch `claude/project-thread-55jwuj`). Details and the as-built numbers: [02-map-plan.md](02-map-plan.md), section 12.
 
-1. `src/shared/Config/MapLayout.luau`: coordinates, footprints, heights and roads from the map plan as the single source.
-2. Builder scripts in `src/studio/` that Justin runs once in Studio: terrain (basins, highland plateau, hills, boundary mountains, optional river), road builder from reusable segments (N1–N5, R1–R4, bridges), city footprints as simple blocks, airport runway and apron, both border crossings, property plots tagged with their property IDs.
-3. Spawn at the Gundiville bus terminal; streaming checked with the blockout.
-4. Studio checklist: run the builders, walk and fly the map, check drive times, save and back up the place.
+- **Single source:** `src/shared/Config/MapLayout.luau` holds every map coordinate: bounds, 30 height anchors, hills, boundary mountains with three passes, 16 places (4 cities, 7 facilities incl. a new cattle ranch yard, 2 border crossings, 3 plots), surface zones, road classes, 16 roads, the river, airport, crossings, the 16 property plots, Gundiville placeholders and the spawn.
+- **Pure calculations (offline-tested):** `src/studio/Map/` — `Geometry` (distances, intersections, rounded corners, resampling), `SegmentGrid` (fast nearest-segment lookup), `Land` (blended base heights, rolling noise, noisy hill ridges, ridged boundary mountains, flattened places), `River` (water level that only falls downstream, carved bed, banks and valley walls), `RoadNetwork` (curves at least the class radius, grade-limited height profiles, flat in places, level at junctions, bridges detected where roads cross the river and raised 12 studs above the water), `Heightfield` (the finished surface and materials).
+- **Studio builders:** `src/studio/BuildMap.luau` (one command in the command bar) and `src/studio/Map/Builders/` — terrain in 64 × 64-stud chunks with water, road parts with round joints and centre lines, five bridges with railings and piers, place outlines, names and entry signs, Gundiville district placeholders, airport (runway, taxiway, apron, terminal, hangar, tower), both border crossings (canopy, barrier, customs office, truck inspection), 16 property plots tagged `PropertyPlot`, invisible edge walls, and the spawn at the Gundiville bus terminal. Reruns replace only what they generated.
+- **Project file:** streaming target radius 1,024, minimum radius 256, integrity mode *pause outside loaded area*.
+- **Tests that ran (cloud session):** `python3 tests/map/test_all.py` — 456 checks of the layout and calculations (all roads within their grade and curve limits, exactly the five planned bridges with clearance, river never uphill, no road touching the river outside bridges, every road end connected, places flat, no cliffs inside the ring, plots not on roads, spawn on flat ground), the 16 plots match the bot's `GENESIS_PROPERTIES` by name, city and type, and 42 checks of the real `BuildMap` run against a strict Roblox stand-in (all 25,600 terrain chunks written, voxel heights match the calculation at 12 probe points, water written, 1,521 parts inside the map, road parts on the profile, rerun without duplicates and without touching hand-built parts). `rojo build` OK; StyLua, selene and luau-lsp (strict) with 0 findings. Preview image rendered: [map-blockout-preview.png](map-blockout-preview.png).
+- **Not tested yet:** anything in Roblox Studio (rendering, real build time, streaming, walking and driving). Justin's checklist: [testing/m2-map-checklist.md](testing/m2-map-checklist.md).
+- **Deviations from the preview:** roads end at place edges (P16); property plots carry the property name, not an ID, because the game cannot know the bot's IDs yet (P18); drive times are timed on foot at car speed (WalkSpeed 90) because the first vehicle comes in Milestone 4; Lune was replaced by the Luau command line tool for the offline tests.
+
+## Milestone 3 plan (preview)
+
+Details are fixed when the milestone starts. Sources: [02-map-plan.md](02-map-plan.md), section 5, and Justin's city reference guide.
+
+1. Replace the Gundiville placeholders with blockout-quality buildings of the government district: General People's Congress (tallest, dome or tower), main square with market stalls, Hausali, Leader's residence compound, central bank, the avenue with its median, and the streets of the district.
+2. Statue of Dr. Justin Wachmann from the Owner's avatar (user `2595858454`), facing the Congress, on a pedestal (decision D3 after a test render).
+3. Flags and emblem on the government buildings (image IDs from `Config/Assets`).
+4. Builders in `src/studio/` like in Milestone 2, so the district can be rebuilt; Studio checklist with walk-through and screenshots.
