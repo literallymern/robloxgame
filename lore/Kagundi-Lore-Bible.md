@@ -14,6 +14,7 @@
 - Indigenous language and culture: Kagundisch, a German-based creole, plus names, religion, food, music, and holidays (new section 4A).
 - Leader of the Revolution: confirmed as a title, comparable to Gaddafi's title in Libya. The current Leader is Dr. Justin Wachmann, played by the Owner.
 - Justice: mayors judge all ordinary cases in the first instance; prosecutors keep the justice-degree requirement; appeals must be filed within 72 hours.
+- Flag and emblem: the official flag and round emblem, with a description of the flag (section 1).
 
 ---
 
@@ -50,6 +51,27 @@ The country combines a German-influenced administrative and institutional tradit
 | National insurance provider | AVK — Allgemeine Volksversicherung Kagundi |
 
 Kagundi is an intentionally fictional country. Its geography draws on Rwanda, but its colonial timeline, political institutions, national history, and present-day state are part of the Ro-Nation alternate-history setting.
+
+### Flag and Emblem
+
+<img src="images/kagundi-flag.png" alt="Flag of Kagundi" width="480">
+
+The **national flag**, introduced after the 1982 revolution, has a black triangle at the hoist, edged in white. The rest of the flag is divided horizontally into a blue upper band, a narrow red stripe above a yellow stripe, and a green lower band. Inside the triangle, a rayed yellow sun surrounds a white disc with two zigzag lines, black above red.
+
+| Element | Meaning |
+| --- | --- |
+| Black triangle | The Kagundian people |
+| White edge | Peace and unity between Kagundi's communities |
+| Yellow sun | The dawn of 12 May 1982 and the revolution |
+| Zigzag lines | An Old Gundi pattern for the mountains and rivers of the highlands |
+| Blue | The sky over the highlands |
+| Red | The blood of the 1917 Kagundali strikers and of the revolution |
+| Yellow | Gold and the country's mineral wealth |
+| Green | Forests, farmland, and pastures |
+
+<img src="images/kagundi-emblem.png" alt="Emblem of Kagundi" width="200">
+
+The **national emblem** places the flag's design in a circle inside a gold ring. It appears as a seal on government documents, uniforms, vehicles, and public buildings. Out of character, the emblem is also the Ro-Nation logo.
 
 ## 2. Geography and National Territory
 
