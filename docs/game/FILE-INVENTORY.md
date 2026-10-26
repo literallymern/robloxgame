@@ -2,7 +2,7 @@
 
 Every file and folder of the project, what it is for and which milestone owns it. Updated at the end of every milestone.
 
-Last update: 2026-10-26 (Milestone 0).
+Last update: 2026-10-26 (Milestone 0, extended after the architecture update).
 
 ## Repository root
 
@@ -33,12 +33,13 @@ Planned folders (Milestone 1 onwards): `src/shared/{Config,Types,Net,Util}`, `sr
 | `02-map-plan.md` | Map size, coordinates, footprints, roads, Gundiville district |
 | `03-dependencies-and-setup.md` | Manual steps for Justin, tools, engine features, third-party code, external systems |
 | `04-assumptions-and-blockers.md` | Assumptions, non-canon proposals, open decisions, blockers |
+| `05-economy-integration.md` | Verified bot audit, system boundaries, bridge and account-link design, downtime rules, staging, integration acceptance criteria, required bot changes |
 | `MILESTONES.md` | Milestone tracker and log |
 | `FILE-INVENTORY.md` | This file |
 | `map-plan.svg` | Overview map of the East District (generated plan image) |
 | `gundiville-plan.svg` | Plan of the Gundiville government district |
 
-## Discord package (`discord/`, from PR #2)
+## Discord package (`discord/`, from PR #2, #3 and #5)
 
 | Path | Files | Purpose |
 |---|---|---|
@@ -48,13 +49,13 @@ Planned folders (Milestone 1 onwards): `src/shared/{Config,Types,Net,Util}`, `sr
 | `discord/assets/` | 2 | Flag and emblem PNGs |
 | `discord/bot/src/economy/` | 26 | Economic simulation (ledger, citizens, businesses, employment, market, credit, AVK, property, fines, invoices, treasury, policy, events, daily tick, report) |
 | `discord/bot/src/discord/` | 11 | Slash commands, buttons, tickets, permissions |
-| `discord/bot/src/blueprint/`, `src/setup/`, `src/db/` | 7 | Roles/channels source of truth, setup planner, SQLite schema |
-| `discord/bot/src/index.js`, `src/config.js` | 2 | Bot entry point and configuration |
+| `discord/bot/src/blueprint/`, `src/setup/`, `src/db/` | 9 | Roles/channels source of truth, setup planner and texts, SQLite schema |
+| `discord/bot/src/index.js`, `src/config.js`, `src/check-node.js` | 3 | Bot entry point, configuration, Node version check |
 | `discord/bot/scripts/` | 5 | setup-server, deploy-commands, post-messages, simulate, generate-docs |
 | `discord/bot/test/` | 9 | Automated tests |
-| `discord/bot/package.json`, `package-lock.json`, `.env.example`, `.gitignore` | 4 | Node project files (no secrets in Git) |
+| `discord/bot/package.json`, `package-lock.json`, `.env.example`, `.gitignore`, `ecosystem.config.cjs` | 5 | Node project files and the pm2 start file (no secrets in Git) |
 
-The Economy Bridge for the game will be added inside `discord/bot/src/` (planned as `src/bridge/`).
+The Economy Bridge for the game will be added inside `discord/bot/src/` as `src/bridge/`, off by default, in a separate reviewed pull request (Milestone 1, decision D4). Design: [05-economy-integration.md](05-economy-integration.md).
 
 ## Not on the default branch yet
 
@@ -69,6 +70,8 @@ The Economy Bridge for the game will be added inside `discord/bot/src/` (planned
 |---|---|
 | `lore/Kagundi-Encyclopedia.pdf` | Authoritative lore reference (15 pages) |
 | `lore/kagundi-flag.png`, `lore/kagundi-emblem.png` | Official visual references |
+| `lore/roblox-upload/Kagundi-Flag-1024x609.png`, `Kagundi-Emblem-1024x1024.png` | Roblox-sized versions used for the uploads |
+| `lore/Ro-Nation_Kagundi_City_References.pdf` | Justin's city development reference guide (visual direction, not canon) |
 | `rojo/Rojo-Anleitung.md` | German Rojo guide (copy of the README section) |
 | `game/milestone-0/map-plan.png`, `gundiville-plan.png` | Rendered map plans from Milestone 0 |
 | `game/reference/owner-avatar-2595858454.jpg` | Justin's avatar screenshot, visual reference for the statue |
