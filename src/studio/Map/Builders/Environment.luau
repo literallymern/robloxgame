@@ -1,27 +1,26 @@
 --!strict
--- The look of the terrain: material colours of the African highlands (red laterite earth, lush
--- green grass), river and lake water, animated grass and clouds. The light itself (sun,
--- atmosphere, bloom, colour correction) is set in default.project.json under Lighting.
-
-local Util = require(script.Parent.Util)
+-- The same natural highland preset is used in Studio and by the runtime weather controller.
+-- This edits surface appearance only; it never clears terrain or rebuilds map objects.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage.Shared.Config.Environment)
+local Presentation = require(ReplicatedStorage.Shared.Environment.Presentation)
 
 local Environment = {}
-
 local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
 Environment.MaterialColours = {
-	Grass = rgb(104, 140, 60),
-	LeafyGrass = rgb(80, 112, 48),
-	Ground = rgb(150, 92, 58), -- red laterite earth
-	Mud = rgb(96, 66, 46),
-	Rock = rgb(122, 116, 108),
-	Slate = rgb(98, 98, 102),
-	Basalt = rgb(66, 64, 66),
-	Sand = rgb(190, 164, 122),
-	Asphalt = rgb(64, 64, 68),
-	Pavement = rgb(150, 146, 138),
+	Grass = rgb(91, 117, 65),
+	LeafyGrass = rgb(67, 96, 55),
+	Ground = rgb(130, 88, 62), -- damp lateritic highland soil
+	Mud = rgb(88, 68, 51),
+	Rock = rgb(115, 112, 103),
+	Slate = rgb(94, 96, 98),
+	Basalt = rgb(65, 66, 64),
+	Sand = rgb(170, 151, 116),
+	Asphalt = rgb(64, 65, 66),
+	Pavement = rgb(142, 140, 132),
 }
 
 function Environment.apply(log: (string) -> ())
@@ -29,35 +28,26 @@ function Environment.apply(log: (string) -> ())
 	for name, colour in Environment.MaterialColours do
 		terrain:SetMaterialColor((Enum.Material :: any)[name], colour)
 	end
-	-- Greenish-brown highland river water, a little murky.
-	terrain.WaterColor = rgb(52, 90, 84)
-	terrain.WaterTransparency = 0.35
-	terrain.WaterReflectance = 0.6
+	terrain.WaterColor = rgb(57, 84, 76)
+	terrain.WaterTransparency = 0.32
+	terrain.WaterReflectance = 0.22
 	terrain.WaterWaveSize = 0.08
-	terrain.WaterWaveSpeed = 6
-
-	-- Animated grass on Grass terrain. Not every Studio version lets scripts set this.
+	terrain.WaterWaveSpeed = 5
 	local ok = pcall(function()
 		(terrain :: any).Decoration = true
 	end)
 	if not ok then
 		log("Could not switch on animated grass: select Workspace > Terrain and tick Decoration.")
 	end
-
-	-- Clouds: only ours are changed; clouds you set up yourself stay as they are.
-	local clouds = terrain:FindFirstChildOfClass("Clouds")
-	if clouds == nil then
-		local created = Instance.new("Clouds")
-		Util.mark(created)
-		created.Parent = terrain
-		clouds = created
+	if Config.Enabled then
+		Presentation.apply(
+			Presentation.new(),
+			Config.Profiles[Config.InitialWeather],
+			Config.StartClockTime,
+			Config.Altitude.Base
+		)
 	end
-	if clouds and Util.isGenerated(clouds) then
-		clouds.Cover = 0.55
-		clouds.Density = 0.7
-		clouds.Color = rgb(255, 255, 255)
-	end
-	log("Terrain colours, water, grass and clouds set.")
+	log("Natural highland lighting, terrain colours, river water, grass and clouds set.")
 end
 
 return Environment

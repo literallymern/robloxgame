@@ -72,6 +72,21 @@ def main():
     if result.returncode != 0 or "ALL CHECKS PASSED" not in output:
         failed = True
 
+    for spec in ("river-detail", "roads-realism", "vegetation-builders"):
+        result = subprocess.run(
+            [sys.executable, os.path.join(HERE, "run.py"), os.path.join(HERE, spec + ".spec.luau")],
+            capture_output=True,
+            text=True,
+        )
+        output = result.stdout + result.stderr
+        for line in output.splitlines():
+            if not line.startswith("PASS"):
+                print(line)
+        passes = sum(1 for line in output.splitlines() if line.startswith("PASS"))
+        print(f"{passes} {spec} checks passed")
+        if result.returncode != 0 or "ALL CHECKS PASSED" not in output:
+            failed = True
+
     if "--quick" not in sys.argv:
         result = subprocess.run(
             [sys.executable, os.path.join(HERE, "run.py"), os.path.join(HERE, "builders.spec.luau")],

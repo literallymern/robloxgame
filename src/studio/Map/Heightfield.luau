@@ -108,10 +108,12 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 	local function surface(x: number, z: number): (number, number, number?)
 		local h = landHeight(x, z)
 		local material = 0
+		local inPlace = false
 		for i = placeCount, 1, -1 do
 			local r = places[i].Rect
 			if x >= r.MinX and x <= r.MaxX and z >= r.MinZ and z <= r.MaxZ then
 				material = placeCode[i]
+				inPlace = true
 				break
 			end
 		end
@@ -131,6 +133,19 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 				end
 				if e <= SHOULDER and material == 0 then
 					material = CODE.Ground
+				end
+				-- A broad, shallow roadside swale drains rural verges. Preserve junctions,
+				-- bridge approaches and every fixed place, including cultivated property plots.
+				if e > 5 and e < 10 and not onBridge and not inPlace and roads.otherDistance(x, z, roadIndex) > 12 then
+					local t = (e - 5) / 5
+					h -= 0.65 * math.sin(math.pi * t) ^ 2
+				end
+				-- Broken soil/grass edges follow broad patches rather than a solid stripe.
+				if e > SHOULDER and e < 7 and material == 0 and not inPlace then
+					local fringe = math.noise(x / 31 + 0.17, z / 31 + 0.53, 65.3)
+					if e < 5.2 + 2 * fringe then
+						material = CODE.Ground
+					end
 				end
 			end
 		end
@@ -154,7 +169,14 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 			local n = math.noise(x / 28 + 0.6, z / 28 + 0.1, 63.7)
 			material = if n > 0.3 then CODE.Sand elseif n < -0.35 then CODE.Slate else CODE.Mud
 		elseif zone == 2 then
-			material = if math.noise(x / 22 + 0.4, z / 22 + 0.5, 64.9) > -0.1 then CODE.Sand else CODE.Mud
+			-- Damp sediment stays near the water; the upper bank recovers vegetation in
+			-- irregular patches. This avoids the continuous bright sand ribbon.
+			local deposit = math.noise(x / 38 + 0.4, z / 38 + 0.5, 64.9)
+			local wetToe = edge / river.bankWidth < 0.3 + 0.18 * deposit
+			material = if wetToe
+				then (if deposit > 0.22 then CODE.Sand else CODE.Mud)
+				elseif deposit < -0.27 then CODE.Ground
+				else Heightfield.WATERSIDE
 		elseif material == 0 and (edge < WATERSIDE or shore < WATERSIDE) then
 			material = Heightfield.WATERSIDE
 		end
@@ -175,23 +197,26 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		end
 		local n1 = math.noise(x / 37 + 0.13, z / 37 + 0.57, 51.1) -- small patches
 		local n2 = math.noise(x / 160 + 0.71, z / 160 + 0.29, 52.3) -- larger patches
+		-- Vary erosion thresholds across connected patches so material changes do not
+		-- trace identical elevation/slope contour lines over the entire district.
+		local erosionSlope = slope + 0.12 * n2 + 0.04 * n1
 		if height > 520 then
 			-- The high mountains: cliffs of rock, slate and dark basalt, scree, green alpine slopes.
 			local high = (height - 520) / 300 + 0.25 * n2
-			if slope > 1.0 or (slope > 0.75 and high > 0.6) then
+			if erosionSlope > 1.0 or (erosionSlope > 0.75 and high > 0.6) then
 				return if n1 > 0.2 then CODE.Slate elseif n2 > 0.3 then CODE.Basalt else CODE.Rock
 			elseif high > 0.9 then
 				return if n1 > 0.25 then CODE.Slate elseif n1 < -0.3 then CODE.Ground else CODE.Rock
-			elseif slope > 0.6 then
+			elseif erosionSlope > 0.6 then
 				return if n1 > 0.15 then CODE.Rock elseif n1 < -0.25 then CODE.Basalt else CODE.Ground
 			end
 			return if n1 > 0.35 then CODE.Ground elseif n2 > -0.1 then CODE.LeafyGrass else CODE.Grass
 		end
-		if slope > 1.0 then
+		if erosionSlope > 1.0 then
 			return if n1 > 0.3 then CODE.Slate else CODE.Rock
-		elseif slope > 0.65 then
+		elseif erosionSlope > 0.65 then
 			return if n1 > 0.05 then CODE.Rock else CODE.Ground
-		elseif slope > 0.42 then
+		elseif erosionSlope > 0.42 then
 			-- Steeper banks show red earth.
 			return if n2 + 0.3 * n1 > 0.15 then CODE.Ground else CODE.LeafyGrass
 		end
