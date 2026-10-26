@@ -45,7 +45,7 @@ All four IDs and the token go into `discord/bot/.env`, which is never committed.
 
 1. The community language is **English**; Kagundisch words are used as flavour.
 2. The **Owner is the Discord server owner** and plays the Leader of the Revolution (Dr. Justin Wachmann). Only the Owner assigns the Leader role.
-3. The economy runs **in Discord only**; it is not yet connected to the Roblox game.
+3. The economy runs **in Discord**. The Roblox bridge for the game exists but is off by default (see [05](05-bots-and-integrations.md)).
 4. **Economic day 1 is the day the bot first starts.** Days run 00:00–24:00 Europe/Berlin.
 5. All amounts are **fictional gameplay values**: 10 KGD ≈ 1 EUR at launch, starting grant 2,500 KGD, treasury 1,500,000 KGD, AVK 200,000 KGD, public wages 350–1,000 KGD per shift.
 6. **One paid shift per member per economic day** is the main income; there is no time tracking in the game.
@@ -61,7 +61,7 @@ All four IDs and the token go into `discord/bot/.env`, which is never committed.
 ## Known limitations and future work
 
 - Buttons, tickets and the daily report have not been tested live yet (see [09](09-qa-report.md#not-tested--incomplete)).
-- No link between the Roblox game and the economy. A later version could add a small authenticated web endpoint next to the bot and call it from the game with `HttpService` (for example to pay out shifts worked in-game or show balances on in-game terminals).
+- The Roblox bridge (`src/bridge/`, `/link`) is built and tested offline but off by default. Switching it on for the live bot needs a public HTTPS address and the Owner's go (see [05](05-bots-and-integrations.md)).
 - Roblox account linking is optional and not built in (Bloxlink or RoVer can be added with restricted permissions).
 - Designed for 20–25 players on one server (SQLite, one process). Hundreds of active players would need a review.
 - Economy numbers are first estimates. Review them after two weeks of real play.

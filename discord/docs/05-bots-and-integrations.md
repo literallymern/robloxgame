@@ -15,7 +15,7 @@ Everything else uses features Discord already has (AutoMod, Community, Onboardin
 | Department rosters (`/roster`), restrictions (`/mod`) | Ro-Nation Economy Bot | Code written and tested offline |
 | Spam, slurs, invite links, mention spam | Discord AutoMod | Manual setup (see 07) |
 | Roblox username on Discord | Optional: Bloxlink or RoVer | Not required; see below |
-| Link between the Roblox game and the economy | Not built | Future work (see end of page) |
+| Link between the Roblox game and the economy | Ro-Nation Economy Bot: Roblox bridge (`src/bridge/`) and `/link` | Code written and tested offline; **off by default** (see end of page) |
 
 ## The Ro-Nation Economy Bot
 
@@ -32,16 +32,17 @@ Everything else uses features Discord already has (AutoMod, Community, Onboardin
 | Folder | Content |
 |---|---|
 | `src/economy/` | The simulation: ledger, citizens, businesses, employment, market, credit, AVK, property, fines, invoices, treasury, policy, events, daily tick, report. No Discord code. |
-| `src/db/` | Database schema and backup helper |
+| `src/db/` | Database schema, migrations and backup helper |
+| `src/bridge/` | Roblox bridge (off by default): HTTP interface for Roblox game servers, exactly-once operation records |
 | `src/discord/` | Slash commands, buttons and tickets, bot-level permission checks, ID lookup |
 | `src/blueprint/` | Single source of truth for roles, channels, permission overwrites and ticket types |
 | `src/setup/` | Compares the blueprint with the live server and plans changes; reads the message files; builds the generated docs |
-| `scripts/` | `setup-server`, `deploy-commands`, `post-messages`, `simulate`, `generate-docs` |
-| `test/` | 67 automated tests |
+| `scripts/` | `setup-server`, `deploy-commands`, `post-messages`, `simulate`, `bridge-staging`, `generate-docs` |
+| `test/` | 89 automated tests |
 
 ### Slash commands
 
-21 commands. The full list with every option is in [appendix-command-reference.md](appendix-command-reference.md).
+22 commands. The full list with every option is in [appendix-command-reference.md](appendix-command-reference.md).
 
 | Command | Who | What |
 |---|---|---|
@@ -59,7 +60,8 @@ Everything else uses features Discord already has (AutoMod, Community, Onboardin
 | `/credit-office` | Secretary for Economy, Economic Administrators | Loan applications above 5,000 KGD |
 | `/avk` | AVK Officers | Decide insurance claims |
 | `/central-bank` | Everyone (status), Owner (financing) | Policy rate, money stock; emergency treasury financing |
-| `/econ-admin` | Economic Administrators (Owner for large corrections and maintenance) | Inspect, correct, freeze, events, tick status and recovery, backups, audit log |
+| `/econ-admin` | Economic Administrators (Owner for large corrections and maintenance) | Inspect, correct, freeze, events, tick status and recovery, backups, audit log, remove an account link |
+| `/link` | Verified Members | Link the Discord account to the Roblox account with the code from the game; status; remove (24-hour delay) or keep |
 | `/roster` | Department leaders, Administrators | Assign and remove department roles |
 | `/panel` | Administrators | Post button panels again |
 | `/mod` | Moderators, Administrators | Verify by hand, restrict, unrestrict |
@@ -109,9 +111,20 @@ Not required for anything in this setup. If you want Roblox usernames verified, 
 - Put its role below the Ro-Nation bot role and let it manage only its own "Roblox Verified" role. Do not let it assign faction roles; that stays with `/roster`.
 - Keep the Ro-Nation verification button as the gate for server access.
 
-## Not built yet: game ↔ economy link
+## Roblox bridge: game ↔ economy link
 
-The economy runs in Discord only. Paychecks, purchases and fines are not yet connected to the Roblox game. Connecting them later would need a small authenticated web endpoint next to the bot and Roblox `HttpService` calls from the game server. This is listed as future work in [10-summary.md](10-summary.md).
+The bot stays the only economy. The Roblox game reads and changes it only through the **Roblox bridge**, a small HTTP interface inside the bot process (`src/bridge/`, Node's built-in `http`, no extra package). Full design and rules: [`docs/game/05-economy-integration.md`](../../docs/game/05-economy-integration.md).
+
+- **Off by default.** It only starts with `BRIDGE_ENABLED=true` and a `BRIDGE_API_KEY` of at least 32 characters in `.env`. Without them the bot behaves exactly as before.
+- **Who may call it:** only Roblox game servers, with the API key (`Authorization: Bearer <key>` or `X-Api-Key`). Roblox clients never see the address or the key. The key lives in `.env` and in the experience's Secrets, never in a script, chat or Git.
+- **Listens on** `127.0.0.1:8787` by default. To reach it from Roblox's servers it needs a public HTTPS address (reverse proxy or tunnel) on the 24/7 host.
+- **Linking:** the game asks for a single-use code (8 characters, 10 minutes); the member confirms it with `/link confirm`. One Discord account ↔ one Roblox account. `/link remove` takes effect after 24 hours; staff can remove a link at once with `/econ-admin link-remove` (audited).
+- **Exactly once:** every write carries an operation ID; repeats get the stored answer. Money movements also use the ledger key `bridge:<operationId>`.
+- **Never from Roblox:** starting grants, citizen records, daily processing, approvals.
+- **Maintenance mode** blocks bridge writes (answer 503); reads keep working.
+- **Staging:** `npm run bridge-staging` runs a separate test bridge on this computer (`localhost:8788`, own database `data/staging.db`, own key in `data/bridge-staging.key`, no Discord login) for Roblox Studio tests. Only staging allows the small test cash transfer (`BRIDGE_TEST_OPERATIONS`, keep it `false` on the live bot).
+
+Endpoints (API version 1): `GET /v1/health`, `POST /v1/links/start`, `GET /v1/players/{robloxUserId}/summary`, `GET /v1/players/{robloxUserId}/transactions`, `POST /v1/operations/test-cash-transfer` (staging only), `POST /v1/operations/{operationId}/resolve`.
 
 ## Hosting
 

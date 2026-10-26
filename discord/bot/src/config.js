@@ -41,6 +41,14 @@ export const config = {
   catchUpPublishAll: bool('CATCHUP_PUBLISH_ALL', false),
   schedulerIntervalSeconds: num('SCHEDULER_INTERVAL_SECONDS', 30),
   commandCooldownSeconds: num('COMMAND_COOLDOWN_SECONDS', 3),
+  // Roblox bridge (off unless BRIDGE_ENABLED=true). See docs/game/05-economy-integration.md in the repository.
+  bridge: {
+    enabled: bool('BRIDGE_ENABLED', false),
+    host: str('BRIDGE_HOST', '127.0.0.1'),
+    port: num('BRIDGE_PORT', 8787),
+    apiKey: str('BRIDGE_API_KEY'),
+    testOperations: bool('BRIDGE_TEST_OPERATIONS', false),
+  },
 };
 
 export function requireDiscordConfig() {

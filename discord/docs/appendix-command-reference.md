@@ -195,6 +195,7 @@ Economic staff tools (all actions are audited)
 - `/econ-admin tick-run`: Process any finished economic days now (safe to repeat)
 - `/econ-admin backup`: Write a database backup now
 - `/econ-admin audit`: Recent audit log entries<br>Options: `actor` (optional): member
+- `/econ-admin link-remove`: Remove a Discord-Roblox account link at once (recovery)<br>Options: `reason`: text; `user` (optional): member; `roblox_id` (optional): text
 
 ## /roster
 
@@ -217,3 +218,12 @@ Moderators: verification and restrictions
 - `/mod verify`: Verify a member by hand (e.g. account younger than the minimum age)<br>Options: `user`: member; `reason`: text
 - `/mod restrict`: Restrict a member: removes all member and department roles until lifted<br>Options: `user`: member; `reason`: text
 - `/mod unrestrict`: Lift a restriction and restore the previous roles<br>Options: `user`: member; `reason`: text
+
+## /link
+
+Link your Discord account to your Roblox account for the Ro-Nation game
+
+- `/link confirm`: Confirm the code shown in the Ro-Nation game<br>Options: `code`: text
+- `/link status`: Show which Roblox account is linked
+- `/link remove`: Remove the link (takes effect after 24 hours)
+- `/link keep`: Cancel a requested link removal

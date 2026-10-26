@@ -6,6 +6,7 @@ import { lastCompletedDay } from '../../economy/tick.js';
 import { recentAudit, audit } from '../../economy/audit.js';
 import { verifyLedger } from '../../economy/ledger.js';
 import { personalAccountId } from '../../economy/citizens.js';
+import { staffRemoveLink } from '../../economy/links.js';
 import { requireBusiness } from '../../economy/businesses.js';
 import { backupDatabase } from '../../db/database.js';
 import { formatKGD } from '../../economy/money.js';
@@ -52,7 +53,11 @@ const econAdmin = {
     .addSubcommand((s) => s.setName('tick-run').setDescription('Process any finished economic days now (safe to repeat)'))
     .addSubcommand((s) => s.setName('backup').setDescription('Write a database backup now'))
     .addSubcommand((s) => s.setName('audit').setDescription('Recent audit log entries')
-      .addUserOption((o) => o.setName('actor').setDescription('Only actions by this person'))),
+      .addUserOption((o) => o.setName('actor').setDescription('Only actions by this person')))
+    .addSubcommand((s) => s.setName('link-remove').setDescription('Remove a Discord-Roblox account link at once (recovery)')
+      .addStringOption(reasonOpt)
+      .addUserOption((o) => o.setName('user').setDescription('Discord member'))
+      .addStringOption((o) => o.setName('roblox_id').setDescription('Roblox user ID').setMaxLength(16))),
   async autocomplete(ctx, interaction) {
     const focused = interaction.options.getFocused(true);
     if (focused.name === 'business') return autocompleteAnyBusiness(ctx, interaction);
@@ -153,8 +158,13 @@ const econAdmin = {
     }
     if (sub === 'audit') {
       const actor = interaction.options.getUser('actor');
-      const rows = recentAudit(eco, { actor: actor?.id ?? null, limit: 15 }).map((a) => `\`#${a.id}\` day ${a.econ_day} · ${a.actor_id === 'system' ? 'system' : user(a.actor_id)} · **${a.action}**${a.target ? ` ${a.target}` : ''}${a.amount !== null ? ` · ${formatKGD(a.amount)}` : ''}${a.reason ? ` · ${a.reason.slice(0, 80)}` : ''}`);
+      const rows = recentAudit(eco, { actor: actor?.id ?? null, limit: 15 }).map((a) => `\`#${a.id}\` day ${a.econ_day} · ${/^\d+$/.test(a.actor_id) ? user(a.actor_id) : a.actor_id} · **${a.action}**${a.target ? ` ${a.target}` : ''}${a.amount !== null ? ` · ${formatKGD(a.amount)}` : ''}${a.reason ? ` · ${a.reason.slice(0, 80)}` : ''}`);
       return reply(interaction, { embeds: [embed({ title: 'Audit log', description: lines(rows, 'No entries.') })] });
+    }
+    if (sub === 'link-remove') {
+      const u = interaction.options.getUser('user');
+      const removed = staffRemoveLink(eco, { actor: me, discordId: u?.id ?? null, robloxUserId: interaction.options.getString('roblox_id'), reason: interaction.options.getString('reason') });
+      return reply(interaction, `Link removed: ${user(removed.discord_id)} ↔ Roblox ${removed.roblox_name ?? 'user'} (ID ${removed.roblox_user_id}). Recorded in the audit log.`);
     }
     throw new UserError('Unknown subcommand.');
   },
