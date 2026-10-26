@@ -2,7 +2,7 @@
 
 Run by Justin in Roblox Studio on his PC, against the **staging bridge** (`npm run bridge-staging`), never against the live economy. Claude cannot run this test (no Studio access). A German step-by-step version is in the project files (`game/milestone-1/Studio-Test-Meilenstein-1.md`).
 
-Result of the last run: **not run yet**.
+Result of the last run: **passed, 2026-10-26** (Justin, Studio on Windows, staging bridge on the same PC). Justin reported every step as working, including the outage test (steps 16–18). Findings on the way, fixed in the docs: CheckSetup must run in edit mode; Local Secrets is a form (Name, Domain, value); flag and emblem IDs are decal IDs (B5).
 
 ## Before you start
 
@@ -17,9 +17,9 @@ Result of the last run: **not run yet**.
 |---|---|---|---|
 | 1 | *File → Experience Settings → Security*: turn on **Allow HTTP Requests** and **Enable Studio Access to API Services**, save | Saved | Setup steps 4–5 in [03](../03-dependencies-and-setup.md) |
 | 2 | Press **Play**, open *View → Output* | `[Ro-Nation:Server] Ro-Nation 0.1.0 (Milestone 1) server started (4/4 services).` and `[Ro-Nation:Client] … client started for <name> (3/3 controllers).`; an **Account** button top left | Service loader, controller loader, remotes |
-| 3 | Stop. In *View → Command Bar* run `require(game.ServerStorage.StudioTools.CheckSetup)()` | `OK` for experience ID `10773079581`, owner Group `60169080`, HTTP requests, streaming, flag and emblem | A15, B5, D2 |
+| 3 | Stop (the command bar must run in edit mode; during Play it runs on the client, which cannot see ServerStorage). In *View → Command Bar* run `require(game.ServerStorage.StudioTools.CheckSetup)()` | `OK` for experience ID `10773079581`, owner Group `60169080`, HTTP requests, streaming, flag and emblem | A15, B5, D2 |
 | 4 | In a terminal in `discord/bot`: `npm install` (first time only), then `npm run bridge-staging` | "Ro-Nation STAGING bridge is running", address `http://localhost:8788`, key file `data/bridge-staging.key` | Staging process |
-| 5 | Copy the line in `discord/bot/data/bridge-staging.key`. In *Experience Settings → Security → Local Secrets* add: name `RoNationBridgeKey`, value = that line, domain `localhost` | Secret saved | A13 |
+| 5 | Copy the line in `discord/bot/data/bridge-staging.key`. In *Experience Settings → Security → Local Secrets* add a secret (form *Edit secret*): Name `RoNationBridgeKey`, Domain `localhost` (default is `*`), New value = that line. Delete leftover secrets from earlier attempts | Secret saved | A13 |
 | 6 | Press **Play** | Output shows `[Ro-Nation:EconomyGateway] Economy status: available` within about 30 seconds | A11 (http://localhost), A12 (Authorization header with a Secret) |
 | 7 | **Account** → the window "Kagundi Bank Account" | "Your Roblox account is not linked to Discord yet." | Summary endpoint, unlinked state |
 | 8 | **Link Discord** | A code like `ABCD-EFGH`, the command `/link confirm code:ABCD-EFGH` and the expiry time | Link code endpoint |
