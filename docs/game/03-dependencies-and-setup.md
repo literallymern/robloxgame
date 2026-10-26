@@ -15,7 +15,7 @@ Status: Milestone 0, 2026-10-26, milestone numbers from the integration-aware pl
 | 7 | Set server size to **25 players**. | Creator Dashboard → Places → Server size | Before public testing | Target population 20–25 |
 | 8 | Run the builder scripts when a milestone asks for it, then **publish/save the place** and keep a `.rbxl` backup outside Git. | Studio command bar (instructions come with each milestone) | Milestones 2, 3, 5 | Terrain and buildings live in the place file |
 | 9 | Host the economy bot 24/7 with a public HTTPS address (small VPS plus a domain or a tunnel), and finish any remaining steps from `discord/docs/07-setup-guide.md`. Justin confirmed 24/7 hosting is coming (2026-10-26). | Outside Roblox | Milestone 1 if Studio cannot reach the bot on Justin's PC; Milestone 4 at the latest | Roblox servers can only reach the bot over the internet |
-| 10 | Review and approve the bot pull request with the bridge (decision D4), then run the staging checklist in Studio. Deploying to the live bot is a separate go. | GitHub, Studio, bot host | Milestone 1 | The bot is the only economy; nothing changes there without review |
+| 10 | Review the bot pull request with the bridge (changes approved in D4 on 2026-10-26), then run the staging checklist in Studio. Deploying to the live bot is a separate go. | GitHub, Studio, bot host | Milestone 1 | The bot is the only economy; nothing changes there without review |
 | 11 | Optional: enable Team Create if other people will build in Studio. | Studio: *File → Collaboration* (or Home → Team Create) | Any time | Several builders; scripts still come from Git through Rojo |
 
 ## 2. Developer tools

@@ -44,7 +44,7 @@ These are additions needed to build the game. None of them changes an establishe
 | D1 | Should the economy bot stay the only place where money exists, with the game connected through a bridge? | **Decided 2026-10-26: yes**, confirmed by the architecture update. The bridge prototype is part of Milestone 1. | — |
 | D2 | Publish the experience under the group "Democratic Republic of Kagundi"? | **Decided 2026-10-26: yes, the game runs under the group.** Assets are uploaded under the group too. | — |
 | D3 | Statue finish (P5). The direction is settled: it faces the Congress (P4). | Original colours on a stone pedestal, confirmed after a test render in Studio | Milestone 3 |
-| D4 | Approve the bot changes listed in [05](05-economy-integration.md), section 8 (bridge module off by default, three new tables, `/link` commands, optional key for `citizenPay`, new tests), delivered as a separate reviewed pull request | Approve; nothing reaches the live bot without your go | Start of Milestone 1 |
+| D4 | Approve the bot changes listed in [05](05-economy-integration.md), section 8 (bridge module off by default, three new tables, `/link` commands, optional key for `citizenPay`, new tests), delivered as a separate reviewed pull request | **Decided 2026-10-26: approved.** The bot pull request is still reviewed before merge, and deploying to the live bot needs a separate go. | — |
 
 ## 4. Blockers and limits
 

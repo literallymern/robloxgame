@@ -34,7 +34,7 @@ Where topics of the earlier plan went: Roblox player profiles â†’ 4; vehicles â†
 - Defined map size, coordinates, city footprints, road network and the Gundiville government district ([02-map-plan.md](02-map-plan.md), [map-plan.svg](map-plan.svg), [gundiville-plan.svg](gundiville-plan.svg)); added the requirements from Justin's city reference guide.
 - Audited the economy bot against the full command reference and the source code; recorded system boundaries, the bridge design, downtime rules and the integration acceptance criteria ([05-economy-integration.md](05-economy-integration.md)).
 - Listed dependencies and manual setup ([03-dependencies-and-setup.md](03-dependencies-and-setup.md)), assumptions, proposals and blockers ([04-assumptions-and-blockers.md](04-assumptions-and-blockers.md)), and the file inventory ([FILE-INVENTORY.md](FILE-INVENTORY.md)).
-- Recorded Justin's decisions: the bot stays the only economy (D1), the game runs under the group (D2), flag and emblem uploaded.
+- Recorded Justin's decisions: the bot stays the only economy (D1), the game runs under the group (D2), the bot changes for the bridge are approved (D4), flag and emblem uploaded.
 - Tests: `rojo build` with Rojo 7.7.1 succeeded; the bot's test suite passed (67/67) on the current default branch; both plans were rendered and checked visually. No Roblox tests (no Studio access).
 
 ## Milestone 1 plan (preview)
