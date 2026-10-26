@@ -2,7 +2,7 @@
 
 Work happens one milestone at a time. A milestone starts only after Justin writes `NEXT MILESTONE`. Status values: **Done**, **In progress**, **Waiting for approval**, **Not started**, **Blocked**.
 
-Last update: 2026-10-26 (Milestone 0).
+Last update: 2026-10-26 (Milestone 0; decision D1 recorded).
 
 | # | Milestone | Status | Key prerequisites | Main deliverable |
 |---|---|---|---|---|
@@ -12,25 +12,25 @@ Last update: 2026-10-26 (Milestone 0).
 | 3 | Gundiville and the parliamentary plaza | Not started | Milestone 2; flag/emblem uploaded (03, step 2) | Government district and the Leader's statue |
 | 4 | The three secondary cities | Not started | Milestone 2 | Stokondo, Kagundali, Oberdueshuson facilities |
 | 5 | National infrastructure and map polish | Not started | Milestones 2–4 | Airport, customs, fuel, utilities, signage, vegetation |
-| 6 | Player identity and persistence | Not started | Milestone 1; D2 (experience owner) decided; Studio API access on | Session-locked, versioned profiles |
-| 7 | Banking, economy and business (in-game front-ends) | Not started | Milestone 6; **D1**; Economy Bridge (minimum) | Terminals for bank, jobs, business, property, credit, AVK |
+| 6 | Player identity and persistence | Not started | Milestone 1; D2 (experience owner) decided; Studio API access on | Session-locked, versioned profiles; account link and `EconomyGateway` (start of the minimum bridge) |
+| 7 | Banking, economy and business (in-game front-ends) | Not started | Milestone 6; minimum Economy Bridge live (bot reachable over HTTPS) | Terminals for bank, jobs, business, property, credit, AVK on top of the bot |
 | 8 | City Police, Gendarmerie and justice | Not started | Milestones 6 (records), 4 (Stokondo court) | Arrests, records, cases, appeals |
 | 9 | Military, Revolutionary Guard and Intelligence | Not started | Milestones 6, 4 (Oberdueshuson) | Membership, ranks, orders, facility access |
 | 10 | Healthcare, EMS and Brandwehr | Not started | Milestones 6, 3 (hospital, CRC) | Calls, treatment, fire and rescue |
 | 11 | Vehicles, transport and interactions | Not started | Milestones 2–5 (roads), 6 (ownership) | Vehicle spawning, ownership, fuel, repairs |
 | 12 | UI, navigation and player experience | Not started | Most gameplay systems | Onboarding, HUD, map, notifications |
-| 13 | Discord economy integration (full) | Not started | Bot hosted with HTTPS; bridge minimum from Milestone 7 | Reports, snapshots, prices, treasury data, reconciliation |
+| 13 | Discord economy integration (full) | Not started | Minimum bridge from Milestones 6/7 | Reports, snapshots, prices, treasury data, reconciliation |
 | 14 | Performance, security and final QA | Not started | All | QA report |
 
-## Proposed adjustment (waiting for Justin's decision D1)
+## Economy bridge moved forward (decision D1, 2026-10-26)
 
-The economy bot in `discord/bot` already implements banking, jobs, wages, businesses, property, loans, credit scores, AVK and fines. To avoid a second economy:
+Justin decided that the bridge to the economy bot comes before Milestone 7. The bot in `discord/bot` already implements banking, jobs, wages, businesses, property, loans, credit scores, AVK and fines, so the game uses it instead of a second economy:
 
 - **Milestone 6 or 7** gets a *minimum Economy Bridge*: Discord ↔ Roblox account link, balance read, and idempotent transfers with transaction IDs, plus the game-side `EconomyGateway`.
 - **Milestone 7** builds in-game front-ends (ATMs, bank counters, job boards, business and property terminals) on top of that bridge instead of a new money system.
 - **Milestone 13** completes the rest: daily snapshots, commodity prices and treasury information in game, reconciliation tools, failure recovery and hardening.
 
-If Justin prefers the original order, Milestones 7–12 use the Studio-only sandbox money until Milestone 13, and no money system goes live before then.
+Until the bot is hosted 24/7 with a public HTTPS address, the game can only be tested against the Studio-only sandbox money. Hosting is therefore a prerequisite for finishing Milestone 7 with real balances.
 
 ## Milestone log
 

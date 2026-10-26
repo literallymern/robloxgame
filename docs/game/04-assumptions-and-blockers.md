@@ -11,8 +11,8 @@ Status: Milestone 0, 2026-10-26. Items are removed or updated as they are confir
 | A3 | Normally one server with up to 25 players runs. The code must still be correct with two or more servers. | Design rule |
 | A4 | North = −Z, East = +X; 1 stud ≈ 0.28 m; city distances are compressed for gameplay. | Accepted with this blueprint |
 | A5 | The map shows only the East District. Other districts are not built. | Canon: all major cities are in the East District |
-| A6 | The economy bot's ledger stays the only place where money exists (see decision D1). | Justin's answer to D1 |
-| A7 | Faction membership comes from Discord roles assigned with `/roster`. | Justin's answer to D1 (same model) |
+| A6 | The economy bot's ledger stays the only place where money exists. | **Confirmed** by Justin (D1, 2026-10-26) |
+| A7 | Faction membership comes from Discord roles assigned with `/roster`. | Follows the same model as D1; confirm in Milestone 8 |
 | A8 | All in-game text is English; German titles and Kagundisch words are used as flavour, as in the encyclopedia. | Canon |
 | A9 | The encyclopedia PDF of 26 Oct 2026 is the latest canon. | Justin sends a new version if it changes |
 
@@ -32,14 +32,14 @@ These are additions needed to build the game. None of them changes an establishe
 | P8 | The Air Force uses a military apron at the cargo airport | The canon lists an Air Force but no air base |
 | P9 | New players arrive at a bus terminal at the south end of the ceremonial avenue | Shows the avenue, the statue and the Congress on the first walk |
 | P10 | The square in front of the Congress serves as both ceremonial and market square, with stalls along its sides | The canon lists a "main market square"; the prompt places the statue in "the main market or ceremonial square" |
-| P11 | Pull a minimal Economy Bridge forward to before Milestone 7 (see D1) | Milestone 7 needs real balances; the bot already implements banking, jobs, businesses, property, credit and AVK |
+| P11 | Pull a minimal Economy Bridge forward to before Milestone 7 (**accepted**, D1) | Milestone 7 needs real balances; the bot already implements banking, jobs, businesses, property, credit and AVK |
 | P12 | Discord ↔ Roblox account link through a one-time code shown in game and confirmed with a Discord command | No third-party bot needed; keeps the link inside the economy bot |
 
 ## 3. Open decisions for Justin
 
 | ID | Question | Recommendation | Needed by |
 |---|---|---|---|
-| D1 | Should the economy bot stay the only place where money exists, with the game connected through a bridge that is built before Milestone 7? | Yes. Otherwise Milestone 7 would build a second economy that conflicts with the bot. | Milestone 6 |
+| D1 | Should the economy bot stay the only place where money exists, with the game connected through a bridge that is built before Milestone 7? | **Decided 2026-10-26: yes.** The minimum bridge comes with Milestones 6/7. | — |
 | D2 | Publish the experience under the group "Democratic Republic of Kagundi"? | Yes, before any saved player data exists | Milestone 6 |
 | D3 | Statue direction and finish (P4, P5) | South-facing; material chosen after a test render in Studio | Milestone 3 |
 
