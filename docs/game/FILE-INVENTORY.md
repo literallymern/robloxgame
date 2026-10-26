@@ -106,5 +106,5 @@ The Milestone 1 bot pull request (branch `claude/project-thread-55jwuj-bridge`, 
 | Place file (terrain, buildings, statue) | Roblox, edited in Studio | Fresh Baseplate (confirmed) |
 | Experience | Universe ID 10773079581, group 60169080 | Published 2026-10-26 (D2) |
 | Local Secret `RoNationBridgeKey` | Studio, Experience Settings → Security → Local Secrets | Set by Justin during the Milestone 1 Studio test (staging key only) |
-| Flag and emblem images | Roblox asset library (group) | Uploaded: flag `104179974183727`, emblem `88703156887446`; `CheckSetup` checks them in Studio |
+| Flag and emblem images | Roblox asset library (group) | Image IDs: flag `74627674981379`, emblem `124794973631384` (decals `88703156887446` and `104179974183727`) |
 | Group "Democratic Republic of Kagundi" | roblox.com, ID 60169080 | Exists, owned by LiterallyDrJustin |
