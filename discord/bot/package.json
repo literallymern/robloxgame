@@ -1,0 +1,23 @@
+{
+  "name": "ro-nation-economy-bot",
+  "version": "1.0.0",
+  "description": "Ro-Nation Discord bot: Kagundi economic simulation, daily national economic report, tickets, verification and department rosters.",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "deploy-commands": "node --disable-warning=ExperimentalWarning scripts/deploy-commands.js",
+    "setup-server": "node --disable-warning=ExperimentalWarning scripts/setup-server.js",
+    "post-messages": "node --disable-warning=ExperimentalWarning scripts/post-messages.js",
+    "simulate": "node --disable-warning=ExperimentalWarning scripts/simulate.js",
+    "generate-docs": "node --disable-warning=ExperimentalWarning scripts/generate-docs.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0"
+  }
+}
