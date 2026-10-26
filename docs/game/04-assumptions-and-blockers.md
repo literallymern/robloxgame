@@ -50,6 +50,6 @@ These are additions needed to build the game. None of them changes an establishe
 | B1 | No Studio access for Claude | Claude cannot place parts, run Play tests or publish | Builder scripts + Studio checklists run by Justin |
 | B2 | Roblox web APIs are blocked from Claude's environment | The avatar cannot be previewed from here | The statue builder uses Roblox's engine functions inside Studio (Milestone 3) |
 | B3 | Running downloaded dev tools (luau-lsp, selene, StyLua, Lune) was blocked in this session | No automated Luau checks here yet | Ask for approval in Milestone 1; Justin can run them locally through Rokit |
-| B4 | The economy bot is not hosted and has no HTTP bridge | No real money in game until both exist | Studio-only sandbox money for testing; bridge work as soon as hosting exists |
+| B4 | The economy bot runs only while Justin's PC is on and has no HTTP bridge | No real money in game until both exist | Studio-only sandbox money for testing; bridge work as soon as hosting exists |
 | B5 | Flag and emblem are not uploaded to Roblox | Flags and seals cannot show in game | Justin uploads them (03, step 2); builders use plain colour placeholders until then |
 | B6 | Claude cannot see the current place file | Hand-built content could be missed | A1: Justin reports existing content |

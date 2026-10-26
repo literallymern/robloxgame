@@ -30,7 +30,7 @@ Default branch: `claude/project-thread-5krwdh`. Working branch for this mileston
 | `discord/` | Discord server blueprint, channel texts, and the **Ro-Nation Economy Bot** (Node.js 22, discord.js 14, SQLite; 66 tests) | **Keep.** The bot already implements banking, jobs, businesses, loans, AVK, property, fines, treasury and the daily report. The game must use it instead of building a second economy. |
 | `lore/` | Not on the default branch yet. The Lore Bible and the flag and emblem images are in **PR #1** (open, not merged). | Merge PR #1 when convenient; the encyclopedia PDF stays the authority. |
 
-Pull requests: #1 "Kagundi Lore Bible (Revision 2)" is open. #2 (Discord package) is merged into the default branch.
+Pull requests: #1 "Kagundi Lore Bible (Revision 2)" is open. #2 (Discord package) is merged into the default branch. #3 (Discord bot fixes for Windows) is open and touches only `discord/`.
 
 ## 3. Studio place
 
@@ -72,4 +72,4 @@ The shared link `https://www.roblox.com/share/g/60169080` leads to the group **D
 
 ## 8. Economy and Discord
 
-The economy bot is the existing economic system: double-entry ledger in KGD minor units, idempotency keys, one daily tick at 00:00 Europe/Berlin, starting grant, wages, taxes, businesses, loans with credit scores 300–850, AVK, property, fines, invoices and the national report in `#national-economic-report`. Citizens are identified by **Discord user ID**. It is **not deployed yet** (no host, token or server set up) and has **no HTTP interface**. Linking it to the game needs (a) a Discord ↔ Roblox account link, (b) an authenticated HTTPS bridge and (c) 24/7 hosting with a public HTTPS address. See [01-architecture.md](01-architecture.md), section 6.
+The economy bot is the existing economic system: double-entry ledger in KGD minor units, idempotency keys, one daily tick at 00:00 Europe/Berlin, starting grant, wages, taxes, businesses, loans with credit scores 300–850, AVK, property, fines, invoices and the national report in `#national-economic-report`. Citizens are identified by **Discord user ID**. State on 2026-10-26: Justin has built the Discord server with the setup script and the bot runs on his PC while a terminal is open; Windows fixes are in PR #3 (open). There is **no 24/7 hosting** yet and **no HTTP interface**. Linking it to the game needs (a) a Discord ↔ Roblox account link, (b) an authenticated HTTPS bridge and (c) 24/7 hosting with a public HTTPS address. See [01-architecture.md](01-architecture.md), section 6.

@@ -14,7 +14,7 @@ Status: Milestone 0, 2026-10-26. "Needed by" is the first milestone that cannot 
 | 6 | Store the bridge API key in Roblox's secrets store (never in a script). | Creator Dashboard → the experience → Secrets (*verify the exact location in Milestone 13*) | Economy bridge | Keeps the key away from clients and from Git |
 | 7 | Set server size to **25 players**. | Creator Dashboard → Places → Server size | Before public testing | Target population 20–25 |
 | 8 | Run the builder scripts when a milestone asks for it, then **publish/save the place** and keep a `.rbxl` backup outside Git. | Studio command bar (instructions come with each milestone) | Milestones 2–5 | Terrain and buildings live in the place file |
-| 9 | Host the economy bot 24/7 with a public HTTPS address (small VPS plus a domain or a tunnel), and finish the Discord setup from `discord/docs/07-setup-guide.md`. | Outside Roblox | Economy bridge | Roblox servers can only reach the bot over the internet |
+| 9 | Host the economy bot 24/7 with a public HTTPS address (small VPS plus a domain or a tunnel), and finish any remaining steps from `discord/docs/07-setup-guide.md`. | Outside Roblox | Economy bridge | Roblox servers can only reach the bot over the internet |
 | 10 | Optional: enable Team Create if other people will build in Studio. | Studio: *File → Collaboration* (or Home → Team Create) | Any time | Several builders; scripts still come from Git through Rojo |
 
 ## 2. Developer tools
@@ -59,7 +59,7 @@ No package manager (Wally) is planned; vendored single files keep the setup simp
 
 | System | State | Needed for |
 |---|---|---|
-| Ro-Nation Economy Bot (`discord/bot`) | Code and tests exist; not deployed | Every money feature in game |
+| Ro-Nation Economy Bot (`discord/bot`) | Discord server built; bot runs on Justin's PC while a terminal is open; no 24/7 host | Every money feature in game |
 | Economy Bridge (HTTP API inside the bot) | Not built | Game ↔ economy link |
 | Discord ↔ Roblox account link | Not built | Knowing which Discord citizen a Roblox player is |
 | Public HTTPS hosting | Not set up | Bridge reachable from Roblox servers |
