@@ -1,6 +1,6 @@
 # Democratic Republic of Kagundi: Lore Bible
 
-*Last updated: 25 October 2026*
+*Last updated: 26 October 2026*
 
 **Project:** Ro-Nation\
 **Document status:** Consolidated Worldbuilding Reference, revision 2\
@@ -12,8 +12,8 @@
 - History: the German Regency of 1915–1919, the First Republic of 1960–1982, the causes and course of the 1982 Revolution, and the revolutionary state after 1983.
 - Ideology: after 1982, Kagundi's politics follow Muammar Gaddafi's Third Universal Theory, adapted to Kagundi (new section 5.6).
 - Indigenous language and culture: Kagundisch, a German-based creole, plus names, religion, food, music, and holidays (new section 4A).
-- Leader of the Revolution: confirmed as a title, comparable to Gaddafi's title in Libya.
-- Justice: mayors judge all ordinary cases in the first instance; prosecutors keep the justice-degree requirement.
+- Leader of the Revolution: confirmed as a title, comparable to Gaddafi's title in Libya. The current Leader is Dr. Justin Wachmann, played by the Owner.
+- Justice: mayors judge all ordinary cases in the first instance; prosecutors keep the justice-degree requirement; appeals must be filed within 72 hours.
 
 ---
 
@@ -39,7 +39,7 @@ The country combines a German-influenced administrative and institutional tradit
 | De jure government | Presidential republic |
 | De facto government | Authoritarian presidential dictatorship |
 | State ideology | Revolutionary doctrine based on Gaddafi's Third Universal Theory |
-| Head of state | Leader of the Revolution (a title, not a personal name) |
+| Head of state | Leader of the Revolution (a title), currently Dr. Justin Wachmann |
 | Head of government | Secretary-General of the People's Committee |
 | Independence | 1960 |
 | Revolution | 1982 |
@@ -109,13 +109,13 @@ German settlement communities become established during this period.
 
 Following the end of formal German colonial administration, a German-dominated dictatorship continues to govern Kagundi during a transitional period.
 
-The First World War cuts German-Kagundi off from Berlin: no ships, mail, money, or orders arrive. In 1915 the commander of the Schutztruppe, **Colonel Ernst Wallmann**, removes the civilian colonial administration and proclaims himself **Landesverweser** (Regent) of Kagundi. He claims to hold the territory in trust for Germany but governs on his own authority. Kagundians remember these years as the *Verweserzeit*, the Regency.
+The First World War cuts German-Kagundi off from Berlin: no ships, mail, money, or orders arrive. In 1915 the commander of the Schutztruppe, **Colonel Ernst Kessler**, removes the civilian colonial administration and proclaims himself **Landesverweser** (Regent) of Kagundi. He claims to hold the territory in trust for Germany but governs on his own authority. Kagundians remember these years as the *Verweserzeit*, the Regency.
 
-- **1915:** Wallmann declares martial law. German settlers form an armed militia to support the regime.
-- **1916:** To pay his troops, Wallmann forces indigenous men into labour in the Kagundali gold mines and requisitions cattle and tobacco.
+- **1915:** Kessler declares martial law. German settlers form an armed militia to support the regime.
+- **1916:** To pay his troops, Kessler forces indigenous men into labour in the Kagundali gold mines and requisitions cattle and tobacco.
 - **1917:** Miners in Kagundali go on strike. The Schutztruppe breaks the strike by force. The **Kagundali Strike** becomes the founding story of Kagundian resistance, and the strikers are honoured as national heroes today.
 - **1918:** The war ends in Europe. The regime loses its last claim to legitimacy, and food shortages spread.
-- **1919:** In the post-war peace settlement, Germany gives up Kagundi. French troops enter Gundistadt, and Wallmann surrenders without a fight and is deported to Europe.
+- **1919:** In the post-war peace settlement, Germany gives up Kagundi. French troops enter Gundistadt, and Kessler surrenders without a fight and is deported to Europe.
 
 The Regency leaves a lasting precedent: when civilian government fails, the military takes power. The officers of 1982 follow the same pattern, but they justify it in the name of the 1917 strikers, not the German regent.
 
@@ -160,7 +160,7 @@ The modern government derives its legitimacy from the revolutionary transformati
 
 On the night of 11 to 12 May 1982, a group of junior and mid-ranking officers calling itself the **Movement of Free Officers** (Bewegung der Freien Offiziere) leaves the Oberdueshuson garrison for Gundiville. They occupy the radio station, the airport, and the presidential palace. President Ondaru flees abroad, and the takeover is almost bloodless.
 
-The officers name four reasons for the revolution: the corruption of the Ondaru government, foreign control of the mines, unpaid wages, and the order to fire on striking workers. Their leader, a 29-year-old major, announces the revolution on national radio. From that day on, he is known by his title, **Leader of the Revolution**. 12 May is celebrated as Revolution Day.
+The officers name four reasons for the revolution: the corruption of the Ondaru government, foreign control of the mines, unpaid wages, and the order to fire on striking workers. Their leader, Major Wachmann, a 29-year-old officer from a German-descended family, announces the revolution on national radio. From that day on, he is known by his title, **Leader of the Revolution**. 12 May is celebrated as Revolution Day.
 
 ### 1983–today — The Revolutionary State
 
@@ -171,7 +171,8 @@ The officers name four reasons for the revolution: the corruption of the Ondaru 
 - **1984:** Foreign mining concessions are nationalised and turned into state-majority-owned enterprises. This is the origin of the state's strategic holdings today.
 - **Late 1980s:** Despite its revolutionary language, the government signs machinery and trade agreements with West Germany. Germany becomes, and remains, Kagundi's main trading partner.
 - **2000s:** Trade with the European Union and China grows.
-- **Today:** The revolutionary order still governs Kagundi. Ro-Nation is set in the present day.
+- **2021:** The founding Leader, Major Wachmann, dies. The Revolutionary Guard proclaims his son, **Dr. Justin Wachmann**, as the new Leader of the Revolution, and the General People's Congress confirms him by acclamation.
+- **Today:** Dr. Justin Wachmann leads the revolutionary state. Ro-Nation is set in the present day.
 
 ## 4. Population and Society
 
@@ -317,8 +318,19 @@ The Leader's residence is located in Gundiville.
 **A title, not a name.** “Leader of the Revolution” is the holder's title, comparable to Gaddafi's title in Libya, “Brotherly Leader and Guide of the Revolution”. It comes from leading the 1982 revolution, not from an election, so it has no term, no election, and no age limit.
 
 - **Official doctrine:** the Leader only “guides” the revolution while the people govern themselves through their councils and congress. In practice, the Leader holds the powers described above.
-- **Name custom:** state media and officials refer to the Leader only by the title. The personal name is almost never used in public.
+- **Name custom:** officially, the Leader is addressed and quoted by the title. The personal name is publicly known, but state media rarely use it.
 - **Other languages:** in German, *Leiter der Revolution*; in Kagundisch, *di Laita*. Avoid *Führer* as a German translation because of its Nazi associations.
+
+#### Current Leader: Dr. Justin Wachmann
+
+The current Leader of the Revolution is **Dr. Justin Wachmann**, son of the founding Leader, Major Wachmann. He succeeded his father in 2021.
+
+- **Background:** like his father, a German-descended Kagundian.
+- **Education:** studied law and medicine.
+- **Career:** general in the Land Forces, member of the Revolutionary Guard protecting his father, and his father's personal physician.
+- **Played by:** the Owner of Ro-Nation.
+
+The Owner's in-character decisions as Leader follow the roleplay rules. Out-of-character moderation stays a separate staff task (section 15.4).
 
 ### 5.2 Secretary-General of the People's Committee
 
@@ -542,13 +554,13 @@ Cases begin in the first instance unless a legally established exception applies
 
 Mayors hear **all ordinary cases** in the first instance, from minor offences and civil disputes to serious crimes classified as *Verbrechen*. The only exception is the Military Tribunal (section 8.4). In Kagundisch, a mayor sitting as judge is addressed as *Maista*.
 
-Proposed procedural rules, to avoid disputes in roleplay:
+Procedural rules, to avoid disputes in roleplay. The appeal deadline is confirmed; the other rules are proposals:
 
 - **Which mayor:** the mayor of the town where the offence took place. In civil disputes, the mayor of the town where the defendant lives or where the business is registered.
 - **Conflict of interest:** a mayor may not judge a case in which they are a party, a witness, a relative, or an employer or business partner of a party. The Secretariat for Internal Affairs and Infrastructure then assigns the case to the mayor of another town.
 - **No degree required:** mayors need no justice degree to judge, but they are bound by the published legal code.
 - **Written record:** every judgment is recorded with a short written reason in the judicial archive in Stokondo.
-- **Appeal:** every first-instance judgment can be appealed to the second instance. The appeal deadline is a game parameter; 72 hours of real time is the proposed default.
+- **Appeal:** every first-instance judgment can be appealed to the second instance. The appeal deadline is 72 hours of real time.
 
 ### 8.2 Second Instance
 
@@ -991,9 +1003,3 @@ The country's political structure establishes who exercises authority, its econo
 The intention is to make Kagundi more than a backdrop. It is a persistent fictional country whose government, economy, public services, cities, and community form one interconnected roleplay environment.
 
 **Ro-Nation is the platform through which players experience that country: building careers, operating businesses, serving in institutions, participating in public life, and contributing to Kagundi's ongoing development.**
-
-## Open Questions
-
-- [ ] Is today's Leader of the Revolution the same man who led the 1982 revolution (now in his seventies), or a successor?
-- [ ] Is the Leader played by the Owner, by a player, or kept as a non-player character?
-- [ ] Is 72 hours of real time the right appeal deadline for first-instance judgments?
