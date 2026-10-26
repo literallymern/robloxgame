@@ -102,7 +102,13 @@ Landkarte bauen (Meilenstein 2): Vorher den Place sichern (*File > Save to File 
 require(game.ServerStorage.StudioTools.BuildMap).run()
 ```
 
-Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke und den Spawn neu. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
+Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke, den Spawn und die Landschaft (Bäume, Büsche, Felsen, Felder, Zäune, Markierungen, Schilder, Laternen, Strommasten) neu. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
+
+Weitere Varianten für die Command Bar:
+
+- Nur die Teile neu bauen, Gelände bleibt: `require(game.ServerStorage.StudioTools.BuildMap).run({ Terrain = false })`
+- Ohne Bäume, Büsche und Felsen (schneller, zum Testen): `require(game.ServerStorage.StudioTools.BuildMap).run({ Vegetation = false })`
+- Weniger Bäume: in `src/shared/Config/MapLayout.luau` bei `Vegetation` den Wert `Density = 1` kleiner machen (z. B. `0.6`) und neu bauen.
 
 ## Häufige Probleme
 

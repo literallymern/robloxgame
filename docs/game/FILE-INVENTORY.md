@@ -9,7 +9,7 @@ Last update: 2026-10-26 (Milestone 2).
 | Path | Purpose | Owner milestone | Status |
 |---|---|---|---|
 | `README.md` | German guide for Justin: Rojo, GitHub Desktop, daily workflow | Setup | Keep; links to `docs/game/` |
-| `default.project.json` | Rojo tree (files → Studio): project name *Ro-Nation*, `src/studio` → `ServerStorage.StudioTools`, streaming (on, target radius 1,024, minimum 256, pause outside loaded area), `Lighting.ClockTime` 14 | 1, 2 | Updated in Milestone 2 |
+| `default.project.json` | Rojo tree (files → Studio): project name *Ro-Nation*, `src/studio` → `ServerStorage.StudioTools`, streaming (on, target radius 1,024, minimum 256, pause outside loaded area), `Lighting` (afternoon sun, atmosphere, bloom, sun rays, colour correction) | 1, 2 | Updated in Milestone 2 (rev. 2: lighting) |
 | `rokit.toml` | Pinned tools: Rojo 7.7.1, selene 0.28.0, StyLua 2.6.0 | 1 | Updated in Milestone 1 |
 | `selene.toml` | selene settings (`std = "roblox"`) | 1 | New in Milestone 1 |
 | `stylua.toml` | StyLua settings (Luau, tabs, 120 columns) | 1 | New in Milestone 1 |
@@ -41,7 +41,7 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/client/Controllers/UIController.luau` | `…Client.Controllers.UIController` | Screen GUI and menu | 1 |
 | `src/client/Controllers/AccountController.luau` | `…Client.Controllers.AccountController` | "Kagundi Bank Account" window | 1 |
 | `src/studio/CheckSetup.luau` | `ServerStorage.StudioTools.CheckSetup` | Read-only setup report for the Studio command bar | 1 |
-| `src/shared/Config/MapLayout.luau` | `ReplicatedStorage.Shared.Config.MapLayout` | Every map coordinate: bounds, height anchors, hills, mountains and passes, places, zones, road classes and roads, river, airport, crossings, property plots, Gundiville placeholders, spawn (single source) | 2 |
+| `src/shared/Config/MapLayout.luau` | `ReplicatedStorage.Shared.Config.MapLayout` | Every map coordinate: bounds, height anchors, hills, mountains and passes, places, zones, farming, road classes and roads, river, lakes, vegetation regions, road furniture, airport, crossings, property plots, Gundiville placeholders, spawn (single source) | 2 |
 | `src/studio/BuildMap.luau` | `ServerStorage.StudioTools.BuildMap` | Entry point: `require(…BuildMap).run()` in the command bar (edit mode) builds terrain and parts | 2 |
 | `src/studio/Map/Geometry.luau` | `…StudioTools.Map.Geometry` | 2D helpers: rectangle and segment distances, intersections, rounded corners, resampling (pure) | 2 |
 | `src/studio/Map/SegmentGrid.luau` | `…StudioTools.Map.SegmentGrid` | Spatial grid for nearest road/river segment (pure) | 2 |
@@ -49,16 +49,27 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/Map/River.luau` | `…StudioTools.Map.River` | River course, downhill water level, carved channel (pure) | 2 |
 | `src/studio/Map/RoadNetwork.luau` | `…StudioTools.Map.RoadNetwork` | Road centre lines, height profiles, junctions, bridges (pure) | 2 |
 | `src/studio/Map/Heightfield.luau` | `…StudioTools.Map.Heightfield` | Finished terrain surface and materials per column (pure) | 2 |
-| `src/studio/Map/Builders/Util.luau` | `…Map.Builders.Util` | Generated-content marking, parts, strips, labels, signs | 2 |
+| `src/studio/Map/Hash.luau` | `…StudioTools.Map.Hash` | Repeatable pseudo-random numbers from grid positions (pure) | 2 (rev. 2) |
+| `src/studio/Map/Lakes.luau` | `…StudioTools.Map.Lakes` | Lakes: irregular shore, automatic water level, carved basin (pure) | 2 (rev. 2) |
+| `src/studio/Map/Biomes.luau` | `…StudioTools.Map.Biomes` | Vegetation regions: forest cover, tree kinds, dryness (pure) | 2 (rev. 2) |
+| `src/studio/Map/Fields.luau` | `…StudioTools.Map.Fields` | Farm field patchwork, crop rows, tobacco barns (pure) | 2 (rev. 2) |
+| `src/studio/Map/Vegetation.luau` | `…StudioTools.Map.Vegetation` | Positions of trees, bushes, hedges and rocks (pure) | 2 (rev. 2) |
+| `src/studio/Map/RoadDetails.luau` | `…StudioTools.Map.RoadDetails` | Positions of markings, marker posts, guard rails, street lights, signs, power lines (pure) | 2 (rev. 2) |
+| `src/studio/Map/Builders/Util.luau` | `…Map.Builders.Util` | Generated-content marking, parts, wedges, cylinders, ellipsoids, strips, labels | 2 |
 | `src/studio/Map/Builders/Terrain.luau` | `…Map.Builders.Terrain` | Writes the terrain and water in 64 × 64-stud chunks | 2 |
-| `src/studio/Map/Builders/Roads.luau` | `…Map.Builders.Roads` | Road surface parts, round joints, centre lines | 2 |
+| `src/studio/Map/Builders/Roads.luau` | `…Map.Builders.Roads` | Road surface parts along straight runs, junction joints | 2 |
 | `src/studio/Map/Builders/Bridges.luau` | `…Map.Builders.Bridges` | Bridge decks, railings, piers | 2 |
-| `src/studio/Map/Builders/Places.luau` | `…Map.Builders.Places` | Place outlines, names, entry signs, Gundiville placeholders | 2 |
+| `src/studio/Map/Builders/Places.luau` | `…Map.Builders.Places` | Place outlines, names, Gundiville placeholders | 2 |
 | `src/studio/Map/Builders/Airport.luau` | `…Map.Builders.Airport` | Runway, taxiway, apron, airport building blocks | 2 |
 | `src/studio/Map/Builders/Crossings.luau` | `…Map.Builders.Crossings` | Customs canopy, barrier, office, truck inspection | 2 |
 | `src/studio/Map/Builders/Properties.luau` | `…Map.Builders.Properties` | 16 property plot markers, tag `PropertyPlot` | 2 |
 | `src/studio/Map/Builders/Spawn.luau` | `…Map.Builders.Spawn` | Bus terminal spawn; removes the template Baseplate and SpawnLocation | 2 |
 | `src/studio/Map/Builders/Boundary.luau` | `…Map.Builders.Boundary` | Invisible walls along the map edge | 2 |
+| `src/studio/Map/Builders/Environment.luau` | `…Map.Builders.Environment` | Terrain colours, water colour, animated grass, clouds | 2 (rev. 2) |
+| `src/studio/Map/Builders/RoadDetails.luau` | `…Map.Builders.RoadDetails` | Builds markings, marker posts, guard rails, street lights, power lines and signs | 2 (rev. 2) |
+| `src/studio/Map/Builders/Signs.luau` | `…Map.Builders.Signs` | Sign models: town, facility, speed, stop, direction, chevron, welcome | 2 (rev. 2) |
+| `src/studio/Map/Builders/Countryside.luau` | `…Map.Builders.Countryside` | Pasture fences and tobacco barns | 2 (rev. 2) |
+| `src/studio/Map/Builders/Vegetation.luau` | `…Map.Builders.Vegetation` | Tree, bush and rock parts in 1,024-stud area folders | 2 (rev. 2) |
 
 Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src/client/UI` (Milestone 4/8). See [01-architecture.md](01-architecture.md), section 3.
 
@@ -69,6 +80,7 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `tests/map/run.py` | Bundles the map modules with a stand-in for `script`/`require` and runs a Luau test script with the Luau CLI | 2 |
 | `tests/map/test_all.py` | Runs all map checks (`--quick` skips the builder run) | 2 |
 | `tests/map/heightfield.spec.luau` | Checks of the layout and the terrain calculations | 2 |
+| `tests/map/landscape.spec.luau` | Checks of river cascades, lakes, fields, road details and vegetation | 2 (rev. 2) |
 | `tests/map/builders.spec.luau` | Runs the real `BuildMap` against the Roblox stand-in and checks the result | 2 |
 | `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use | 2 |
 | `tests/map/preview.luau`, `tests/map/preview.py` | Renders the map preview image (needs Pillow and numpy) | 2 |
@@ -128,6 +140,7 @@ The Milestone 1 bot pull request (branch `claude/project-thread-55jwuj-bridge`, 
 | `rojo/Rojo-Anleitung.md` | German Rojo guide (copy of the README section) |
 | `game/milestone-0/map-plan.png`, `gundiville-plan.png` | Rendered map plans from Milestone 0 |
 | `game/milestone-1/Studio-Test-Meilenstein-1.md` | German step-by-step guide for Justin's Milestone 1 Studio test |
+| `game/milestone-2/Studio-Test-Meilenstein-2.md`, `Karte-Vorschau.png` | German step-by-step guide for Justin's Milestone 2 Studio test and the map preview |
 | `game/reference/owner-avatar-2595858454.jpg` | Justin's avatar screenshot, visual reference for the statue |
 
 ## Roblox (outside Git)

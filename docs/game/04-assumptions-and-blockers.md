@@ -26,7 +26,11 @@ Status: updated in Milestone 2, 2026-10-26. Items are removed or updated as they
 | A18 | `Terrain:WriteVoxels` takes materials and occupancy as `[x][y][z]` arrays at resolution 4, and occupancy below 1 gives smooth slopes. | Roblox documentation; the offline test rebuilds probe heights from the arrays. Confirmed visually in the Milestone 2 test |
 | A19 | Characters can climb steep terrain (default `MaxSlopeAngle` 89°), so mountains alone do not keep players in; invisible walls at the map edge do. | Roblox default; checked in the Milestone 2 test (step 12) |
 | A20 | The place still has the template `Baseplate` and `SpawnLocation` (A1). Both would end up inside the new terrain, so the builder removes exactly these two and logs it. | A1; Justin backs up the place before the build |
-| A21 | With a 1,024-stud streaming radius, clients do not load distant terrain, so the horizon can look empty from high points. | To be checked in the Milestone 2 Play test. Options if it bothers: a larger radius, an Atmosphere haze, low-detail mountain models (Milestones 8–9) |
+| A21 | With a 1,024-stud streaming radius, clients do not load distant terrain, so the horizon can look empty from high points. | To be checked in the Milestone 2 Play test. Since the landscape pass an Atmosphere haze softens the edge. Further options: a larger radius, low-detail mountain models (Milestones 8–9) |
+| A22 | Rojo sets the Lighting properties and creates the Atmosphere, Bloom, SunRays and ColorCorrection objects from `default.project.json` when `rojo serve` is (re)started; a Sky that Justin adds by hand is kept. `Lighting.Technology` is not in the file and stays as the place has it. | `rojo build` output contains the four effects with their values. Checked in the Milestone 2 Studio test |
+| A23 | `Terrain.Decoration` (animated grass) can be switched on from the command bar. If a Studio version refuses, the builder logs a hint to tick it by hand. | Offline: the builder wraps it in `pcall`. Checked in the Milestone 2 Studio test |
+| A24 | About 37,000 parts (30,000 of them plants) with instance streaming run smoothly on a PC; phones are measured in Milestone 9. | Offline part count. If Studio or Play gets slow: `MapLayout.Vegetation.Density = 0.6` and rebuild, or `run({ Vegetation = false })` |
+| A25 | Trees as parts (cylinder trunk, stretched sphere crowns via `SpecialMesh`) look acceptable from a car and from the air; real tree models can replace them later without changing where trees stand. | Visual check in the Milestone 2 Studio test |
 
 ## 2. Proposed implementation choices (not canon)
 
@@ -54,6 +58,10 @@ These are additions needed to build the game. None of them changes an establishe
 | P18 | Property plots are identified by the bot's property **name** (attribute `PropertyName`) until the bridge offers a property lookup | The bot creates the IDs at genesis and the game cannot know them; the names are unique in `GENESIS_PROPERTIES`, and an offline test compares them |
 | P19 | The new-player spawn has no spawn force field (`Duration = 0`) | Roleplay game; spawning is designed in Milestone 4 |
 | P20 | Placeholder blocks for the Gundiville government district in the blockout | Lets Justin walk the layout before Milestone 3 replaces them |
+| P21 | Right-hand traffic: signs stand on the right of the traffic they are meant for | The canon names no traffic side; right-hand traffic matches the German heritage of Kagundi's institutions. Changing it later means mirroring the sign positions in `Map/RoadDetails` |
+| P22 | German-style road furniture: yellow town signs (crossed out when leaving), blue facility signs, round speed limits in km/h (100 national, 80 regional, 50 in towns), white marker posts with a black band | Kagundi's German heritage (language, institutions) carried into everyday streets; the speed limits are development values, not law |
+| P23 | Three unnamed lakes (development names Ranch Lake, West Valley Pond, Highland Tarn) | Livelier landscape; the canon names no lakes in the East District |
+| P24 | Vegetation by region: pine timber plantations in the forested hills, eucalyptus groves and windbreaks on the Oberdueshuson plateau, acacias in the dry west and the Kagundali valley, broadleaf trees elsewhere | The encyclopedia names forested hills, forestry and timber exports and tobacco plantations, but no tree species |
 
 ## 3. Open decisions for Justin
 

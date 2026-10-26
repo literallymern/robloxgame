@@ -32,6 +32,8 @@ function Land.new(layout: any, yieldEvery: (() -> ())?): Land
 	local SOFT = 400 * 400 -- softens the blend close to an anchor
 	local rollAmp: number = layout.Rolling.Amplitude
 	local rollLen: number = layout.Rolling.Wavelength
+	local mediumAmp: number = layout.Rolling.MediumAmplitude or 0
+	local mediumLen: number = layout.Rolling.MediumWavelength or 1
 	local detailAmp: number = layout.Rolling.DetailAmplitude
 	local detailLen: number = layout.Rolling.DetailWavelength
 
@@ -44,7 +46,11 @@ function Land.new(layout: any, yieldEvery: (() -> ())?): Land
 			sumW += w
 			sumH += w * anchorH[i]
 		end
-		return sumH / sumW + rollAmp * math.noise(x / rollLen + 0.31, z / rollLen + 0.17, 1.7)
+		-- The medium waves use rotated coordinates so they do not line up with the broad swells.
+		local u, v = 0.6 * x + 0.8 * z, 0.8 * x - 0.6 * z
+		return sumH / sumW
+			+ rollAmp * math.noise(x / rollLen + 0.31, z / rollLen + 0.17, 1.7)
+			+ mediumAmp * math.noise(u / mediumLen + 0.43, v / mediumLen + 0.91, 2.3)
 	end
 
 	-- Hills: a ridge along the long middle line of their rectangle, falling off over half the
