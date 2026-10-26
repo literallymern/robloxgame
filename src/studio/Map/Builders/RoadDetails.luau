@@ -109,12 +109,15 @@ local function lights(details: any, parent: Instance): number
 			Vector3.new(1.2, 0.5, 2.4),
 			{ Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(210, 210, 204), CastShadow = false }
 		)
+		head:SetAttribute("RoNationLamp", true)
 		local light = Instance.new("SpotLight")
+		light:SetAttribute("RoNationStreetLight", true)
+		light.Enabled = false -- the local environment controller switches this at dusk, including streamed lamps
 		light.Face = Enum.NormalId.Bottom
 		light.Angle = 120
 		light.Range = 48
 		light.Brightness = 2
-		light.Color = Color3.fromRGB(255, 214, 160)
+		light.Color = Color3.fromRGB(255, 225, 185)
 		light.Shadows = false
 		light.Parent = head
 		count += 3

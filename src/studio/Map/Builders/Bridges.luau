@@ -1,6 +1,6 @@
 --!strict
--- Bridge decks where roads cross the river: a thicker concrete deck on the road's own line and
--- height, railings on both sides, and a pier in the river.
+-- Reinforced concrete bridges on the existing road profile: asphalt wearing course, edge
+-- beams, open steel parapets, abutments and supported spans. Nothing moves a road anchor.
 
 local Heightfield = require(script.Parent.Parent.Heightfield)
 local Roads = require(script.Parent.Roads)
@@ -9,57 +9,204 @@ local Util = require(script.Parent.Util)
 local Bridges = {}
 
 local DECK_THICKNESS = 3
-local RAIL_HEIGHT = 3.5
+local WEARING = 0.24
+local UP = Vector3.new(0, 1, 0)
+local MAX_SPAN = 64
+local POST_SPACING = 10
+
+type BridgeFrame = { Position: Vector3, Along: Vector3, Across: Vector3 }
+
+local function frameAt(road: any, s: number): BridgeFrame
+	local line = road.line
+	local lo, hi = 1, #line.s
+	while hi - lo > 1 do
+		local mid = (lo + hi) // 2
+		if line.s[mid] <= s then
+			lo = mid
+		else
+			hi = mid
+		end
+	end
+	local t = math.clamp((s - line.s[lo]) / (line.s[hi] - line.s[lo]), 0, 1)
+	local a = Vector3.new(line.xs[lo], road.profile[lo], line.zs[lo])
+	local b = Vector3.new(line.xs[hi], road.profile[hi], line.zs[hi])
+	local flat = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Unit
+	return { Position = a:Lerp(b, t), Along = flat, Across = Vector3.new(-flat.Z, 0, flat.X) }
+end
 
 function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 	local folder = Util.folder(parent, "Bridges")
 	local total = 0
-	local concrete: Util.PartOptions = {
-		Material = Enum.Material.Concrete,
-		Color = Color3.fromRGB(160, 158, 150),
-	}
+	local concrete: Util.PartOptions = { Material = Enum.Material.Concrete, Color = Color3.fromRGB(143, 141, 132) }
+	local footing: Util.PartOptions = { Material = Enum.Material.Concrete, Color = Color3.fromRGB(116, 115, 107) }
+	local asphalt: Util.PartOptions = { Material = Enum.Material.Asphalt, Color = Color3.fromRGB(61, 61, 64) }
+	local steel: Util.PartOptions = { Material = Enum.Material.Metal, Color = Color3.fromRGB(133, 138, 139) }
+	local seam: Util.PartOptions =
+		{ Material = Enum.Material.Metal, Color = Color3.fromRGB(57, 58, 57), Decoration = true }
 	for _, bridge in hf.roads.bridges do
 		local road = hf.roads.roads[bridge.RoadIndex]
 		local model = Instance.new("Model")
 		model.Name = `Bridge {bridge.Road}`
 		model:SetAttribute("Road", bridge.Road)
-		total += Roads.buildRuns(model, road, {
+		model:SetAttribute("EnvironmentDetailVersion", 1)
+		-- The structural slab projects beyond the original carriageway; its top is below
+		-- the wearing course. Asphalt finishes at exactly the existing road elevation.
+		local structure = table.clone(road)
+		structure.Width = road.Width + 2.4
+		structure.profile = table.create(#road.profile)
+		for i, y in road.profile do
+			structure.profile[i] = y - WEARING
+		end
+		total += Roads.buildRuns(model, structure, {
 			Bridge = true,
-			Thickness = DECK_THICKNESS,
+			Thickness = DECK_THICKNESS - WEARING,
 			Part = concrete,
 			First = bridge.First,
 			Last = bridge.Last,
 		})
-		-- Railings along both edges.
-		for i = bridge.First, bridge.Last - 1 do
-			local a = Vector3.new(road.line.xs[i], road.profile[i], road.line.zs[i])
-			local b = Vector3.new(road.line.xs[i + 1], road.profile[i + 1], road.line.zs[i + 1])
-			local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Unit
-			local side = Vector3.new(-dir.Z, 0, dir.X) * (road.Width / 2 - 0.5)
-			local up = Vector3.new(0, RAIL_HEIGHT, 0)
-			for _, offset in { side, -side } do
-				Util.strip(model, "Railing", a + offset + up, b + offset + up, 1, RAIL_HEIGHT, concrete)
+		total += Roads.buildRuns(model, road, {
+			Bridge = true,
+			Thickness = WEARING,
+			Part = asphalt,
+			First = bridge.First,
+			Last = bridge.Last,
+			Weathering = true,
+		})
+		local firstS, lastS = road.line.s[bridge.First], road.line.s[bridge.Last]
+		local length = lastS - firstS
+		-- A shallow edge beam and two steel rails follow each straight deck run. These
+		-- sit outside the traffic lanes, retaining the original usable road width.
+		for _, run in road.runs do
+			if not run.Bridge or run.First < bridge.First or run.Last > bridge.Last then
+				continue
+			end
+			local a = frameAt(road, road.line.s[run.First])
+			local b = frameAt(road, road.line.s[run.Last])
+			local flat = Vector3.new(b.Position.X - a.Position.X, 0, b.Position.Z - a.Position.Z).Unit
+			local across = Vector3.new(-flat.Z, 0, flat.X)
+			for side = -1, 1, 2 do
+				local offset = across * (road.Width / 2 + 0.65) * side
+				Util.strip(
+					model,
+					"EdgeBeam",
+					a.Position + offset + UP * 0.45,
+					b.Position + offset + UP * 0.45,
+					0.8,
+					1.5,
+					concrete
+				)
+				for _, height in { 1.6, 3.4 } do
+					Util.strip(
+						model,
+						"ParapetRail",
+						a.Position + offset + UP * height,
+						b.Position + offset + UP * height,
+						0.2,
+						0.28,
+						steel
+					)
+				end
+				total += 3
+			end
+		end
+		local postCount = math.ceil(length / POST_SPACING)
+		for k = 0, postCount do
+			local f = frameAt(road, firstS + length * k / postCount)
+			for side = -1, 1, 2 do
+				local centre = f.Position + f.Across * (road.Width / 2 + 0.65) * side + UP * 1.9
+				Util.part(
+					model,
+					"ParapetPost",
+					CFrame.lookAt(centre, centre + f.Along),
+					Vector3.new(0.3, 3, 0.35),
+					steel
+				)
 				total += 1
 			end
 		end
-		-- One pier in the middle of the river, across the deck.
-		local mid, best = bridge.First, math.huge
-		for i = bridge.First, bridge.Last - 1 do
-			local d = (road.line.xs[i] - bridge.CrossX) ^ 2 + (road.line.zs[i] - bridge.CrossZ) ^ 2
-			if d < best then
-				mid, best = i, d
+		-- Supports are spaced by structural span, rather than putting a wall across the river.
+		-- Each bent has buried foundations, two columns and a cap directly below the deck.
+		local spans = math.max(1, math.ceil(length / MAX_SPAN))
+		for k = 1, spans - 1 do
+			local f = frameAt(road, firstS + length * k / spans)
+			local p = f.Position
+			local bedY = hf.surface(p.X, p.Z) - 2
+			local deckBottom = p.Y - DECK_THICKNESS
+			local capHeight = 1.2
+			local columnTop = deckBottom - capHeight
+			local foundationTop = math.min(bedY + 1.2, columnTop - 1)
+			if columnTop - foundationTop > 0.5 then
+				local base = Vector3.new(p.X, foundationTop - 1, p.Z)
+				Util.part(
+					model,
+					"PierFooting",
+					CFrame.lookAt(base, base + f.Along),
+					Vector3.new(road.Width - 3, 2, 7),
+					footing
+				)
+				local cap = Vector3.new(p.X, deckBottom - capHeight / 2, p.Z)
+				Util.part(
+					model,
+					"PierCap",
+					CFrame.lookAt(cap, cap + f.Along),
+					Vector3.new(road.Width, capHeight, 4.5),
+					concrete
+				)
+				for side = -1, 1, 2 do
+					local offset = f.Across * (road.Width * 0.27) * side
+					Util.cylinder(
+						model,
+						"PierColumn",
+						Vector3.new(p.X, foundationTop, p.Z) + offset,
+						Vector3.new(p.X, columnTop, p.Z) + offset,
+						2.8,
+						concrete
+					)
+				end
+				total += 4
 			end
 		end
-		local a = Vector3.new(road.line.xs[mid], road.profile[mid], road.line.zs[mid])
-		local b = Vector3.new(road.line.xs[mid + 1], road.profile[mid + 1], road.line.zs[mid + 1])
-		local flat = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Unit
-		local _, waterY = hf.river.nearest(bridge.CrossX, bridge.CrossZ)
-		local bedY = waterY - hf.river.drop - 12
-		local deckBottom = road.profile[mid] - DECK_THICKNESS
-		local height = deckBottom - bedY
-		local centre = Vector3.new(bridge.CrossX, bedY + height / 2, bridge.CrossZ)
-		Util.part(model, "Pier", CFrame.lookAt(centre, centre + flat), Vector3.new(road.Width - 6, height, 5), concrete)
-		total += 1
+		-- Abutments terminate below the driving surface. Expansion joints lie below road
+		-- markings and do not collide. Wing walls retain the approach fill outside the lane.
+		for _, endInfo in { { firstS, -1 }, { lastS, 1 } } do
+			local f = frameAt(road, endInfo[1])
+			local p = f.Position
+			local outward = f.Along * endInfo[2]
+			local ground = hf.surface(p.X, p.Z)
+			local top = p.Y - DECK_THICKNESS
+			local bottom = math.min(ground - 2, top - 2)
+			local centre = Vector3.new(p.X, (top + bottom) / 2, p.Z)
+			Util.part(
+				model,
+				"Abutment",
+				CFrame.lookAt(centre, centre + f.Along),
+				Vector3.new(road.Width + 2.4, top - bottom, 4),
+				concrete
+			)
+			Util.part(
+				model,
+				"AbutmentFooting",
+				CFrame.lookAt(Vector3.new(p.X, bottom - 0.7, p.Z), Vector3.new(p.X, bottom - 0.7, p.Z) + f.Along),
+				Vector3.new(road.Width + 4, 1.4, 6),
+				footing
+			)
+			Util.strip(
+				model,
+				"ExpansionJoint",
+				p - f.Across * road.Width / 2 + UP * 0.028,
+				p + f.Across * road.Width / 2 + UP * 0.028,
+				0.18,
+				0.02,
+				seam
+			)
+			total += 3
+			for side = -1, 1, 2 do
+				local a = p + f.Across * (road.Width / 2 + 1) * side - UP * 0.05
+				local b = p + outward * 9 + f.Across * (road.Width / 2 + 4) * side - UP * 0.45
+				Util.strip(model, "WingWall", a, b, 0.7, 3, concrete)
+				total += 1
+			end
+		end
 		model.Parent = folder
 		Util.yield()
 	end

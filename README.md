@@ -82,8 +82,8 @@ Studio neu starten. Oben im Tab **Plugins** sollte jetzt ein **Rojo**-Knopf sein
 Nach dem Verbinden auf **Play** drücken und das **Output**-Fenster öffnen (*View > Output*). Dort sollte stehen:
 
 ```
-[Ro-Nation:Server] Ro-Nation 0.1.0 (Milestone 1) server started (4/4 services).
-[Ro-Nation:Client] Ro-Nation 0.1.0 (Milestone 1) client started for DeinName (3/3 controllers).
+[Ro-Nation:Server] Ro-Nation 0.1.0 (Milestone 1) server started (5/5 services).
+[Ro-Nation:Client] Ro-Nation 0.1.0 (Milestone 1) client started for DeinName (4/4 controllers).
 ```
 
 Dann ist alles richtig eingerichtet. Oben links erscheint außerdem der Knopf **Account**.
@@ -106,15 +106,21 @@ Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübe
 
 Weitere Varianten für die Command Bar:
 
+- Vorhandene Karte gezielt aufwerten, ohne Gelände, Stadtobjekte oder Schilder zu ersetzen: `require(game.ServerStorage.StudioTools.BuildMap).refreshEnvironment()`
 - Nur die Teile neu bauen, Gelände bleibt: `require(game.ServerStorage.StudioTools.BuildMap).run({ Terrain = false })`
 - Ohne Bäume, Büsche und Felsen (schneller, zum Testen): `require(game.ServerStorage.StudioTools.BuildMap).run({ Vegetation = false })`
 - Weniger Bäume: in `src/shared/Config/MapLayout.luau` bei `Vegetation` den Wert `Density = 1` kleiner machen (z. B. `0.6`) und neu bauen.
+
+Natürliches Licht, fünf dynamische Wetterlagen, Tag/Nacht und automatische Straßenlaternen
+starten beim Spielen. Anleitung für die gezielte Kartenaktualisierung, Konfiguration, Audio
+und Studio-Prüfungen: [`Environment overhaul`](docs/game/06-environment-overhaul.md).
 
 ## Häufige Probleme
 
 - **"Connect" geht nicht:** Läuft `rojo serve` noch? Das Fenster (Terminal oder VS Code) muss offen bleiben.
 - **Plugin und Rojo passen nicht zusammen:** Rojo-Plugin in Studio aktualisieren, oder `rojo plugin install` noch einmal ausführen.
 - **Meine Änderung in Studio ist weg:** Skripte nur in den Dateien ändern, nicht in Studio (siehe oben).
+- **`refreshEnvironment()` meldet `attempt to call a nil value`:** Zuerst die neuen Dateien in den lokalen Projektordner übernehmen und Rojo neu starten/verbinden. Falls `BuildMap` in Studio bereits geladen wurde, den Place speichern und Studio neu starten, um den `require()`-Cache zu leeren. Diagnose: [Environment overhaul](docs/game/06-environment-overhaul.md#apply-to-an-existing-place).
 - **Verbindung wird blockiert:** Manchmal fragt Windows beim ersten Start nach der Firewall. Rojo dann erlauben.
 
 ## Projekt-Dateien

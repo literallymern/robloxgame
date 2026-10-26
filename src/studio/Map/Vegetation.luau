@@ -29,7 +29,7 @@ export type Vegetation = {
 }
 
 local TREE_CELL = 18 -- studs; at most one tree per cell
-local TREE_SCALE = 0.44 -- trees per cell at full forest cover
+local TREE_SCALE = 0.28 -- fewer fuller crowns: keep the five-part trees within the geometry budget
 local BUSH_CELL = 15
 local ROCK_CELL = 30
 local HEDGE_STEP = 9 -- studs between hedge bushes
@@ -40,10 +40,10 @@ local WIRE_CORRIDOR = 12 -- studs on each side of a power line kept free of tree
 
 -- Height ranges in studs (tree height).
 local TREE_SIZES: { [string]: { number } } = {
-	Broadleaf = { 18, 32 },
-	Acacia = { 15, 24 },
-	Eucalyptus = { 34, 52 },
-	Pine = { 26, 40 },
+	Broadleaf = { 16, 36 },
+	Acacia = { 15, 28 },
+	Eucalyptus = { 30, 56 },
+	Pine = { 24, 44 },
 }
 
 local Vegetation = {}
@@ -151,7 +151,7 @@ function Vegetation.new(layout: any, hf: any, details: any?, yieldEvery: (() -> 
 			Y = y,
 			Z = z,
 			Size = size,
-			Yaw = seed * 7919 % (2 * math.pi),
+			Yaw = Hash.unit(math.floor(x), math.floor(z), 57) * 2 * math.pi,
 			Seed = seed,
 			Slope = slope,
 		})
@@ -221,6 +221,7 @@ function Vegetation.new(layout: any, hf: any, details: any?, yieldEvery: (() -> 
 		local road = roads.roads[index]
 		local line = road.line
 		local offset = road.Width / 2 + 6
+		local station = 0
 		local s = avenue.From
 		local i = 1
 		while s <= math.min(avenue.To, line.length) do
@@ -234,21 +235,30 @@ function Vegetation.new(layout: any, hf: any, details: any?, yieldEvery: (() -> 
 			local len = math.sqrt(dx * dx + dz * dz)
 			local rx, rz = -dz / len, dx / len
 			for side = -1, 1, 2 do
-				local x, z = cx + rx * offset * side, cz + rz * offset * side
+				-- Preserve the authored avenue, with gaps and unequal setbacks as in a maintained
+				-- roadside planting. The position is checked again after jitter, including fields.
+				local seed = Hash.unit(k, station, 6 + side)
+				local setback = offset + 4 * Hash.unit(k, station, 14 + side)
+				local along = (Hash.unit(k, station, 17 + side) - 0.5) * avenue.Spacing * 0.22
+				local x = cx + rx * setback * side + dx / len * along
+				local z = cz + rz * setback * side + dz / len * along
 				if
-					not road.onBridge[i]
+					seed > 0.1
+					and not road.onBridge[i]
 					and not inPlace(x, z, 4)
 					and roads.otherDistance(x, z, index) > 12
 					and waterEdge(x, z) > river.bankWidth + 3
+					and cropAt(x, z) == nil
 				then
+					local e, _, _, onBridge = roads.nearest(x, z)
 					local y, slope = ground(x, z)
-					if y and slope < MAX_TREE_SLOPE then
-						local seed = Hash.unit(k, math.floor(s), 6 + side)
-						addTree(avenue.Kind, x, z, y, slope, 0.35 + 0.3 * seed, 1)
+					if y and y <= treeLine and slope < MAX_TREE_SLOPE and e and e >= 5.5 and not onBridge then
+						addTree(avenue.Kind, x, z, y, slope, 0.15 + 0.8 * seed, 1)
 					end
 				end
 			end
-			s += avenue.Spacing
+			s += avenue.Spacing * Hash.range(k, station, 58, 0.78, 1.25)
+			station += 1
 		end
 	end
 

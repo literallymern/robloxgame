@@ -1,8 +1,8 @@
 --!strict
--- Trees, bushes and rocks as simple parts: a cylinder trunk and one or two stretched spheres as
--- the crown. Four tree kinds of the African highlands: broadleaf trees, flat-topped acacias, tall
--- pale eucalyptus and dark pines (timber plantations). Positions come from Map/Vegetation.
--- Crowns and bushes do not collide and let the camera through; trunks and rocks are solid.
+-- Regional highland vegetation, using native geometry and materials only. Forked, leaning
+-- stems carry asymmetric leaf masses; acacias spread horizontally, eucalyptus stays open,
+-- broadleaf crowns are irregular, and plantation pines have tapered evergreen whorls.
+-- Each tree is 4–5 parts, streamed as one model. Foliage and upper branches never collide.
 
 local Hash = require(script.Parent.Parent.Hash)
 local Util = require(script.Parent.Util)
@@ -53,93 +53,108 @@ local function trunkOptions(colour: Color3): Util.PartOptions
 	return { Material = Enum.Material.Wood, Color = colour }
 end
 
--- One tree. Returns the number of parts.
+-- One tree: the same template vocabulary, varied deterministically by position and species.
+-- Four parts for an open crown, five for a fuller mature crown (all pines use five).
 function VegetationBuilder.tree(parent: Instance, plant: any): number
 	local h: number = plant.Size
-	local x, y, z = plant.X, plant.Y, plant.Z
-	local fx, fz = math.floor(x), math.floor(z)
+	local fx, fz = math.floor(plant.X), math.floor(plant.Z)
 	local function r(k: number): number
 		return Hash.unit(fx, fz, 100 + k)
 	end
-	local yaw = CFrame.Angles(0, plant.Yaw, 0)
+	local model = Instance.new("Model")
+	model.Name = plant.Kind
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	model:SetAttribute("VegetationSpecies", plant.Kind)
+	local base = CFrame.new(plant.X, plant.Y, plant.Z) * CFrame.Angles(0, plant.Yaw, 0)
+	local function at(dx: number, dy: number, dz: number): CFrame
+		return base * CFrame.new(dx * h, dy * h, dz * h)
+	end
+	local function point(dx: number, dy: number, dz: number): Vector3
+		return at(dx, dy, dz).Position
+	end
 	local crownColour = vary(pick(CROWNS[plant.Kind], plant.Seed), r(1))
 	local trunk = trunkOptions(vary(TRUNKS[plant.Kind], r(2)))
-	local crown = crownOptions(crownColour)
-	local function at(dx: number, dy: number, dz: number): CFrame
-		return CFrame.new(x, y, z) * yaw * CFrame.new(dx, dy, dz)
-	end
+	local branch = trunkOptions(trunk.Color :: Color3)
+	branch.CanCollide = false
+	branch.CanQuery = false
 	local count = 0
-
-	if plant.Kind == "Acacia" then
-		-- Leaning trunk, wide flat crown, sometimes a second layer to one side.
-		local trunkHeight = 0.72 * h
-		local lean = (r(3) - 0.5) * 0.25
-		local top = at(lean * trunkHeight, trunkHeight, 0).Position
-		local sink = 1 + plant.Slope * 1.2
-		Util.cylinder(parent, "Trunk", Vector3.new(x, y - sink, z), top, math.max(0.8, 0.05 * h), trunk)
+	local function stem(a: Vector3, b: Vector3, diameter: number, upper: boolean)
+		Util.cylinder(model, if upper then "Branch" else "Trunk", a, b, diameter, if upper then branch else trunk)
+		count += 1
+	end
+	local function leaf(dx: number, dy: number, dz: number, w: number, height: number, depth: number, salt: number)
+		local tilt = CFrame.Angles((r(salt) - 0.5) * 0.3, r(salt + 1) * 0.9, (r(salt + 2) - 0.5) * 0.3)
 		Util.ellipsoid(
-			parent,
-			"Crown",
-			CFrame.new(top + Vector3.new(0, 0.05 * h, 0)) * yaw,
-			Vector3.new(1.15 * h, 0.2 * h, 1.0 * h),
-			crown
+			model,
+			"Foliage",
+			at(dx, dy, dz) * tilt,
+			Vector3.new(w * h, height * h, depth * h),
+			crownOptions(vary(crownColour, r(salt + 3)))
 		)
-		count += 2
-		if r(4) < 0.7 then
-			Util.ellipsoid(
-				parent,
-				"Crown",
-				CFrame.new(top) * yaw * CFrame.new(0.28 * h, 0.12 * h, 0.1 * h),
-				Vector3.new(0.6 * h, 0.16 * h, 0.55 * h),
-				crown
-			)
-			count += 1
+		count += 1
+	end
+	local sink = (1 + plant.Slope * 1.4) / h
+	local leanX, leanZ = (r(3) - 0.5) * 0.12, (r(4) - 0.5) * 0.1
+	local fuller = r(5) < 0.42
+
+	if plant.Kind == "Pine" then
+		-- Two tapered whorls with perpendicular ridges break up the former pill-shaped crown.
+		-- Back-to-back wedges form a triangular cross-section; their bottom sits in the whorl
+		-- below, so there is no rectangular underside visible from the road.
+		stem(point(0, -sink, 0), point(leanX * 0.5, 0.78, leanZ * 0.5), math.max(0.8, 0.038 * h), false)
+		for level = 1, 2 do
+			local width = (if level == 1 then 0.48 else 0.29) * (0.9 + r(6 + level) * 0.2)
+			local height = if level == 1 then 0.55 else 0.4
+			local centre = if level == 1 then 0.48 else 0.79
+			local frame = at(leanX * centre, centre, leanZ * centre)
+				* CFrame.Angles(0, if level == 1 then 0 else math.pi / 2, 0)
+			for side = -1, 1, 2 do
+				Util.wedge(
+					model,
+					"Foliage",
+					frame
+						* CFrame.new(0, 0, side * width * h / 4)
+						* CFrame.Angles(0, if side > 0 then math.pi else 0, 0),
+					Vector3.new(width * h, height * h, width * h / 2),
+					crownOptions(vary(crownColour, r(8 + level)))
+				)
+				count += 1
+			end
+		end
+	elseif plant.Kind == "Acacia" then
+		local fork = point(leanX, 0.54, leanZ)
+		stem(point(0, -sink, 0), point(leanX - 0.16, 0.7, leanZ - 0.04), math.max(0.75, 0.043 * h), false)
+		stem(fork, point(0.28 + leanX, 0.75, 0.05 + leanZ), math.max(0.45, 0.025 * h), true)
+		leaf(leanX - 0.18, 0.75, leanZ - 0.05, 0.76, 0.2 + r(9) * 0.06, 0.58, 20)
+		leaf(leanX + 0.25, 0.79, leanZ + 0.08, 0.65, 0.18, 0.53, 26)
+		if fuller then
+			leaf(leanX + 0.03, 0.84, leanZ - 0.18, 0.5, 0.17, 0.44, 32)
 		end
 	elseif plant.Kind == "Eucalyptus" then
-		-- Tall pale trunk with a narrow, open crown.
-		local trunkHeight = 0.72 * h
-		local sink = 1 + plant.Slope * 1.5
-		local diameter = math.max(1.2, 0.045 * h)
-		Util.cylinder(parent, "Trunk", Vector3.new(x, y - sink, z), Vector3.new(x, y + trunkHeight, z), diameter, trunk)
-		Util.ellipsoid(parent, "Crown", at(0, 0.73 * h, 0), Vector3.new(0.34 * h, 0.5 * h, 0.3 * h), crown)
-		count += 2
-		if r(4) < 0.7 then
-			Util.ellipsoid(
-				parent,
-				"Crown",
-				at(0.13 * h, 0.55 * h, 0.04 * h),
-				Vector3.new(0.24 * h, 0.28 * h, 0.22 * h),
-				crown
-			)
-			count += 1
+		stem(point(0, -sink, 0), point(leanX, 0.9, leanZ), math.max(0.9, 0.035 * h), false)
+		stem(
+			point(leanX * 0.6, 0.52, leanZ * 0.6),
+			point(leanX + 0.13, 0.75, leanZ + 0.06),
+			math.max(0.4, 0.018 * h),
+			true
+		)
+		leaf(leanX - 0.035, 0.87, leanZ - 0.025, 0.27, 0.27, 0.2, 20)
+		leaf(leanX + 0.14, 0.75, leanZ + 0.065, 0.26, 0.24, 0.19, 26)
+		if fuller then
+			leaf(leanX - 0.1, 0.65, leanZ + 0.06, 0.22, 0.2, 0.18, 32)
 		end
-	elseif plant.Kind == "Pine" then
-		-- Short trunk, a long lower crown and a narrower top.
-		local sink = 1 + plant.Slope * 1.2
-		local diameter = math.max(1, 0.05 * h)
-		Util.cylinder(parent, "Trunk", Vector3.new(x, y - sink, z), Vector3.new(x, y + 0.4 * h, z), diameter, trunk)
-		Util.ellipsoid(parent, "Crown", at(0, 0.5 * h, 0), Vector3.new(0.38 * h, 0.62 * h, 0.38 * h), crown)
-		Util.ellipsoid(parent, "Crown", at(0, 0.82 * h, 0), Vector3.new(0.22 * h, 0.38 * h, 0.22 * h), crown)
-		count += 3
 	else
-		-- Broadleaf: trunk and a round crown, often with a second lobe.
-		local sink = 1 + plant.Slope * 1.5
-		local diameter = math.max(1, 0.06 * h)
-		Util.cylinder(parent, "Trunk", Vector3.new(x, y - sink, z), Vector3.new(x, y + 0.5 * h, z), diameter, trunk)
-		local width = (0.56 + 0.14 * r(5)) * h
-		Util.ellipsoid(parent, "Crown", at(0, 0.66 * h, 0), Vector3.new(width, 0.52 * h, width * 0.92), crown)
-		count += 2
-		if r(4) < 0.6 then
-			Util.ellipsoid(
-				parent,
-				"Crown",
-				at(0.2 * h, 0.76 * h, 0.06 * h),
-				Vector3.new(width * 0.6, 0.34 * h, width * 0.56),
-				crown
-			)
-			count += 1
+		local fork = point(leanX * 0.7, 0.36, leanZ * 0.7)
+		stem(point(0, -sink, 0), point(leanX - 0.09, 0.68, leanZ - 0.04), math.max(0.85, 0.05 * h), false)
+		stem(fork, point(leanX + 0.2, 0.65, leanZ + 0.09), math.max(0.5, 0.028 * h), true)
+		local spread = 0.92 + r(6) * 0.2
+		leaf(leanX - 0.11, 0.74, leanZ - 0.06, 0.5 * spread, 0.4, 0.38, 20)
+		leaf(leanX + 0.2, 0.69, leanZ + 0.09, 0.46, 0.32 + r(9) * 0.09, 0.36 * spread, 26)
+		if fuller then
+			leaf(leanX + 0.02, 0.87, leanZ - 0.04, 0.36, 0.28, 0.32, 32)
 		end
 	end
+	model.Parent = parent
 	return count
 end
 
@@ -149,8 +164,16 @@ function VegetationBuilder.bush(parent: Instance, plant: any): number
 	local colour = vary(pick(CROWNS.Bush, plant.Seed), Hash.unit(fx, fz, 111))
 	local options = crownOptions(colour)
 	local base = CFrame.new(plant.X, plant.Y, plant.Z) * CFrame.Angles(0, plant.Yaw, 0)
-	local height = w * (0.55 + 0.2 * Hash.unit(fx, fz, 112))
-	Util.ellipsoid(parent, "Bush", base * CFrame.new(0, height * 0.32, 0), Vector3.new(w, height, w * 0.85), options)
+	local habit = Hash.unit(fx, fz, 112)
+	local height = w * (0.3 + 0.45 * habit)
+	local tilt = CFrame.Angles((habit - 0.5) * 0.18, 0, (plant.Seed - 0.5) * 0.22)
+	Util.ellipsoid(
+		parent,
+		"Bush",
+		base * CFrame.new(0, height * 0.32, 0) * tilt,
+		Vector3.new(w, height, w * (0.55 + 0.3 * plant.Seed)),
+		options
+	)
 	if Hash.unit(fx, fz, 113) < 0.3 then
 		Util.ellipsoid(
 			parent,

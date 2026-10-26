@@ -272,6 +272,7 @@ local ENUMS = {
 	Font = { "GothamBold", "Gotham", "SourceSans", "SourceSansBold" },
 	NormalId = { "Front", "Back", "Top", "Bottom", "Left", "Right" },
 	SurfaceGuiSizingMode = { "FixedSize", "PixelsPerStud" },
+	ModelStreamingMode = { "Default", "Atomic", "Persistent", "PersistentPerPlayer" },
 }
 Enum = {}
 for enumName, items in ENUMS do
@@ -303,8 +304,58 @@ local BASEPART = {
 	CastShadow = "boolean",
 }
 local CLASSES = {
+	Workspace = { props = { GlobalWind = "Vector3" }, isA = { "Workspace" } },
+	Lighting = {
+		props = {
+			ClockTime = "number",
+			GeographicLatitude = "number",
+			Brightness = "number",
+			Ambient = "Color3",
+			OutdoorAmbient = "Color3",
+			ColorShift_Top = "Color3",
+			ColorShift_Bottom = "Color3",
+			EnvironmentDiffuseScale = "number",
+			EnvironmentSpecularScale = "number",
+			GlobalShadows = "boolean",
+			ShadowSoftness = "number",
+			ExposureCompensation = "number",
+			FogStart = "number",
+			FogEnd = "number",
+			FogColor = "Color3",
+		},
+		isA = { "Lighting" },
+	},
+	Atmosphere = {
+		props = {
+			Density = "number",
+			Offset = "number",
+			Color = "Color3",
+			Decay = "Color3",
+			Glare = "number",
+			Haze = "number",
+		},
+		isA = { "Atmosphere" },
+	},
+	BloomEffect = {
+		props = { Enabled = "boolean", Intensity = "number", Size = "number", Threshold = "number" },
+		isA = { "BloomEffect", "PostEffect" },
+	},
+	SunRaysEffect = {
+		props = { Enabled = "boolean", Intensity = "number", Spread = "number" },
+		isA = { "SunRaysEffect", "PostEffect" },
+	},
+	ColorCorrectionEffect = {
+		props = {
+			Enabled = "boolean",
+			Brightness = "number",
+			Contrast = "number",
+			Saturation = "number",
+			TintColor = "Color3",
+		},
+		isA = { "ColorCorrectionEffect", "PostEffect" },
+	},
 	Folder = { props = {}, isA = { "Folder" } },
-	Model = { props = { PrimaryPart = "any" }, isA = { "Model", "PVInstance" } },
+	Model = { props = { PrimaryPart = "any", ModelStreamingMode = "EnumItem" }, isA = { "Model", "PVInstance" } },
 	Part = { props = { Shape = "EnumItem" }, base = BASEPART, isA = { "Part", "BasePart", "PVInstance" } },
 	SpawnLocation = {
 		props = { Shape = "EnumItem", Neutral = "boolean", Duration = "number", Enabled = "boolean" },
@@ -331,6 +382,7 @@ local CLASSES = {
 			Brightness = "number",
 			Color = "Color3",
 			Shadows = "boolean",
+			Enabled = "boolean",
 		},
 		isA = { "SpotLight", "Light" },
 	},
@@ -359,6 +411,7 @@ local CLASSES = {
 			WaterWaveSize = "number",
 			WaterWaveSpeed = "number",
 			Decoration = "boolean",
+			GlobalWind = "Vector3",
 		},
 		isA = { "Terrain" },
 	},
@@ -674,6 +727,7 @@ local runService = service("RunService", {
 		return false
 	end,
 })
+local lighting = service("Lighting")
 
 game = {
 	GetService = function(_, name)
@@ -685,6 +739,8 @@ game = {
 			return collection
 		elseif name == "RunService" then
 			return runService
+		elseif name == "Lighting" then
+			return lighting
 		end
 		error(`GetService: {name} is not in this mock`)
 	end,

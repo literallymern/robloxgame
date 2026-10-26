@@ -14,6 +14,7 @@ type Controller = {
 }
 
 local ORDER = {
+	"EnvironmentController",
 	"NotificationController",
 	"UIController",
 	"AccountController",

@@ -140,7 +140,7 @@ local worst, worstWhere = 0, ""
 for _, road in hf.roads.roads do
 	local folder = roads:FindFirstChild(road.Id)
 	for _, part in folder:GetChildren() do
-		if part.Name ~= "Line" and not string.find(part.Name, "joint") then
+		if part:IsA("BasePart") and part.Name ~= "Line" and not string.find(part.Name, "joint") then
 			local frame = part.CFrame
 			local topCentre = frame.Position + frame.UpVector * (part.Size.Y / 2)
 			local e, y = hf.roads.nearest(topCentre.X, topCentre.Z)
@@ -164,6 +164,51 @@ check("rerun keeps the terrain", stats.clears == clearsBefore)
 check("rerun does not duplicate folders", #map:GetChildren() == before, `{before} -> {#map:GetChildren()}`)
 check("rerun keeps hand-built parts", map:FindFirstChild("JustinsOwnPart") ~= nil)
 check("rerun keeps one spawn", #spawns:GetChildren() == 1)
+
+-- In-place environment upgrade retains geography, gameplay objects and authored signs.
+local retainedPlaces = map:FindFirstChild("Places")
+local retainedProperties = map:FindFirstChild("Properties")
+local retainedSpawn = spawns:FindFirstChild("BusTerminal")
+local retainedSigns = map:FindFirstChild("RoadDetails"):FindFirstChild("Signs")
+local originalRoads = map:FindFirstChild("Roads")
+local originalVegetation = map:FindFirstChild("Vegetation")
+local savedCount = #map:GetChildren()
+local savedClears = stats.clears
+local customSign = Instance.new("Part")
+customSign.Name = "AuthoredSign"
+customSign.Parent = retainedSigns
+BuildMap.refreshEnvironment()
+check("refresh keeps terrain voxels", stats.clears == savedClears)
+check(
+	"refresh keeps places and property instances",
+	map:FindFirstChild("Places") == retainedPlaces and map:FindFirstChild("Properties") == retainedProperties
+)
+check("refresh keeps spawn instance", spawns:FindFirstChild("BusTerminal") == retainedSpawn)
+check(
+	"refresh retains sign instances and manual edits",
+	map:FindFirstChild("RoadDetails"):FindFirstChild("Signs") == retainedSigns and customSign.Parent == retainedSigns
+)
+check(
+	"refresh replaces selected environment groups",
+	map:FindFirstChild("Roads") ~= originalRoads and map:FindFirstChild("Vegetation") ~= originalVegetation
+)
+check("refresh preserves hand-built map content", own.Parent == map)
+check("refresh adds no duplicate groups", #map:GetChildren() == savedCount)
+local retainedRoads = map:FindFirstChild("Roads")
+local retainedVegetation = map:FindFirstChild("Vegetation")
+BuildMap.refreshEnvironment({ Roads = false, Vegetation = false })
+check(
+	"refresh options retain unselected groups",
+	map:FindFirstChild("Roads") == retainedRoads and map:FindFirstChild("Vegetation") == retainedVegetation
+)
+retainedRoads:SetAttribute("GeneratedBy", nil)
+local retainedDetails = map:FindFirstChild("RoadDetails")
+BuildMap.refreshEnvironment()
+check(
+	"refresh refuses to replace authored folders",
+	map:FindFirstChild("RoadDetails") == retainedDetails and map:FindFirstChild("Roads") == retainedRoads
+)
+retainedRoads:SetAttribute("GeneratedBy", "BuildMap")
 
 if failures > 0 then
 	error(`{failures} check(s) failed`)

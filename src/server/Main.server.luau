@@ -16,6 +16,7 @@ type Service = {
 
 -- Order matters: a service may only use services listed before it.
 local ORDER = {
+	"EnvironmentService",
 	"PermissionService",
 	"RemoteService",
 	"EconomyGateway",

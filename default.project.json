@@ -2,25 +2,21 @@
   "name": "Ro-Nation",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
       }
     },
-
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
       }
     },
-
     "ServerStorage": {
       "StudioTools": {
         "$path": "src/studio"
       }
     },
-
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {
@@ -28,7 +24,6 @@
         }
       }
     },
-
     "Workspace": {
       "$properties": {
         "StreamingEnabled": true,
@@ -37,53 +32,82 @@
         "StreamingIntegrityMode": "PauseOutsideLoadedArea"
       }
     },
-
     "Lighting": {
       "$properties": {
-        "ClockTime": 14,
+        "ClockTime": 9.5,
         "GeographicLatitude": -2,
-        "Brightness": 2.6,
-        "Ambient": [0.27, 0.27, 0.29],
-        "OutdoorAmbient": [0.5, 0.5, 0.52],
-        "ColorShift_Top": [1, 0.96, 0.9],
-        "EnvironmentDiffuseScale": 1,
-        "EnvironmentSpecularScale": 1,
+        "Brightness": 2.4,
+        "Ambient": [
+          0.225,
+          0.24,
+          0.255
+        ],
+        "OutdoorAmbient": [
+          0.38,
+          0.39,
+          0.39
+        ],
+        "ColorShift_Top": [
+          0,
+          0,
+          0
+        ],
+        "EnvironmentDiffuseScale": 0.85,
+        "EnvironmentSpecularScale": 0.8,
         "GlobalShadows": true,
-        "ShadowSoftness": 0.25
+        "ShadowSoftness": 0.35,
+        "ColorShift_Bottom": [
+          0,
+          0,
+          0
+        ],
+        "ExposureCompensation": -0.13
       },
-      "Atmosphere": {
+      "RoNationAtmosphere": {
         "$className": "Atmosphere",
         "$properties": {
-          "Density": 0.28,
-          "Offset": 0.25,
-          "Color": [0.78, 0.83, 0.89],
-          "Decay": [0.42, 0.45, 0.5],
-          "Glare": 0.15,
-          "Haze": 1.4
+          "Density": 0.235,
+          "Offset": 0.15,
+          "Color": [
+            0.8,
+            0.83,
+            0.875
+          ],
+          "Decay": [
+            0.38,
+            0.43,
+            0.51
+          ],
+          "Glare": 0.07,
+          "Haze": 1.05
         }
       },
-      "Bloom": {
+      "RoNationBloom": {
         "$className": "BloomEffect",
         "$properties": {
-          "Intensity": 0.6,
-          "Size": 24,
-          "Threshold": 1.6
+          "Intensity": 0.08,
+          "Size": 18,
+          "Threshold": 1.8
         }
       },
-      "SunRays": {
+      "RoNationSunRays": {
         "$className": "SunRaysEffect",
         "$properties": {
-          "Intensity": 0.06,
-          "Spread": 0.8
+          "Intensity": 0.022,
+          "Spread": 0.7
         }
       },
-      "ColorCorrection": {
+      "RoNationColorCorrection": {
         "$className": "ColorCorrectionEffect",
         "$properties": {
-          "Brightness": 0.01,
-          "Contrast": 0.06,
-          "Saturation": 0.08,
-          "TintColor": [1, 0.99, 0.96]
+          "Brightness": 0,
+          "Contrast": 0.05,
+          "Saturation": -0.07,
+          "TintColor": [
+            1,
+            0.995,
+            0.985
+          ]
         }
       }
     }

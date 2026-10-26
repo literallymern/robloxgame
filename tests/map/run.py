@@ -19,9 +19,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 MODULES = {
     "ReplicatedStorage/Shared/Config/MapLayout": "src/shared/Config/MapLayout.luau",
     "ReplicatedStorage/Shared/Config/Assets": "src/shared/Config/Assets.luau",
+    "ReplicatedStorage/Shared/Config/Environment": "src/shared/Config/Environment.luau",
     "StudioTools/BuildMap": "src/studio/BuildMap.luau",
 }
-for folder, prefix in (("src/studio/Map", "StudioTools/Map"), ("src/studio/Map/Builders", "StudioTools/Map/Builders")):
+for folder, prefix in (
+    ("src/studio/Map", "StudioTools/Map"),
+    ("src/studio/Map/Builders", "StudioTools/Map/Builders"),
+    ("src/shared/Environment", "ReplicatedStorage/Shared/Environment"),
+):
     for file in sorted(os.listdir(os.path.join(ROOT, folder))):
         if file.endswith(".luau"):
             MODULES[f"{prefix}/{file[:-5]}"] = f"{folder}/{file}"

@@ -115,13 +115,24 @@ function River.new(layout: any, landHeight: (number, number) -> number): River
 		local surface, zone
 		if d < halfWidth then
 			local f = d / halfWidth
-			surface = w - depths[index] * (1 - f * f)
+			-- Coherent sediment bars break up the perfectly extruded channel. Their relief
+			-- vanishes at the water edge and never closes the channel or changes its route.
+			local sediment = math.noise(x / 52 + 0.37, z / 52 + 0.81, 67.3)
+			surface = w - depths[index] * (1 - f * f) * (1 + 0.18 * sediment)
 			zone = 1
 		elseif d < halfWidth + bankWidth then
-			surface = w + drop * (d - halfWidth) / bankWidth
+			local t = (d - halfWidth) / bankWidth
+			-- A gently undercut toe and deposited upper bank, instead of one uniform ramp.
+			-- The same endpoints keep the water width and bridge approaches unchanged.
+			local erosion = 0.18 + 0.1 * math.noise(x / 74 + 0.51, z / 74 + 0.19, 68.9)
+			local profile = t - erosion * math.sin(2 * math.pi * t) * t * (1 - t)
+			surface = w + drop * profile
 			zone = 2
 		else
-			surface = w + drop + (d - halfWidth - bankWidth) * wallSlope
+			local outside = d - halfWidth - bankWidth
+			local t = math.clamp(outside / (REACH - halfWidth - bankWidth), 0, 1)
+			local relief = 1.5 * math.noise(x / 46 + 0.29, z / 46 + 0.67, 69.7) * math.sin(math.pi * t)
+			surface = w + drop + outside * wallSlope + relief
 			zone = 3
 		end
 		if surface >= h then
