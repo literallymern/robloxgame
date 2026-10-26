@@ -8,6 +8,7 @@ import { ROLES } from '../src/blueprint/roles.js';
 import { PermissionError, UserError } from '../src/economy/errors.js';
 import { KGD, POLICY_DEFAULTS } from '../src/economy/constants.js';
 import { getPolicy } from '../src/economy/policy.js';
+import { createLinkCode, activeLinkByDiscord } from '../src/economy/links.js';
 
 function setup() {
   const t = testEconomy();
@@ -212,4 +213,32 @@ test('reading other people\'s data is not possible', async () => {
   assert.ok(!txOptions.includes('user'));
   await assert.rejects(run(ctx, { command: 'loan', sub: 'repay', user: 'b', options: { loan: '1', amount: 5 } }), UserError);
   assert.equal(KGD(1), 100);
+});
+
+test('/link confirm, status, remove and keep', async () => {
+  const { t, ctx } = setup();
+  await assert.rejects(run(ctx, { command: 'link', sub: 'confirm', user: 'p', roles: [], options: { code: 'AAAA-AAAA' } }), PermissionError);
+  const { code } = createLinkCode(t.eco, { robloxUserId: '1001', robloxName: 'PlayerOne' });
+  const i = await run(ctx, { command: 'link', sub: 'confirm', user: 'p', options: { code } });
+  assert.match(text(i), /PlayerOne/);
+  assert.match(text(i), /starting balance/, 'a new citizen gets the grant through the normal Discord rules');
+  assert.equal(i.replies[0].flags, 64, 'ephemeral');
+  assert.equal(t.bank('p'), POLICY_DEFAULTS.starting_grant, 'exactly one grant, no extra money for linking');
+  assert.match(text(await run(ctx, { command: 'link', sub: 'status', user: 'p' })), /1001/);
+  assert.match(text(await run(ctx, { command: 'link', sub: 'remove', user: 'p' })), /will be removed/);
+  assert.match(text(await run(ctx, { command: 'link', sub: 'keep', user: 'p' })), /stays active/);
+  assert.ok(activeLinkByDiscord(t.eco, 'p'));
+  await assert.rejects(run(ctx, { command: 'link', sub: 'confirm', user: 'q', options: { code } }), /wrong or has expired/);
+});
+
+test('/econ-admin link-remove is staff only and audited', async () => {
+  const { t, ctx } = setup();
+  const { code } = createLinkCode(t.eco, { robloxUserId: '1001' });
+  await run(ctx, { command: 'link', sub: 'confirm', user: 'p', options: { code } });
+  const spec = { command: 'econ-admin', sub: 'link-remove', options: { roblox_id: '1001', reason: 'Lost account, ticket 3' } };
+  await assert.rejects(run(ctx, { ...spec, user: 'civ' }), PermissionError);
+  const i = await run(ctx, { ...spec, user: 'ea', roles: ['verified', 'economic_administrator'] });
+  assert.match(text(i), /Link removed/);
+  assert.equal(activeLinkByDiscord(t.eco, 'p'), null);
+  assert.equal(ctx.eco.db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'link.removed_by_staff'").get().n, 1);
 });

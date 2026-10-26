@@ -78,12 +78,13 @@ function cardAccountForSpending(eco, userId, amount) {
   return Number(card.account_id);
 }
 
-export function withdrawCash(eco, { userId, amount }) {
-  return transfer(eco, { from: personalAccountId(eco, userId, 'bank'), to: personalAccountId(eco, userId, 'cash'), amount, actor: userId, category: 'cash_withdrawal' });
+// `key` (optional): idempotency key; a repeated key returns the first transaction instead of moving money again.
+export function withdrawCash(eco, { userId, amount, key = null, memo = null }) {
+  return transfer(eco, { from: personalAccountId(eco, userId, 'bank'), to: personalAccountId(eco, userId, 'cash'), amount, actor: userId, category: 'cash_withdrawal', key, memo });
 }
 
-export function depositCash(eco, { userId, amount }) {
-  return transfer(eco, { from: personalAccountId(eco, userId, 'cash'), to: personalAccountId(eco, userId, 'bank'), amount, actor: userId, category: 'cash_deposit' });
+export function depositCash(eco, { userId, amount, key = null, memo = null }) {
+  return transfer(eco, { from: personalAccountId(eco, userId, 'cash'), to: personalAccountId(eco, userId, 'bank'), amount, actor: userId, category: 'cash_deposit', key, memo });
 }
 
 // Transaction history for accounts the caller is allowed to see (checked by the caller).

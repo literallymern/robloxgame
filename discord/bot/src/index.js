@@ -14,6 +14,8 @@ import { createResolver } from './discord/ids.js';
 import { COMMAND_BY_NAME } from './discord/commands/index.js';
 import { handleButton } from './discord/components.js';
 import { embed, COLORS } from './discord/format.js';
+import { memberRoleKeys } from './discord/auth.js';
+import { startBridge } from './bridge/server.js';
 
 try {
   requireDiscordConfig();
@@ -34,6 +36,17 @@ const ids = createResolver(config.idsFile);
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 
 const ctx = { eco, config, ids, client, log };
+
+// Roblox bridge: only runs when BRIDGE_ENABLED=true in .env (off by default).
+const bridge = startBridge({
+  eco, config, log,
+  memberRoleKeys: async (discordId) => {
+    if (!client.isReady()) return null;
+    const guild = await client.guilds.fetch(config.guildId);
+    const member = await guild.members.fetch(discordId).catch(() => null);
+    return member ? memberRoleKeys(ctx, member) : null;
+  },
+});
 
 // ---------------------------------------------------------------- helpers used by commands
 
@@ -186,7 +199,7 @@ async function mirrorAudit() {
   const channel = await fetchChannel('economy_audit_log');
   if (!channel) return;
   for (const a of unmirroredAudit(eco, 20)) {
-    const who = a.actor_id === 'system' ? 'system' : `<@${a.actor_id}>`;
+    const who = /^\d+$/.test(a.actor_id) ? `<@${a.actor_id}>` : a.actor_id;
     const line = `\`#${a.id}\` day ${a.econ_day} · ${who} · **${a.action}**${a.target ? ` · ${a.target}` : ''}${a.amount !== null ? ` · ${formatKGD(a.amount)}` : ''}`
       + `${a.old_value !== null || a.new_value !== null ? ` · ${a.old_value ?? '-'} → ${a.new_value ?? '-'}` : ''}${a.reason ? ` · reason: ${a.reason}` : ''}`;
     try {
@@ -300,6 +313,7 @@ client.on(Events.Error, (err) => log.error('Discord client error:', err));
 
 function shutdown(signal) {
   log.info(`${signal} received, shutting down.`);
+  bridge?.close();
   client.destroy().catch(() => null).finally(() => {
     try { eco.close(); } catch { /* already closed */ }
     process.exit(0);
