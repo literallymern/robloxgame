@@ -1,7 +1,7 @@
 --!strict
--- Road surfaces as parts: straight pieces along the calculated centre line and height profile,
--- round joints where a road bends, and dashed centre lines on national and regional roads.
--- Bridge sections are left to the bridge builder.
+-- Road surfaces as parts: one straight piece per run of the calculated centre line and height
+-- profile (RoadInfo.runs), round joints where a road bends. Bridge runs are left to the bridge
+-- builder; markings are built by the road details builder.
 
 local Heightfield = require(script.Parent.Parent.Heightfield)
 local Util = require(script.Parent.Util)
@@ -9,10 +9,9 @@ local Util = require(script.Parent.Util)
 local Roads = {}
 
 local THICKNESS = 1.2
-local MAX_PIECE = 400 -- longest single road part in studs
-local STRAIGHT_TOLERANCE = 0.12 -- how far a point may sit off a straight piece before a new piece starts
-local DASH_LENGTH = 12
-local DASH_SPACING = 40
+-- Where a road ends on another road, its last piece sits this much lower, so the two surfaces
+-- never flicker where they overlap (the through road stays on top).
+local JUNCTION_DROP = 0.03
 
 type RoadInfo = any
 
@@ -20,95 +19,111 @@ local function point(road: RoadInfo, i: number): Vector3
 	return Vector3.new(road.line.xs[i], road.profile[i], road.line.zs[i])
 end
 
--- Splits samples first..last into runs that are straight in 3D (within the tolerance).
-function Roads.straightRuns(road: RoadInfo, first: number, last: number): { { number } }
-	local runs = {}
-	local i = first
-	while i < last do
-		local j = i + 1
-		while j < last do
-			local a, b = point(road, i), point(road, j + 1)
-			if (b - a).Magnitude > MAX_PIECE then
-				break
-			end
-			local dir = (b - a).Unit
-			local straight = true
-			for k = i + 1, j do
-				local p = point(road, k) - a
-				if (p - dir * p:Dot(dir)).Magnitude > STRAIGHT_TOLERANCE then
-					straight = false
-					break
-				end
-			end
-			if not straight then
-				break
-			end
-			j += 1
-		end
-		table.insert(runs, { i, j })
-		i = j
-	end
-	return runs
+-- Point on the straight piece of a run at distance s along the road.
+local function onRun(road: RoadInfo, first: number, last: number, s: number): Vector3
+	local s0, s1 = road.line.s[first], road.line.s[last]
+	return point(road, first):Lerp(point(road, last), (s - s0) / (s1 - s0))
 end
 
--- Builds road pieces for samples first..last into `parent` with the given look.
-function Roads.buildRuns(
-	parent: Instance,
-	road: RoadInfo,
-	first: number,
-	last: number,
-	thickness: number,
-	options: Util.PartOptions
-): number
-	local runs = Roads.straightRuns(road, first, last)
+export type RunOptions = {
+	Bridge: boolean, -- build the bridge runs (true) or the others (false)
+	Thickness: number,
+	Part: Util.PartOptions,
+	First: number?, -- only runs within these samples
+	Last: number?,
+	LowerBefore: number?, -- the surface before this distance along the road is lowered
+	LowerAfter: number?, -- the surface after this distance along the road is lowered
+}
+
+-- Builds the straight pieces of a road into `parent`. Returns the number of parts.
+function Roads.buildRuns(parent: Instance, road: RoadInfo, o: RunOptions): number
+	local bridges, thickness, options = o.Bridge, o.Thickness, o.Part
+	local lowerBefore, lowerAfter = o.LowerBefore, o.LowerAfter
+	local first, last = o.First or 1, o.Last or #road.line.xs
 	local width = road.Width
 	local count = 0
 	local previousDir: Vector3? = nil
-	for n, run in runs do
-		local a, b = point(road, run[1]), point(road, run[2])
-		Util.strip(parent, `{road.Id} {n}`, a, b, width, thickness, options)
-		count += 1
+	local previousBridge: boolean? = nil
+	for n, run in road.runs do
+		local a, b = point(road, run.First), point(road, run.Last)
 		local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Unit
-		if previousDir and math.deg(math.acos(math.clamp(previousDir:Dot(dir), -1, 1))) > 1.5 then
-			-- A round joint fills the wedge-shaped gap on the outside of the bend.
-			local jointOptions = table.clone(options)
-			jointOptions.Shape = Enum.PartType.Cylinder
-			Util.part(
-				parent,
-				`{road.Id} {n} joint`,
-				CFrame.new(a - Vector3.new(0, thickness / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
-				Vector3.new(thickness, width, width),
-				jointOptions
-			)
-			count += 1
+		if run.Bridge == bridges and run.First >= first and run.Last <= last then
+			local s0, s1 = road.line.s[run.First], road.line.s[run.Last]
+			-- Cut points inside this run.
+			local cuts: { number } = { s0 }
+			if lowerBefore and lowerBefore > s0 and lowerBefore < s1 then
+				table.insert(cuts, lowerBefore)
+			end
+			if lowerAfter and lowerAfter > s0 and lowerAfter < s1 then
+				table.insert(cuts, lowerAfter)
+			end
+			table.insert(cuts, s1)
+			for k = 1, #cuts - 1 do
+				local pa = onRun(road, run.First, run.Last, cuts[k])
+				local pb = onRun(road, run.First, run.Last, cuts[k + 1])
+				local mid = (cuts[k] + cuts[k + 1]) / 2
+				local lowered = (lowerBefore ~= nil and mid < lowerBefore) or (lowerAfter ~= nil and mid > lowerAfter)
+				local drop = Vector3.new(0, if lowered then JUNCTION_DROP else 0, 0)
+				Util.strip(parent, `{road.Id} {n}`, pa - drop, pb - drop, width, thickness, options)
+				count += 1
+			end
+			if
+				previousDir
+				and previousBridge == bridges
+				and math.deg(math.acos(math.clamp(previousDir:Dot(dir), -1, 1))) > 1.5
+			then
+				-- A round joint fills the wedge-shaped gap on the outside of the bend.
+				local jointOptions = table.clone(options)
+				jointOptions.Shape = Enum.PartType.Cylinder
+				local lowered = (lowerBefore ~= nil and s0 < lowerBefore) or (lowerAfter ~= nil and s0 > lowerAfter)
+				local top = a.Y - (if lowered then JUNCTION_DROP else 0) - 0.005
+				Util.part(
+					parent,
+					`{road.Id} {n} joint`,
+					CFrame.new(a.X, top - thickness / 2, a.Z) * CFrame.Angles(0, 0, math.pi / 2),
+					Vector3.new(thickness, width, width),
+					jointOptions
+				)
+				count += 1
+			end
 		end
 		previousDir = dir
+		previousBridge = run.Bridge
 	end
 	return count
 end
 
--- Position, height and direction at distance s along a road.
-local function sampleAt(road: RoadInfo, s: number): (Vector3, Vector3)
-	local line = road.line
-	local lo, hi = 1, #line.s
-	while hi - lo > 1 do
-		local mid = (lo + hi) // 2
-		if line.s[mid] <= s then
-			lo = mid
-		else
-			hi = mid
+-- Distances along road `r` before which (and after which) its surface is lowered because it
+-- ends on another road there.
+function Roads.junctionCuts(hf: Heightfield.Heightfield, r: number): (number?, number?)
+	local road = hf.roads.roads[r]
+	local lowerBefore, lowerAfter = nil, nil
+	for _, junction in hf.roads.junctions do
+		if junction.Minor == r then
+			local line = road.line
+			local inward = if junction.AtStart then 1 else -1
+			local i = junction.MinorSample
+			-- Walk inwards until the whole width is clear of the other road.
+			while i + inward >= 1 and i + inward <= #line.xs do
+				if hf.roads.otherDistance(line.xs[i], line.zs[i], r) >= road.Width / 2 + 2 then
+					break
+				end
+				i += inward
+			end
+			if junction.AtStart then
+				lowerBefore = line.s[i]
+			else
+				lowerAfter = line.s[i]
+			end
 		end
 	end
-	local span = line.s[hi] - line.s[lo]
-	local t = if span > 0 then (s - line.s[lo]) / span else 0
-	local a, b = point(road, lo), point(road, hi)
-	return a:Lerp(b, t), (b - a).Unit
+	return lowerBefore, lowerAfter
 end
 
 function Roads.build(hf: Heightfield.Heightfield, layout: any, parent: Instance): number
 	local folder = Util.folder(parent, "Roads")
 	local total = 0
-	for _, road in hf.roads.roads do
+	for r, road in hf.roads.roads do
 		local class = layout.RoadClasses[road.Class]
 		local roadFolder = Instance.new("Folder")
 		roadFolder.Name = road.Id
@@ -119,37 +134,14 @@ function Roads.build(hf: Heightfield.Heightfield, layout: any, parent: Instance)
 			Material = (Enum.Material :: any)[class.PartMaterial],
 			Color = Util.rgb(class.Color),
 		}
-		-- Split the road at bridges; bridge decks are built separately.
-		local count = #road.line.xs
-		local i = 1
-		while i < count do
-			if road.onBridge[i] and road.onBridge[i + 1] then
-				i += 1
-				continue
-			end
-			local j = i
-			while j < count and not (road.onBridge[j] and road.onBridge[j + 1]) do
-				j += 1
-			end
-			total += Roads.buildRuns(roadFolder, road, i, j, THICKNESS, options)
-			i = j
-		end
-		if class.CentreLine then
-			local dashOptions: Util.PartOptions = {
-				Material = Enum.Material.SmoothPlastic,
-				Color = Color3.fromRGB(235, 235, 220),
-				Decoration = true,
-			}
-			local s = DASH_SPACING / 2
-			while s + DASH_LENGTH < road.line.length - DASH_SPACING / 2 do
-				local a = sampleAt(road, s)
-				local b = sampleAt(road, s + DASH_LENGTH)
-				local lift = Vector3.new(0, 0.06, 0)
-				Util.strip(roadFolder, "Line", a + lift, b + lift, 0.8, 0.1, dashOptions)
-				total += 1
-				s += DASH_SPACING
-			end
-		end
+		local lowerBefore, lowerAfter = Roads.junctionCuts(hf, r)
+		total += Roads.buildRuns(roadFolder, road, {
+			Bridge = false,
+			Thickness = THICKNESS,
+			Part = options,
+			LowerBefore = lowerBefore,
+			LowerAfter = lowerAfter,
+		})
 		Util.yield()
 	end
 	return total

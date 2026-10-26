@@ -12,6 +12,8 @@ export type RoadInfo = {
 	Id: string,
 	Name: string,
 	Class: string,
+	From: string, -- sign destination towards the first point
+	To: string, -- sign destination towards the last point
 	Width: number,
 	MaxGrade: number,
 	MinRadius: number, -- smallest curve radius actually used
@@ -21,6 +23,22 @@ export type RoadInfo = {
 	lowerBound: { number }, -- the lowest the profile may be (bridge clearance, pins); for tests
 	upperBound: { number },
 	feasible: boolean, -- false when the pins and bridges cannot all be met within the grade
+	-- Straight pieces of the road surface (sample ranges), split where bridges start and end.
+	-- Every builder uses these, so markings sit exactly on the road parts.
+	runs: { Run },
+}
+
+export type Run = { First: number, Last: number, Bridge: boolean }
+
+-- Where the end of one road meets another road (outside places).
+export type Junction = {
+	Minor: number, -- index of the road that ends here
+	MinorSample: number, -- its end sample (1 or the last)
+	AtStart: boolean, -- the minor road starts here (false: it ends here)
+	Major: number, -- index of the road it joins
+	MajorSample: number, -- nearest sample of the major road
+	X: number,
+	Z: number,
 }
 
 export type Bridge = {
@@ -38,20 +56,67 @@ export type Bridge = {
 export type RoadNetwork = {
 	roads: { RoadInfo },
 	bridges: { Bridge },
+	junctions: { Junction },
 	-- Nearest road edge: distance outside the road surface (negative = on it), surface height,
 	-- road index and whether that spot is on a bridge. Nil when no road is near.
 	nearest: (x: number, z: number) -> (number?, number, number, boolean),
+	-- Like nearest, but ignores road `exclude`: distance outside the nearest other road surface
+	-- (math.huge when no other road is near).
+	otherDistance: (x: number, z: number, exclude: number) -> number,
 	reach: number,
 }
 
-type Crossing = { s: number, x: number, z: number, water: number, sinA: number, cosA: number }
+type Crossing = { s: number, x: number, z: number, water: number, sinA: number, cosA: number, riverHalf: number }
 
 local SPACING = 8
 local REACH = 200 -- how far beyond its edge a road can reshape the land
 local TARGET_SMOOTHING = 15 -- samples on each side (about 120 studs)
 local GRADE_SAFETY = 0.97
+local MAX_PIECE = 400 -- longest straight road piece in studs
+local STRAIGHT_TOLERANCE = 0.12 -- how far a sample may sit off a straight piece
 
 local RoadNetwork = {}
+
+-- Splits samples first..last of a road into runs that are straight in 3D (within the tolerance).
+function RoadNetwork.straightRuns(
+	xs: { number },
+	zs: { number },
+	ys: { number },
+	first: number,
+	last: number
+): { { number } }
+	local runs = {}
+	local i = first
+	while i < last do
+		local j = i + 1
+		while j < last do
+			local ax, ay, az = xs[i], ys[i], zs[i]
+			local dx, dy, dz = xs[j + 1] - ax, ys[j + 1] - ay, zs[j + 1] - az
+			local length = math.sqrt(dx * dx + dy * dy + dz * dz)
+			if length > MAX_PIECE then
+				break
+			end
+			dx, dy, dz = dx / length, dy / length, dz / length
+			local straight = true
+			for k = i + 1, j do
+				local px, py, pz = xs[k] - ax, ys[k] - ay, zs[k] - az
+				local along = px * dx + py * dy + pz * dz
+				local ox, oy, oz = px - dx * along, py - dy * along, pz - dz * along
+				if ox * ox + oy * oy + oz * oz > STRAIGHT_TOLERANCE * STRAIGHT_TOLERANCE then
+					straight = false
+					break
+				end
+			end
+			if not straight then
+				break
+			end
+			j += 1
+		end
+		table.insert(runs, { i, j })
+		i = j
+	end
+	return runs
+end
 
 local function movingAverage(values: { number }, radius: number): { number }
 	local count = #values
@@ -89,6 +154,21 @@ function RoadNetwork.new(layout: any, land: any, river: any): RoadNetwork
 	local segAx: { number }, segAz: { number }, segBx: { number }, segBz: { number } = {}, {}, {}, {}
 	local segRoad: { number }, segIndex: { number } = {}, {}
 	local halfWidths: { number } = {}
+
+	local function otherDistance(x: number, z: number, exclude: number): number
+		local ids = SegmentGrid.query(grid, x, z)
+		local best = math.huge
+		if ids then
+			for _, id in ids do
+				local r = segRoad[id]
+				if r ~= exclude then
+					local d = Geometry.segmentDistance(segAx[id], segAz[id], segBx[id], segBz[id], x, z)
+					best = math.min(best, d - halfWidths[r])
+				end
+			end
+		end
+		return best
+	end
 
 	local function nearest(x: number, z: number): (number?, number, number, boolean)
 		local ids = SegmentGrid.query(grid, x, z)
@@ -182,7 +262,9 @@ function RoadNetwork.new(layout: any, land: any, river: any): RoadNetwork
 							local cosA = math.abs(rdx * vdx + rdz * vdz)
 								/ (math.sqrt(rdx * rdx + rdz * rdz) * math.sqrt(vdx * vdx + vdz * vdz))
 							local sinA = math.sqrt(math.max(1e-6, 1 - cosA * cosA))
-							local water = river.water[k] + (river.water[k + 1] - river.water[k]) * u
+							-- The upper of the two pools, in case a cascade is right at the crossing.
+							local water = math.max(river.water[k], river.water[k + 1])
+							local riverHalf = river.halfWidths[k] + (river.halfWidths[k + 1] - river.halfWidths[k]) * u
 							table.insert(crossings, {
 								s = crossS,
 								x = xs[i] + rdx * t,
@@ -190,6 +272,7 @@ function RoadNetwork.new(layout: any, land: any, river: any): RoadNetwork
 								water = water,
 								sinA = sinA,
 								cosA = cosA,
+								riverHalf = riverHalf,
 							})
 						end
 					end
@@ -199,7 +282,7 @@ function RoadNetwork.new(layout: any, land: any, river: any): RoadNetwork
 		for _, c in crossings do
 			local minDeck = c.water + river.clearance
 			local wall = math.max(0, river.clearance - river.drop) / river.wallSlope
-			local halfSpan = (river.halfWidth + river.bankWidth + wall + 6) / c.sinA + halfWidth * c.cosA / c.sinA
+			local halfSpan = (c.riverHalf + river.bankWidth + wall + 6) / c.sinA + halfWidth * c.cosA / c.sinA
 			local first, last = count, 1
 			for i = 1, count do
 				if math.abs(s[i] - c.s) <= halfSpan then
@@ -267,10 +350,27 @@ function RoadNetwork.new(layout: any, land: any, river: any): RoadNetwork
 		end
 		limitGrade(profile, s, grade)
 
+		-- Straight runs of the surface, split where a bridge starts or ends.
+		local runs: { Run } = {}
+		local first = 1
+		while first < count do
+			local bridge = onBridge[first] and onBridge[first + 1]
+			local last = first
+			while last < count and (onBridge[last] and onBridge[last + 1]) == bridge do
+				last += 1
+			end
+			for _, run in RoadNetwork.straightRuns(xs, zs, profile, first, last) do
+				table.insert(runs, { First = run[1], Last = run[2], Bridge = bridge })
+			end
+			first = last
+		end
+
 		local info: RoadInfo = {
 			Id = road.Id,
 			Name = road.Name,
 			Class = road.Class,
+			From = road.From,
+			To = road.To,
 			Width = class.Width,
 			MaxGrade = class.MaxGrade,
 			MinRadius = minRadius,
@@ -280,6 +380,7 @@ function RoadNetwork.new(layout: any, land: any, river: any): RoadNetwork
 			lowerBound = low,
 			upperBound = upper,
 			feasible = feasible,
+			runs = runs,
 		}
 		table.insert(roads, info)
 		halfWidths[roadIndex] = halfWidth
@@ -291,10 +392,49 @@ function RoadNetwork.new(layout: any, land: any, river: any): RoadNetwork
 		end
 	end
 
+	-- Junctions: road ends that lie on another road rather than in a place.
+	local junctions: { Junction } = {}
+	for minorIndex, road in roads do
+		local count = #road.line.xs
+		for _, atStart in { true, false } do
+			local sample = if atStart then 1 else count
+			local x, z = road.line.xs[sample], road.line.zs[sample]
+			if placeGroundAt(x, z) ~= nil then
+				continue
+			end
+			local bestRoad, bestSample, bestD = 0, 0, math.huge
+			for majorIndex, major in roads do
+				if majorIndex ~= minorIndex then
+					local mx, mz = major.line.xs, major.line.zs
+					for k = 1, #mx - 1 do
+						local d, t = Geometry.segmentDistance(mx[k], mz[k], mx[k + 1], mz[k + 1], x, z)
+						if d <= major.Width / 2 + 1 and d < bestD then
+							bestRoad, bestD = majorIndex, d
+							bestSample = if t < 0.5 then k else k + 1
+						end
+					end
+				end
+			end
+			if bestRoad > 0 then
+				table.insert(junctions, {
+					Minor = minorIndex,
+					MinorSample = sample,
+					AtStart = atStart,
+					Major = bestRoad,
+					MajorSample = bestSample,
+					X = x,
+					Z = z,
+				})
+			end
+		end
+	end
+
 	return {
 		roads = roads,
 		bridges = bridges,
+		junctions = junctions,
 		nearest = nearest,
+		otherDistance = otherDistance,
 		reach = REACH,
 	}
 end

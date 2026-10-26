@@ -16,17 +16,26 @@ export type Place = {
 	GroundY: number?, -- flattened to this height; nil = flattened to the land height at the centre
 	Margin: number, -- studs over which the ground blends back into the landscape
 	Material: string, -- terrain material inside the rectangle
+	Crop: string?, -- the place is a field of this crop (see MapLayout.Farming.Crops)
 }
 
-export type Zone = { Id: string, Rect: Rect, Material: string }
+-- A larger rural area. Material = fixed terrain material (edges made ragged by noise);
+-- Farming = the area is divided into fields by the mix of that name (MapLayout.Farming.Mixes).
+export type Zone = { Id: string, Rect: Rect, Material: string?, Farming: string? }
 
 export type Hill = { Id: string, Rect: Rect, Peak: number, Margin: number }
+
+-- Share of each tree kind (Acacia, Broadleaf, Eucalyptus, Pine), adding up to 1.
+export type TreeMix = { [string]: number }
+export type VegetationRegion = { Id: string, Rect: Rect, Margin: number, Forest: number, Mix: TreeMix, Dry: number }
 
 export type Road = {
 	Id: string,
 	Name: string,
 	Class: "National" | "Regional" | "Access",
 	Points: { Point },
+	From: string, -- destination shown on signs for traffic towards the first point
+	To: string, -- destination shown on signs for traffic towards the last point
 }
 
 export type RoadClass = {
@@ -37,6 +46,10 @@ export type RoadClass = {
 	PartMaterial: string, -- Enum.Material name of the road surface parts
 	Color: { number }, -- RGB 0-255
 	CentreLine: boolean,
+	EdgeLines: boolean, -- white lines along both edges
+	Delineators: boolean, -- white marker posts beside the road
+	SpeedLimit: number?, -- km/h, shown on signs where the road leaves a place
+	Verge: number, -- studs beside the road surface kept free of trees
 }
 
 export type Property = {
@@ -62,7 +75,7 @@ end
 
 local MapLayout = {}
 
-MapLayout.Version = 1
+MapLayout.Version = 2
 
 MapLayout.Bounds = table.freeze({
 	Half = 5120, -- the map runs from -5120 to +5120 on X and Z
@@ -106,8 +119,16 @@ MapLayout.HeightAnchors = frozenList({
 	{ -4000, 1150, 100 }, -- palladium mine
 } :: { Anchor })
 
--- Gentle rolling of the open land (studs up and down, and the size of the swells), plus fine detail.
-MapLayout.Rolling = table.freeze({ Amplitude = 10, Wavelength = 700, DetailAmplitude = 2, DetailWavelength = 90 })
+-- Rolling of the open land: broad swells, medium undulation and fine detail
+-- (studs up and down, and the size of each wave in studs).
+MapLayout.Rolling = table.freeze({
+	Amplitude = 13,
+	Wavelength = 700,
+	MediumAmplitude = 6,
+	MediumWavelength = 260,
+	DetailAmplitude = 2.5,
+	DetailWavelength = 80,
+})
 
 MapLayout.Hills = frozenList({
 	{ Id = "NorthernHighlands", Rect = rect(-2300, 1900, -4400, -3850), Peak = 430, Margin = 450 },
@@ -275,16 +296,42 @@ MapLayout.Places = frozenList({
 		Rect = rect(1200, 1400, -3280, -3120),
 		Margin = 80,
 		Material = "Ground",
+		Crop = "Tobacco", -- the plot looks like the tobacco fields around it
 	},
 } :: { Place })
 
 -- Surface material of larger rural areas (not flattened).
 MapLayout.Zones = frozenList({
-	{ Id = "TobaccoWest", Rect = rect(500, 1800, -3800, -2700), Material = "LeafyGrass" },
-	{ Id = "TobaccoEast", Rect = rect(1900, 3000, -4300, -3400), Material = "LeafyGrass" },
-	{ Id = "Farmland", Rect = rect(1400, 3800, 1700, 3800), Material = "LeafyGrass" },
+	{ Id = "TobaccoWest", Rect = rect(500, 1800, -3800, -2700), Farming = "Tobacco" },
+	{ Id = "TobaccoEast", Rect = rect(1900, 3000, -4300, -3400), Farming = "Tobacco" },
+	{ Id = "TobaccoSouth", Rect = rect(2000, 3050, -2250, -1500), Farming = "Tobacco" },
+	{ Id = "Farmland", Rect = rect(1400, 3800, 1700, 3800), Farming = "Mixed" },
 	{ Id = "GoldFields", Rect = rect(-4300, -3500, 3400, 4200), Material = "Ground" },
 } :: { Zone })
+
+-- Fields in the farming zones: a grid of rectangles of varying size with tracks and hedges
+-- between them. Crops: Rows = terrain materials of the crop rows and the soil between them
+-- (4 studs each, along the longer side of the field), Fence = fenced pasture.
+MapLayout.Farming = table.freeze({
+	FieldWidth = table.freeze({ 150, 270 }), -- studs along X, smallest and largest
+	FieldDepth = table.freeze({ 110, 200 }), -- studs along Z
+	Gap = 12, -- tracks and hedges between fields
+	MaxSlope = 0.15, -- no fields on steeper ground (rise per stud across the field)
+	RoadClearance = 14, -- studs between a field and the edge of a road
+	Crops = table.freeze({
+		Tobacco = table.freeze({ Rows = table.freeze({ "LeafyGrass", "Ground" }) }),
+		Maize = table.freeze({ Rows = table.freeze({ "Grass", "Ground" }) }),
+		Fallow = table.freeze({ Rows = table.freeze({ "Ground", "Mud" }) }),
+		Meadow = table.freeze({ Material = "LeafyGrass" }),
+		Pasture = table.freeze({ Material = "Grass", Fence = true }),
+	}),
+	Mixes = table.freeze({
+		Tobacco = table.freeze({ Tobacco = 0.5, Maize = 0.15, Fallow = 0.2, Pasture = 0.15 }),
+		Mixed = table.freeze({ Pasture = 0.5, Maize = 0.2, Fallow = 0.1, Meadow = 0.2 }),
+	}),
+	-- Tobacco drying barns beside the tobacco fields (Oberdueshuson highlands, encyclopedia).
+	Barns = 10,
+})
 
 MapLayout.RoadClasses = table.freeze({
 	National = table.freeze({
@@ -295,6 +342,10 @@ MapLayout.RoadClasses = table.freeze({
 		PartMaterial = "Asphalt",
 		Color = table.freeze({ 58, 58, 62 }),
 		CentreLine = true,
+		EdgeLines = true,
+		Delineators = true,
+		SpeedLimit = 100,
+		Verge = 22,
 	}),
 	Regional = table.freeze({
 		Width = 32,
@@ -304,6 +355,10 @@ MapLayout.RoadClasses = table.freeze({
 		PartMaterial = "Asphalt",
 		Color = table.freeze({ 66, 66, 70 }),
 		CentreLine = true,
+		EdgeLines = true,
+		Delineators = true,
+		SpeedLimit = 80,
+		Verge = 12,
 	}),
 	Access = table.freeze({
 		Width = 22,
@@ -313,6 +368,10 @@ MapLayout.RoadClasses = table.freeze({
 		PartMaterial = "Pebble",
 		Color = table.freeze({ 128, 112, 92 }),
 		CentreLine = false,
+		EdgeLines = false,
+		Delineators = false,
+		SpeedLimit = nil,
+		Verge = 7,
 	}),
 } :: { [string]: RoadClass })
 
@@ -324,24 +383,32 @@ MapLayout.Roads = frozenList({
 		Id = "N1",
 		Name = "N1 Gundiville - Stokondo",
 		Class = "National",
+		From = "Gundiville",
+		To = "Stokondo",
 		Points = frozenList({ { -900, -500 }, { -1800, -1200 }, { -2400, -1900 } }),
 	},
 	{
 		Id = "N2",
 		Name = "N2 Gundiville - Kagundali",
 		Class = "National",
+		From = "Gundiville",
+		To = "Kagundali",
 		Points = frozenList({ { -900, 500 }, { -1500, 1500 }, { -2000, 2200 } }),
 	},
 	{
 		Id = "N3",
 		Name = "N3 Gundiville - Oberdueshuson",
 		Class = "National",
+		From = "Gundiville",
+		To = "Oberdueshuson",
 		Points = frozenList({ { 600, -900 }, { 1200, -1700 }, { 1900, -2500 } }),
 	},
 	{
 		Id = "N4",
 		Name = "N4 Gundiville - Airport - East Border",
 		Class = "National",
+		From = "Gundiville",
+		To = "East Border",
 		-- Leaves Gundiville on the main east-west street between the Brandwehr and the hospital.
 		Points = frozenList({
 			{ 900, 115 },
@@ -356,6 +423,8 @@ MapLayout.Roads = frozenList({
 		Id = "N5",
 		Name = "N5 Gundiville - South Border",
 		Class = "National",
+		From = "Gundiville",
+		To = "South Border",
 		-- Continues the ceremonial avenue southwards.
 		Points = frozenList({ { 0, 900 }, { 0, 1100 }, { 400, 2500 }, { 500, 4000 }, { 500, 5120 } }),
 	},
@@ -363,66 +432,88 @@ MapLayout.Roads = frozenList({
 		Id = "R1",
 		Name = "R1 Stokondo - Kagundali",
 		Class = "Regional",
+		From = "Stokondo",
+		To = "Kagundali",
 		Points = frozenList({ { -3100, -1700 }, { -3400, -500 }, { -3300, 800 }, { -3000, 2000 } }),
 	},
 	{
 		Id = "R2",
 		Name = "R2 Stokondo - Oberdueshuson (northern pass)",
 		Class = "Regional",
+		From = "Stokondo",
+		To = "Oberdueshuson",
 		Points = frozenList({ { -2600, -2900 }, { -1500, -3500 }, { 0, -3700 }, { 1200, -3400 }, { 1900, -3000 } }),
 	},
 	{
 		Id = "R3",
 		Name = "R3 Kagundali - N5",
 		Class = "Regional",
+		From = "Kagundali",
+		To = "South Border",
 		Points = frozenList({ { -2000, 3000 }, { -1000, 3250 }, { 453, 3300 } }),
 	},
 	{
 		Id = "R4",
 		Name = "R4 Oberdueshuson - N4",
 		Class = "Regional",
+		From = "Oberdueshuson",
+		To = "Cargo Airport",
 		Points = frozenList({ { 2900, -2300 }, { 3150, -1200 }, { 3200, 0 }, { 3200, 341 } }),
 	},
 	{
 		Id = "GoldHaul",
 		Name = "Gold mine haul road",
 		Class = "Access",
+		From = "Kagundali",
+		To = "Gold Mine",
 		Points = frozenList({ { -3000, 3400 }, { -3500, 3700 }, { -3650, 3800 } }),
 	},
 	{
 		Id = "PalladiumAccess",
 		Name = "Palladium mine road",
 		Class = "Access",
+		From = "R1",
+		To = "Palladium Mine",
 		Points = frozenList({ { -3275, 900 }, { -3700, 1100 }, { -3850, 1150 } }),
 	},
 	{
 		Id = "AirportAccess",
 		Name = "Airport apron road",
 		Class = "Access",
+		From = "N4",
+		To = "Cargo Airport",
 		Points = frozenList({ { 2600, 335 }, { 2600, 670 } }),
 	},
 	{
 		Id = "BarracksAccess",
 		Name = "Barracks road",
 		Class = "Access",
+		From = "Oberdueshuson",
+		To = "Barracks",
 		Points = frozenList({ { 2900, -2800 }, { 3100, -2850 } }),
 	},
 	{
 		Id = "TrainingAccess",
 		Name = "Training grounds road",
 		Class = "Access",
+		From = "R4",
+		To = "Training Grounds",
 		Points = frozenList({ { 2980, -1950 }, { 3500, -1950 } }),
 	},
 	{
 		Id = "FarmRoad",
 		Name = "Farm road (ranches)",
 		Class = "Access",
+		From = "N5",
+		To = "Cattle Ranch",
 		Points = frozenList({ { 314, 2200 }, { 1400, 2300 }, { 2600, 2750 } }),
 	},
 	{
 		Id = "FarmhouseAccess",
 		Name = "Farmhouse lane",
 		Class = "Access",
+		From = "R2",
+		To = "Farmhouse",
 		Points = frozenList({ { 1650, -3143 }, { 1650, -2975 } }),
 	},
 } :: { Road })
@@ -440,12 +531,145 @@ MapLayout.River = table.freeze({
 		{ -1200, 4000 },
 		{ -1500, 5120 },
 	}),
-	Width = 60, -- water surface width
-	Depth = 9, -- water depth in the middle
+	Width = 60, -- water surface width (downstream)
+	SourceWidth = 18, -- water surface width at the source; it widens over the first WidenOver studs
+	WidenOver = 2800,
+	CascadeStep = 4, -- the water level falls in steps of this height (pools with small cascades)
+	Depth = 9, -- water depth in the middle (less where the river is narrow)
 	DropBelowLand = 4, -- water surface below the surrounding land
 	BankWidth = 18,
 	WallSlope = 1.1, -- steepness of the valley sides where the river cuts through high ground
 	RoadClearance = 12, -- bridge decks stay at least this far above the water
+})
+
+-- Lakes (not in the map plan; added in the landscape pass of Milestone 2). Radius = half axes of
+-- the ellipse before its shore is made irregular. The water level is found automatically just
+-- below the lowest land around the shore, so the water never stands above the land.
+MapLayout.Lakes = frozenList({
+	{
+		Id = "RanchLake",
+		Centre = table.freeze({ 3300, 3100 }),
+		Radius = table.freeze({ 260, 170 }),
+		Angle = 20,
+		Depth = 14,
+	},
+	{
+		Id = "WestValleyPond",
+		Centre = table.freeze({ -2700, 400 }),
+		Radius = table.freeze({ 190, 130 }),
+		Angle = -35,
+		Depth = 10,
+	},
+	{
+		Id = "HighlandTarn",
+		Centre = table.freeze({ -700, -2900 }),
+		Radius = table.freeze({ 200, 135 }),
+		Angle = 60,
+		Depth = 12,
+	},
+})
+
+-- Trees, bushes and rocks. Forest = share of the ground under trees (0..1) before the grove
+-- pattern thins it out; Mix = share of each tree kind; Dry = how often bare red earth shows.
+-- Regions are checked in order; the first whose (ragged) rectangle plus margin contains a point
+-- decides. Hills reuse the hill rectangles above.
+MapLayout.Vegetation = table.freeze({
+	Density = 1, -- multiplies the tree and bush cover everywhere; lower it (e.g. 0.6) if Studio gets slow
+	TreeLine = 640, -- no trees above this height; they thin out from 160 studs below it
+	Regions = frozenList({
+		{
+			Id = "ForestedHills", -- timber plantations between Gundiville and Stokondo (encyclopedia)
+			Rect = rect(-2200, -900, -2600, -1500),
+			Margin = 380,
+			Forest = 0.9,
+			Mix = table.freeze({ Pine = 0.5, Broadleaf = 0.35, Eucalyptus = 0.15 }),
+			Dry = 0.05,
+		},
+		{
+			Id = "MastHill",
+			Rect = rect(-1900, -1300, -700, -100),
+			Margin = 300,
+			Forest = 0.6,
+			Mix = table.freeze({ Broadleaf = 0.7, Eucalyptus = 0.3 }),
+			Dry = 0.1,
+		},
+		{
+			Id = "NorthernHighlands",
+			Rect = rect(-2300, 1900, -4400, -3850),
+			Margin = 420,
+			Forest = 0.55,
+			Mix = table.freeze({ Broadleaf = 0.55, Pine = 0.3, Eucalyptus = 0.15 }),
+			Dry = 0.1,
+		},
+		{
+			Id = "GoldFieldHills",
+			Rect = rect(-4400, -3300, 3200, 4400),
+			Margin = 300,
+			Forest = 0.35,
+			Mix = table.freeze({ Acacia = 0.6, Broadleaf = 0.4 }),
+			Dry = 0.6,
+		},
+		{
+			Id = "PalladiumHills",
+			Rect = rect(-4400, -3600, 600, 1700),
+			Margin = 300,
+			Forest = 0.45,
+			Mix = table.freeze({ Broadleaf = 0.5, Acacia = 0.5 }),
+			Dry = 0.3,
+		},
+		{
+			Id = "KagundaliValley", -- the warmest part of the district: acacias and red earth
+			Rect = rect(-4300, -1200, 1500, 4400),
+			Margin = 250,
+			Forest = 0.1,
+			Mix = table.freeze({ Acacia = 0.75, Broadleaf = 0.25 }),
+			Dry = 0.55,
+		},
+		{
+			Id = "Plateau", -- Oberdueshuson highlands: eucalyptus groves and windbreaks
+			Rect = rect(400, 4300, -4300, -1400),
+			Margin = 250,
+			Forest = 0.12,
+			Mix = table.freeze({ Eucalyptus = 0.6, Broadleaf = 0.3, Pine = 0.1 }),
+			Dry = 0.15,
+		},
+		{
+			Id = "Pastures", -- south-east lowland pastures
+			Rect = rect(1300, 4300, 1500, 4300),
+			Margin = 250,
+			Forest = 0.07,
+			Mix = table.freeze({ Acacia = 0.45, Broadleaf = 0.55 }),
+			Dry = 0.2,
+		},
+	} :: { VegetationRegion }),
+	Default = table.freeze({
+		Forest = 0.1,
+		Mix = table.freeze({ Broadleaf = 0.65, Acacia = 0.2, Eucalyptus = 0.15 }),
+		Dry = 0.2,
+	}),
+	-- The boundary mountains below the tree line: montane forest.
+	Mountains = table.freeze({ Forest = 0.45, Mix = table.freeze({ Broadleaf = 0.45, Pine = 0.55 }), Dry = 0.1 }),
+	-- A belt of trees and bushes along the river and the lakes.
+	Riverside = table.freeze({ Width = 70, Forest = 0.55, Mix = table.freeze({ Broadleaf = 0.8, Eucalyptus = 0.2 }) }),
+	-- Rows of trees along the first stretch of some roads out of Gundiville (German "Allee").
+	Avenues = frozenList({
+		{ Road = "N5", From = 40, To = 640, Spacing = 34, Kind = "Broadleaf" },
+		{ Road = "N1", From = 40, To = 560, Spacing = 34, Kind = "Broadleaf" },
+		{ Road = "N3", From = 40, To = 480, Spacing = 30, Kind = "Eucalyptus" },
+	}),
+})
+
+-- Road furniture. Power lines run on one side of these roads (wooden poles and wires).
+MapLayout.RoadFurniture = table.freeze({
+	PowerLines = frozenList({
+		{ Road = "N1", Side = "Left" },
+		{ Road = "N2", Side = "Right" },
+		{ Road = "N3", Side = "Left" },
+		{ Road = "N4", Side = "Left" },
+		{ Road = "N5", Side = "Right" },
+	}),
+	StreetLightsNearPlaces = 260, -- street lights on national roads this far out of cities
+	CitySpeedLimit = 50, -- km/h, on a speed sign for traffic entering a city
 })
 
 -- Cargo airport parts (map plan, section 3): runway east-west, apron and terminal on the north side.

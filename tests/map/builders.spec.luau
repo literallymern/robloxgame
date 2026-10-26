@@ -94,12 +94,14 @@ local expected = {
 	"Roads",
 	"Bridges",
 	"Places",
-	"Signs",
 	"GundivillePlaceholders",
 	"Airport",
 	"Crossings",
 	"Properties",
 	"Boundary",
+	"RoadDetails",
+	"Countryside",
+	"Vegetation",
 }
 for _, name in expected do
 	local folder = map and map:FindFirstChild(name)
@@ -131,7 +133,7 @@ for _, item in map:GetDescendants() do
 end
 print(`INFO {partCount} parts under Workspace.Map`)
 check("all parts inside the map", outside == 0, `{outside} outside`)
-check("part count reasonable for streaming (under 8000)", partCount < 8000, tostring(partCount))
+check("part count within the budget (under 45000)", partCount < 45000, tostring(partCount))
 
 -- Road surfaces sit on the calculated profile.
 local worst, worstWhere = 0, ""

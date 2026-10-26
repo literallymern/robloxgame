@@ -138,6 +138,10 @@ CFrame = {
 		local newUp = right:Cross(look)
 		return cf(at, right, newUp, -look)
 	end,
+	fromMatrix = function(pos, vx, vy, vz)
+		vz = vz or vx:Cross(vy)
+		return cf(pos, vx, vy, vz)
+	end,
 	Angles = function(rx, ry, rz)
 		local function rot(axis, a)
 			local c, s = math.cos(a), math.sin(a)
@@ -154,6 +158,13 @@ CFrame = {
 
 -- Small value types ---------------------------------------------------------------------------------
 Color3 = {
+	new = function(r, g, b)
+		for _, n in { r, g, b } do
+			checkNumber(n, "Color3.new")
+			assert(n >= 0 and n <= 1, "Color3.new: component out of range")
+		end
+		return { R = r, G = g, B = b, __type = "Color3" }
+	end,
 	fromRGB = function(r, g, b)
 		for _, n in { r, g, b } do
 			checkNumber(n, "Color3.fromRGB")
@@ -171,6 +182,11 @@ UDim2 = {
 	end,
 	new = function(xs, xo, ys, yo)
 		return { __type = "UDim2", xs = xs, xo = xo, ys = ys, yo = yo }
+	end,
+}
+ColorSequence = {
+	new = function(colour)
+		return { __type = "ColorSequence", colour = colour }
 	end,
 }
 Region3 = {
@@ -251,6 +267,7 @@ local ENUMS = {
 		"Water",
 	},
 	PartType = { "Ball", "Block", "Cylinder", "Wedge", "CornerWedge" },
+	MeshType = { "Brick", "Cylinder", "Sphere", "Wedge", "FileMesh" },
 	SurfaceType = { "Smooth", "Studs", "Inlet", "Universal" },
 	Font = { "GothamBold", "Gotham", "SourceSans", "SourceSansBold" },
 	NormalId = { "Front", "Back", "Top", "Bottom", "Left", "Right" },
@@ -304,12 +321,75 @@ local CLASSES = {
 		},
 		isA = { "BillboardGui", "LayerCollector" },
 	},
+	WedgePart = { props = {}, base = BASEPART, isA = { "WedgePart", "BasePart", "PVInstance" } },
+	SpecialMesh = { props = { MeshType = "EnumItem" }, isA = { "SpecialMesh", "DataModelMesh" } },
+	SpotLight = {
+		props = {
+			Face = "EnumItem",
+			Angle = "number",
+			Range = "number",
+			Brightness = "number",
+			Color = "Color3",
+			Shadows = "boolean",
+		},
+		isA = { "SpotLight", "Light" },
+	},
+	Attachment = { props = { CFrame = "CFrame" }, isA = { "Attachment" } },
+	Beam = {
+		props = {
+			Attachment0 = "any",
+			Attachment1 = "any",
+			Width0 = "number",
+			Width1 = "number",
+			Color = "ColorSequence",
+			LightInfluence = "number",
+			FaceCamera = "boolean",
+			Segments = "number",
+			CurveSize0 = "number",
+			CurveSize1 = "number",
+		},
+		isA = { "Beam" },
+	},
+	Clouds = { props = { Cover = "number", Density = "number", Color = "Color3" }, isA = { "Clouds" } },
+	Terrain = {
+		props = {
+			WaterColor = "Color3",
+			WaterTransparency = "number",
+			WaterReflectance = "number",
+			WaterWaveSize = "number",
+			WaterWaveSpeed = "number",
+			Decoration = "boolean",
+		},
+		isA = { "Terrain" },
+	},
+	Frame = {
+		props = {
+			BackgroundColor3 = "Color3",
+			BackgroundTransparency = "number",
+			BorderSizePixel = "number",
+			Position = "UDim2",
+			Size = "UDim2",
+			Rotation = "number",
+		},
+		isA = { "Frame", "GuiObject" },
+	},
+	ImageLabel = {
+		props = { BackgroundTransparency = "number", Position = "UDim2", Size = "UDim2", Image = "string" },
+		isA = { "ImageLabel", "GuiObject" },
+	},
 	SurfaceGui = {
-		props = { Face = "EnumItem", SizingMode = "EnumItem", PixelsPerStud = "number", LightInfluence = "number" },
+		props = {
+			Face = "EnumItem",
+			SizingMode = "EnumItem",
+			PixelsPerStud = "number",
+			LightInfluence = "number",
+			MaxDistance = "number",
+		},
 		isA = { "SurfaceGui", "LayerCollector" },
 	},
 	TextLabel = {
 		props = {
+			Position = "UDim2",
 			Size = "UDim2",
 			BackgroundTransparency = "number",
 			BackgroundColor3 = "Color3",
@@ -383,6 +463,20 @@ function METHODS.GetDescendants(self)
 	walk(self)
 	return out
 end
+function METHODS.FindFirstChildOfClass(self, className)
+	for _, child in self.__children do
+		if child.__class == className then
+			return child
+		end
+	end
+	return nil
+end
+function METHODS.SetMaterialColor(self, material, colour)
+	assert(self.__class == "Terrain", "SetMaterialColor is a Terrain method")
+	assert(typeOf(material) == "EnumItem" and TERRAIN_MATERIALS[material.Name], "SetMaterialColor: bad material")
+	assert(typeOf(colour) == "Color3", "SetMaterialColor: bad colour")
+	MockStats.materialColours = (MockStats.materialColours or 0) + 1
+end
 function METHODS.FindFirstChild(self, name)
 	for _, child in self.__children do
 		if child.__props.Name == name then
@@ -421,6 +515,8 @@ Inst.__index = function(self, key)
 		return rawget(self, "__parent")
 	elseif key == "ClassName" then
 		return self.__class
+	elseif key == "Position" and self.__props.CFrame and CLASSES[self.__class] and CLASSES[self.__class].base then
+		return self.__props.CFrame.p
 	end
 	local value = self.__props[key]
 	if value ~= nil then

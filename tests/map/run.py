@@ -18,6 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # Module path as Roblox sees it (after Rojo) -> file in the repository.
 MODULES = {
     "ReplicatedStorage/Shared/Config/MapLayout": "src/shared/Config/MapLayout.luau",
+    "ReplicatedStorage/Shared/Config/Assets": "src/shared/Config/Assets.luau",
     "StudioTools/BuildMap": "src/studio/BuildMap.luau",
 }
 for folder, prefix in (("src/studio/Map", "StudioTools/Map"), ("src/studio/Map/Builders", "StudioTools/Map/Builders")):

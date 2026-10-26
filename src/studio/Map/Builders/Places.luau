@@ -1,7 +1,7 @@
 --!strict
 -- Footprints of the cities, facilities and border crossings: a coloured outline on the ground,
--- a floating name over each place, name signs where roads enter, and the placeholder blocks of
--- the Gundiville government district.
+-- a floating name over each place, and the placeholder blocks of the Gundiville government
+-- district. (Name signs at the roads are built with the other road signs.)
 
 local Heightfield = require(script.Parent.Parent.Heightfield)
 local Util = require(script.Parent.Util)
@@ -38,11 +38,6 @@ end
 function Places.build(hf: Heightfield.Heightfield, layout: any, parent: Instance): number
 	local folder = Util.folder(parent, "Places")
 	local total = 0
-	local placeById = {}
-	for _, place in layout.Places do
-		placeById[place.Id] = place
-	end
-
 	for _, place in layout.Places do
 		if place.Kind == "Plot" then
 			continue
@@ -66,30 +61,6 @@ function Places.build(hf: Heightfield.Heightfield, layout: any, parent: Instance
 		Util.label(marker, place.Name, if big then 120 else 50, if big then 4000 else 1500, if big then 320 else 240)
 		model.Parent = folder
 		total += 6
-	end
-
-	-- Name signs where roads enter a place, on the right-hand side of arriving traffic.
-	local signs = Util.folder(parent, "Signs")
-	for _, road in hf.roads.roads do
-		local xs, zs = road.line.xs, road.line.zs
-		local ends = { { 1, 2 }, { #xs, #xs - 1 } }
-		for _, pair in ends do
-			local i, j = pair[1], pair[2]
-			for _, place in layout.Places do
-				local r = place.Rect
-				local x, z = xs[i], zs[i]
-				local inside = x >= r.MinX - 0.01 and x <= r.MaxX + 0.01 and z >= r.MinZ - 0.01 and z <= r.MaxZ + 0.01
-				if inside and place.Kind ~= "Plot" then
-					-- Direction of arriving traffic: from the second sample towards the end sample.
-					local dir = Vector3.new(x - xs[j], 0, z - zs[j]).Unit
-					local right = Vector3.new(-dir.Z, 0, dir.X)
-					local spot = Vector3.new(x, 0, z) - dir * 24 + right * (road.Width / 2 + 6)
-					local groundY = hf.surface(spot.X, spot.Z)
-					Util.sign(signs, place.Name, Vector3.new(spot.X, groundY, spot.Z), -dir)
-					total += 2
-				end
-			end
-		end
 	end
 
 	-- Gundiville government district placeholders (replaced in Milestone 3).

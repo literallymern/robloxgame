@@ -23,7 +23,13 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 		local model = Instance.new("Model")
 		model.Name = `Bridge {bridge.Road}`
 		model:SetAttribute("Road", bridge.Road)
-		total += Roads.buildRuns(model, road, bridge.First, bridge.Last, DECK_THICKNESS, concrete)
+		total += Roads.buildRuns(model, road, {
+			Bridge = true,
+			Thickness = DECK_THICKNESS,
+			Part = concrete,
+			First = bridge.First,
+			Last = bridge.Last,
+		})
 		-- Railings along both edges.
 		for i = bridge.First, bridge.Last - 1 do
 			local a = Vector3.new(road.line.xs[i], road.profile[i], road.line.zs[i])

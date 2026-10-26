@@ -3,9 +3,10 @@
 
 1. tests/map/heightfield.spec.luau (layout, roads, bridges, river, places, spawn) with the Luau CLI.
 2. The property plots in MapLayout match the economy bot's GENESIS_PROPERTIES (name, city, type).
-3. tests/map/builders.spec.luau: the real BuildMap script against a Roblox stand-in (about a minute).
+3. tests/map/landscape.spec.luau (river cascades, lakes, fields, road details, vegetation).
+4. tests/map/builders.spec.luau: the real BuildMap script against a Roblox stand-in (about a minute).
 
-Usage: python3 tests/map/test_all.py [--quick]     (needs `luau` on PATH or $LUAU; --quick skips 3)
+Usage: python3 tests/map/test_all.py [--quick]     (needs `luau` on PATH or $LUAU; --quick skips 4)
 """
 
 import os
@@ -56,6 +57,20 @@ def main():
             print("  only in MapLayout:", entry)
     else:
         print(f"PASS property plots match the bot's {len(bot)} GENESIS_PROPERTIES (name, city, type)")
+
+    result = subprocess.run(
+        [sys.executable, os.path.join(HERE, "run.py"), os.path.join(HERE, "landscape.spec.luau")],
+        capture_output=True,
+        text=True,
+    )
+    output = result.stdout + result.stderr
+    for line in output.splitlines():
+        if not line.startswith("PASS"):
+            print(line)
+    passes = sum(1 for line in output.splitlines() if line.startswith("PASS"))
+    print(f"{passes} landscape checks passed")
+    if result.returncode != 0 or "ALL CHECKS PASSED" not in output:
+        failed = True
 
     if "--quick" not in sys.argv:
         result = subprocess.run(

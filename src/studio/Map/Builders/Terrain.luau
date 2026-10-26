@@ -103,11 +103,16 @@ function TerrainBuilder.build(hf: Heightfield.Heightfield, layout: any, log: (st
 					local i = base + c + 1
 					local h = heights[i]
 					local code = codes[i]
-					if code == 0 then
+					if code <= 0 then
 						local dx = (heights[i + 1] - heights[i - 1]) / (2 * RES)
 						local dz = (heights[i + width] - heights[i - width]) / (2 * RES)
-						code =
-							naturalMaterial(h, math.sqrt(dx * dx + dz * dz), x0 + (cx - 1) * RES, z0 + (cz - 1) * RES)
+						code = naturalMaterial(
+							h,
+							math.sqrt(dx * dx + dz * dz),
+							x0 + (cx - 1) * RES + RES / 2,
+							z0 + (cz - 1) * RES + RES / 2,
+							code
+						)
 					end
 					local material = enumByCode[code]
 					local water = waters[i]

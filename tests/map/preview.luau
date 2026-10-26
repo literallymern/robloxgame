@@ -4,6 +4,8 @@
 
 local MapLayout = load("ReplicatedStorage/Shared/Config/MapLayout")
 local Heightfield = load("StudioTools/Map/Heightfield")
+local RoadDetails = load("StudioTools/Map/RoadDetails")
+local Vegetation = load("StudioTools/Map/Vegetation")
 
 local step = 16
 local half = MapLayout.Bounds.Half
@@ -26,13 +28,13 @@ for iz = 0, n - 1 do
 	for ix = 0, n - 1 do
 		local i = iz * n + ix + 1
 		local m = materials[i]
-		if m == 0 then
+		if m <= 0 then
 			local e = heights[iz * n + math.min(ix + 1, n - 1) + 1]
 			local w = heights[iz * n + math.max(ix - 1, 0) + 1]
 			local s = heights[math.min(iz + 1, n - 1) * n + ix + 1]
 			local no = heights[math.max(iz - 1, 0) * n + ix + 1]
 			local slope = math.sqrt(((e - w) / (2 * step)) ^ 2 + ((s - no) / (2 * step)) ^ 2)
-			m = hf.naturalMaterial(heights[i], slope, -half + ix * step, -half + iz * step)
+			m = hf.naturalMaterial(heights[i], slope, -half + ix * step, -half + iz * step, m)
 		end
 		cells[ix + 1] = string.format("%.1f,%d,%.1f", heights[i], m, waters[i])
 	end
@@ -67,3 +69,16 @@ end
 for _, property in MapLayout.Properties do
 	rectLine("Plot", property.Rect)
 end
+-- Fields, barns and trees.
+for _, field in hf.fields.list do
+	print(string.format("FIELD %s %.0f %.0f %.0f %.0f", field.Crop, field.MinX, field.MaxX, field.MinZ, field.MaxZ))
+end
+for _, barn in hf.fields.barns do
+	print(string.format("BARN %.0f %.0f", barn.X, barn.Z))
+end
+local plants = Vegetation.new(MapLayout, hf, RoadDetails.new(MapLayout, hf))
+local trees = table.create(#plants.trees)
+for _, t in plants.trees do
+	table.insert(trees, string.format("%s,%.0f,%.0f,%.0f", string.sub(t.Kind, 1, 1), t.X, t.Z, t.Size))
+end
+print("TREES " .. table.concat(trees, " "))
