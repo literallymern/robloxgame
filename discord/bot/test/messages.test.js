@@ -2,7 +2,7 @@
 // command they mention really exists.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadMessages, splitMessage, linkChannels } from '../scripts/post-messages.js';
+import { loadMessages, splitMessage, linkChannels, parseMessageFile } from '../src/setup/messages.js';
 import { CHANNELS } from '../src/blueprint/channels.js';
 import { commandJson } from '../src/discord/commands/index.js';
 import { buildPanel, PANEL_CHANNELS } from '../src/discord/components.js';
@@ -58,6 +58,14 @@ test('long texts are split at paragraph boundaries', () => {
   const parts = splitMessage(text);
   assert.ok(parts.length > 1);
   assert.equal(parts.join('\n\n'), text);
+});
+
+test('message files with Windows line endings are read the same way', () => {
+  const unix = '---\nchannel: rules\norder: 2\n---\n# Title\n\nFirst paragraph.\n\nSecond paragraph.\n';
+  const windows = unix.replace(/\n/g, '\r\n');
+  assert.deepEqual(parseMessageFile(windows), parseMessageFile(unix));
+  assert.equal(parseMessageFile(windows).meta.channel, 'rules');
+  assert.ok(!parseMessageFile(windows).body.includes('\r'));
 });
 
 test('every panel can be built and has buttons', () => {

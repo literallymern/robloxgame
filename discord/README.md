@@ -42,7 +42,7 @@ Requires Node.js 22.13 or newer.
 ```
 cd discord/bot
 npm install
-npm test                      # 66 tests, no Discord needed
+npm test                      # 67 tests, no Discord needed
 npm run simulate -- 30        # 30 simulated days, prints the National Economic Report
 ```
 

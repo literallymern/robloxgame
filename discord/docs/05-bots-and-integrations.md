@@ -35,9 +35,9 @@ Everything else uses features Discord already has (AutoMod, Community, Onboardin
 | `src/db/` | Database schema and backup helper |
 | `src/discord/` | Slash commands, buttons and tickets, bot-level permission checks, ID lookup |
 | `src/blueprint/` | Single source of truth for roles, channels, permission overwrites and ticket types |
-| `src/setup/` | Compares the blueprint with the live server and plans changes |
+| `src/setup/` | Compares the blueprint with the live server and plans changes; reads the message files; builds the generated docs |
 | `scripts/` | `setup-server`, `deploy-commands`, `post-messages`, `simulate`, `generate-docs` |
-| `test/` | 66 automated tests |
+| `test/` | 67 automated tests |
 
 ### Slash commands
 

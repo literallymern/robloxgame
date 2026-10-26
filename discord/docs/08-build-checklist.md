@@ -15,7 +15,7 @@
 - [x] Slash command registration script
 - [x] Database schema with automatic creation on first start
 - [x] Daily backups, audit log, alerts
-- [x] 66 automated tests passing, 30-day offline simulation with balanced books ([09](09-qa-report.md))
+- [x] 67 automated tests passing, 30-day offline simulation with balanced books ([09](09-qa-report.md))
 - [x] Setup guide ([07](07-setup-guide.md))
 
 ## B. Discord account and server (Owner)
@@ -36,7 +36,7 @@
 
 - [ ] Choose a machine that runs 24/7 (VPS recommended)
 - [ ] Install Node.js 22.13+ and the code; `npm install`
-- [ ] `npm test` shows 66 passing tests on that machine
+- [ ] `npm test` shows 67 passing tests on that machine
 - [ ] Set up a process manager (pm2 or systemd) so the bot restarts after crashes and reboots
 - [ ] Plan where to copy `data/backups/` regularly
 
