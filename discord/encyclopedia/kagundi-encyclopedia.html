@@ -1,0 +1,2071 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  Kagundi Encyclopedia, Edition 2 (source of discord/assets/kagundi-encyclopedia.pdf).
+  The same page is published as a website on claude.ai.
+  Rebuild the PDF on Windows (Microsoft Edge, run in this folder):
+    "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --disable-gpu --no-pdf-header-footer --virtual-time-budget=10000 --print-to-pdf="%CD%\..\assets\kagundi-encyclopedia.pdf" "%CD%\kagundi-encyclopedia.html"
+  Then post it again with: npm run post-messages -- --apply   (in discord\bot)
+-->
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Kagundi Encyclopedia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Spectral:ital,wght@0,500;0,600;1,500&display=swap">
+<style>
+/* Layout: a reference wiki. Sticky top bar with search; a left article index on wide screens (a fold-out menu on phones);
+   one article at a time in a ~760px reading column with a right-floating infobox. Print shows every article in sequence. */
+:root {
+  --bg: #fbfcfb;
+  --surface: #f0f3f0;
+  --fg: #1b201d;
+  --muted: #58615c;
+  --rule: #cfd6d1;
+  --link: #1d5791;
+  --accent: #2c684b;
+  --accent-soft: #dceae1;
+  --era: #c3cdc6;
+  --era-alt: #a9b6ad;
+  --flag-blue: #0a8fde;
+  --flag-red: #c8102e;
+  --flag-yellow: #f6c600;
+  --flag-green: #078346;
+  --flag-black: #111111;
+  --flag-white: #ffffff;
+  --map-mtn: #c9c3b5;
+  --map-land: #e7ecdf;
+  --map-hill: #d3dcc8;
+  --map-forest: #b9cfb1;
+  --map-farm: #ece2bf;
+  --map-mine: #b79a76;
+  --map-mil: #c7cbb9;
+  --map-built: #d9ddd6;
+  --map-road: #8c6a35;
+  --map-road-minor: #b0956b;
+  --map-water: #9cc4dd;
+  --seq-1: #cfe5d8;
+  --seq-2: #9fcbb1;
+  --seq-3: #6aa987;
+  --seq-4: #3f8562;
+  --seq-5: #1f5c3f;
+  --font-display: "Spectral", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121614; --surface: #1a201d; --fg: #e3e8e5; --muted: #a0aaa4; --rule: #2f3833;
+    --link: #8ab8ee; --accent: #79c19c; --accent-soft: #1f3529; --era: #3a453f; --era-alt: #4b5851;
+    --map-mtn: #3b3a34; --map-land: #1d2520; --map-hill: #26312a; --map-forest: #233a2c; --map-farm: #3a3523;
+    --map-mine: #5e4a33; --map-mil: #343a2e; --map-built: #2c332f; --map-road: #c8a46a; --map-road-minor: #9c8460; --map-water: #2f5e78;
+    --seq-1: #24402f; --seq-2: #2f5e45; --seq-3: #3f7d5c; --seq-4: #5fa47f; --seq-5: #96d1b0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121614; --surface: #1a201d; --fg: #e3e8e5; --muted: #a0aaa4; --rule: #2f3833;
+  --link: #8ab8ee; --accent: #79c19c; --accent-soft: #1f3529; --era: #3a453f; --era-alt: #4b5851;
+  --map-mtn: #3b3a34; --map-land: #1d2520; --map-hill: #26312a; --map-forest: #233a2c; --map-farm: #3a3523;
+  --map-mine: #5e4a33; --map-mil: #343a2e; --map-built: #2c332f; --map-road: #c8a46a; --map-road-minor: #9c8460; --map-water: #2f5e78;
+  --seq-1: #24402f; --seq-2: #2f5e45; --seq-3: #3f7d5c; --seq-4: #5fa47f; --seq-5: #96d1b0;
+  color-scheme: dark;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 76px); }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 2px; }
+
+/* Top bar */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+.topbar-inner {
+  max-width: 1200px; margin: 0 auto;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; justify-content: space-between;
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--fg); }
+.brand:hover { text-decoration: none; }
+.brand img { width: 34px; height: 34px; }
+.brand b { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; letter-spacing: 0.01em; line-height: 1.1; display: block; }
+.brand small { display: block; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.02em; }
+.stripe { display: grid; grid-template-rows: 3px 1px 2px 3px; }
+.stripe span:nth-child(1) { background: var(--flag-blue); }
+.stripe span:nth-child(2) { background: var(--flag-red); }
+.stripe span:nth-child(3) { background: var(--flag-yellow); }
+.stripe span:nth-child(4) { background: var(--flag-green); }
+
+.search { position: relative; flex: 1 1 260px; max-width: 420px; }
+.search input {
+  width: 100%; box-sizing: border-box;
+  font: inherit; font-size: 0.95rem; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 7px 10px;
+}
+.search input::placeholder { color: var(--muted); }
+.results {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+  background: var(--bg); border: 1px solid var(--rule); border-radius: 4px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  list-style: none; margin: 0; padding: 4px 0; max-height: 60vh; overflow-y: auto;
+}
+.results li { margin: 0; }
+.results a { display: block; padding: 6px 12px; color: var(--fg); }
+.results a:hover, .results a:focus-visible, .results a.on { background: var(--accent-soft); text-decoration: none; }
+.results b { font-weight: 600; }
+.results small { display: block; color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+.results .none { padding: 6px 12px; color: var(--muted); font-size: 0.9rem; }
+
+/* Shell */
+.shell {
+  max-width: 1200px; margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; align-items: start;
+}
+.sidebar { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 72px); max-height: calc(100vh - 92px); overflow-y: auto; font-size: 0.92rem; }
+.sidebar summary { display: none; }
+.navgroup + .navgroup { margin-top: 14px; }
+.navgroup h4 { margin: 0 0 4px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 700; }
+.navgroup ul { list-style: none; margin: 0; padding: 0; }
+.navgroup li + li { margin-top: 1px; }
+.navgroup a { display: block; padding: 3px 8px; border-radius: 3px; color: var(--fg); }
+.navgroup a:hover { background: var(--surface); text-decoration: none; }
+.navgroup a[aria-current="page"] { background: var(--accent-soft); color: var(--fg); font-weight: 600; }
+
+/* Articles */
+.page { min-width: 0; max-width: 860px; }
+html.js .page:not(.is-active) { display: none; }
+.page::after { content: ""; display: block; clear: both; }
+h1, h2 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; line-height: 1.25; }
+h1 { font-size: 2.3rem; margin: 0 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+h2 { font-size: 1.55rem; margin: 2.1rem 0 0.6rem; padding-bottom: 4px; border-bottom: 1px solid var(--rule); display: flow-root; }
+h3 { font-size: 1.08rem; font-weight: 700; margin: 1.5rem 0 0.4rem; text-wrap: balance; }
+p { margin: 0 0 0.85rem; }
+ul, ol { margin: 0 0 0.85rem; padding-left: 1.4rem; }
+li + li { margin-top: 0.2rem; }
+.from { color: var(--muted); font-size: 0.9rem; margin: 0 0 12px; }
+.hatnote { font-style: italic; color: var(--muted); padding-left: 1.6rem; margin-bottom: 0.9rem; }
+.lang { font-style: italic; }
+.caption, figcaption { color: var(--muted); font-size: 0.85rem; }
+.lede { font-size: 1.05rem; }
+.note { font-size: 0.88rem; color: var(--muted); }
+
+/* Infobox */
+.infobox {
+  float: right; clear: right;
+  width: 300px; margin: 0 0 16px 24px;
+  background: var(--surface); border: 1px solid var(--rule);
+  font-size: 0.875rem; line-height: 1.45;
+  border-collapse: collapse;
+}
+.infobox caption {
+  caption-side: top; text-align: center;
+  font-family: var(--font-display); font-size: 1.15rem; font-weight: 600;
+  padding: 10px 12px 6px; background: var(--accent-soft); border: 1px solid var(--rule); border-bottom: 0;
+}
+.infobox caption span { display: block; font-family: var(--font-body); font-size: 0.85rem; font-weight: 400; font-style: italic; color: var(--muted); }
+.infobox th, .infobox td { padding: 5px 10px; vertical-align: top; text-align: left; }
+.infobox th { font-weight: 600; width: 42%; }
+.infobox tr + tr th, .infobox tr + tr td { border-top: 1px solid var(--rule); }
+.infobox .group th { text-align: center; background: var(--accent-soft); font-weight: 700; width: auto; }
+.infobox .sub th { padding-left: 18px; font-weight: 400; }
+.infobox ul { margin: 0; padding-left: 1rem; }
+.infobox .symbols td { padding: 12px 10px 10px; }
+.symbols-row { display: flex; gap: 14px; align-items: flex-end; justify-content: center; }
+.symbols-row figure, .figures figure { margin: 0; text-align: center; }
+.symbols-row figcaption, .figures figcaption { margin-top: 4px; }
+.flag-img { display: block; border: 1px solid var(--rule); height: auto; }
+.symbols-row .flag-img { width: 160px; }
+.symbols-row .emblem-img { width: 80px; height: 80px; display: block; }
+.infobox .mini-map { padding: 10px; }
+.infobox .mini-map svg { width: 100%; height: auto; display: block; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; margin: 0 0 1rem; }
+.wikitable { border-collapse: collapse; font-size: 0.92rem; min-width: 100%; }
+.wikitable caption { text-align: left; font-weight: 700; padding-bottom: 6px; }
+.wikitable th, .wikitable td { border: 1px solid var(--rule); padding: 6px 10px; text-align: left; vertical-align: top; }
+.wikitable th { background: var(--surface); font-weight: 700; }
+.wikitable td.num, .wikitable th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Figures */
+figure.fig { margin: 0.6rem 0 1.4rem; }
+.fig-wrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+.fig-wrap svg { display: block; width: 100%; height: auto; min-width: 560px; }
+figure.fig figcaption { margin-top: 6px; }
+.legend { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.85rem; color: var(--muted); }
+.legend li { margin: 0; display: flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 10px; border: 1px solid var(--rule); display: inline-block; }
+.legend i.line { height: 0; border: 0; border-top: 3px solid var(--map-road); width: 16px; }
+.legend i.line.minor { border-top: 2px solid var(--map-road-minor); }
+
+/* Map and plan SVG classes */
+.m-mtn { fill: var(--map-mtn); }
+.m-land { fill: var(--map-land); }
+.m-hill { fill: var(--map-hill); }
+.m-forest { fill: var(--map-forest); }
+.m-farm { fill: var(--map-farm); }
+.m-mine { fill: var(--map-mine); }
+.m-mil { fill: var(--map-mil); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.m-built { fill: var(--map-built); stroke: var(--rule); stroke-width: 1; }
+.m-water { fill: none; stroke: var(--map-water); stroke-width: 7; stroke-linecap: round; }
+.m-road { fill: none; stroke: var(--map-road); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.m-road-minor { fill: none; stroke: var(--map-road-minor); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.m-runway { fill: var(--muted); }
+.m-city { fill: var(--bg); stroke: var(--fg); stroke-width: 2; }
+.m-capital { fill: var(--accent); stroke: var(--bg); stroke-width: 3; }
+.m-label, .m-sub { paint-order: stroke; stroke: var(--map-land); stroke-width: 4px; stroke-linejoin: round; }
+.m-label { fill: var(--fg); font-family: var(--font-body); font-size: 22px; font-weight: 700; }
+.m-sub { fill: var(--muted); font-family: var(--font-body); font-size: 15px; }
+.m-tiny { fill: var(--muted); font-family: var(--font-body); font-size: 13px; font-style: italic; }
+.m-mark { fill: var(--fg); }
+.m-border { fill: var(--bg); stroke: var(--flag-red); stroke-width: 3; }
+.p-bldg { fill: var(--surface); stroke: var(--fg); stroke-width: 1.5; }
+.p-key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.p-square { fill: var(--map-farm); stroke: var(--rule); stroke-width: 1; }
+.p-green { fill: var(--map-forest); }
+.p-res { fill: var(--map-built); }
+.p-street { fill: none; stroke: var(--map-road-minor); stroke-width: 10; stroke-linecap: round; }
+.p-avenue { fill: var(--map-road-minor); }
+.p-label { fill: var(--fg); font-family: var(--font-body); font-size: 14px; font-weight: 600; }
+.p-small { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+.p-statue { fill: var(--accent); }
+
+/* Era bar */
+.eras { margin: 0.4rem 0 1.2rem; }
+.eras-bar { display: grid; grid-template-columns: 30fr 4fr 41fr 22fr 44fr; gap: 2px; height: 14px; border-radius: 3px; overflow: hidden; }
+.eras-bar span { background: var(--era); }
+.eras-bar span:nth-child(even) { background: var(--era-alt); }
+.eras-bar span.now { background: var(--accent); }
+.eras-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.eras-legend { list-style: none; padding: 0; margin: 10px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 6px 16px; font-size: 0.88rem; }
+.eras-legend li { margin: 0; display: grid; grid-template-columns: 12px 1fr; gap: 8px; align-items: baseline; }
+.eras-legend i { width: 12px; height: 12px; border-radius: 2px; background: var(--era); transform: translateY(1px); }
+.eras-legend li:nth-child(even) i { background: var(--era-alt); }
+.eras-legend li.now i { background: var(--accent); }
+.eras-legend b { font-weight: 600; }
+.eras-legend small { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+/* Timeline */
+.timeline { list-style: none; padding: 0; margin: 0.6rem 0 1.2rem; border-left: 2px solid var(--rule); }
+.timeline li { position: relative; margin: 0; padding: 0 0 14px 22px; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 12px; }
+.timeline li::before { content: ""; position: absolute; left: -6px; top: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--accent); }
+.timeline li.era-start::before { background: var(--accent); }
+.timeline .when { font-weight: 700; font-variant-numeric: tabular-nums; }
+.timeline .era { grid-column: 1 / -1; font-family: var(--font-display); font-size: 1.15rem; color: var(--accent); }
+.timeline li.era-row { padding-top: 8px; }
+.timeline li.era-row::before { width: 14px; height: 14px; left: -8px; top: 14px; background: var(--accent); border-color: var(--accent); }
+
+/* Org chart */
+.org { display: grid; gap: 10px; margin: 0.6rem 0 1.4rem; font-size: 0.9rem; }
+.org-top { display: flex; justify-content: center; }
+.org-box { border: 1px solid var(--rule); background: var(--surface); border-radius: 4px; padding: 8px 12px; text-align: center; }
+.org-box b { display: block; font-weight: 700; }
+.org-box small { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
+.org-box.key { background: var(--accent-soft); border-color: var(--accent); }
+.org-arrow { text-align: center; color: var(--muted); font-size: 0.8rem; line-height: 1; }
+.org-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.org-col { display: grid; gap: 8px; align-content: start; }
+.org-col .org-box.child { border-style: dashed; }
+
+/* Flow */
+.flow { list-style: none; counter-reset: step; padding: 0; margin: 0.6rem 0 1.4rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.flow li { margin: 0; counter-increment: step; position: relative; border: 1px solid var(--rule); background: var(--surface); border-radius: 4px; padding: 10px 12px 10px 12px; font-size: 0.88rem; line-height: 1.4; }
+.flow li::before { content: counter(step); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 700; font-size: 0.8rem; margin-bottom: 6px; }
+.flow li b { display: block; font-size: 0.95rem; }
+.flow li.side { border-style: dashed; }
+.flow li.side::before { content: "!"; background: var(--muted); }
+
+/* Bars */
+.bars { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 6px 12px; align-items: center; margin: 0.6rem 0 1.2rem; font-size: 0.9rem; }
+.bars .lbl { min-width: 0; }
+.bars .track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bars .bar { height: 14px; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bars .val { font-variant-numeric: tabular-nums; color: var(--fg); white-space: nowrap; }
+.bars .grp { grid-column: 1 / -1; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 700; margin-top: 6px; }
+
+/* Credit scale */
+.scale { margin: 0.6rem 0 1.2rem; }
+.scale-bar { display: grid; grid-template-columns: 200fr 100fr 100fr 100fr 51fr; gap: 2px; height: 26px; }
+.scale-bar span { display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; color: var(--fg); }
+.scale-bar span:nth-child(1) { background: var(--seq-1); border-radius: 4px 0 0 4px; }
+.scale-bar span:nth-child(2) { background: var(--seq-2); }
+.scale-bar span:nth-child(3) { background: var(--seq-3); }
+.scale-bar span:nth-child(4) { background: var(--seq-4); color: var(--bg); }
+.scale-bar span:nth-child(5) { background: var(--seq-5); color: var(--bg); border-radius: 0 4px 4px 0; }
+.scale-ticks { position: relative; height: 18px; font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scale-ticks span { position: absolute; transform: translateX(-50%); top: 2px; }
+.scale-ticks span:first-child { transform: none; }
+.scale-ticks span:last-child { transform: translateX(-100%); }
+.scale-start { position: relative; height: 16px; }
+.scale-start span { position: absolute; transform: translateX(-50%); font-size: 0.75rem; color: var(--accent); font-weight: 700; }
+
+/* Flag anatomy */
+.anatomy { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px 24px; align-items: start; margin: 0.6rem 0 1.2rem; }
+.anatomy svg { width: 100%; height: auto; display: block; border: 1px solid var(--rule); }
+.anatomy ol { margin: 0; padding-left: 1.4rem; font-size: 0.9rem; }
+.f-blue { fill: var(--flag-blue); } .f-red { fill: var(--flag-red); } .f-yellow { fill: var(--flag-yellow); } .f-green { fill: var(--flag-green); }
+.f-black { fill: var(--flag-black); } .f-white { fill: var(--flag-white); }
+.f-zz-black { fill: none; stroke: var(--flag-black); stroke-width: 6; stroke-linejoin: miter; }
+.f-zz-red { fill: none; stroke: var(--flag-red); stroke-width: 6; stroke-linejoin: miter; }
+.f-pin circle { fill: var(--flag-white); stroke: var(--flag-black); stroke-width: 2; }
+.f-pin text { fill: var(--flag-black); font-family: var(--font-body); font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+
+/* Main page */
+.welcome { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; border-bottom: 1px solid var(--rule); padding-bottom: 14px; margin-bottom: 18px; }
+.welcome h1 { border: 0; padding: 0; margin: 0 0 4px; }
+.welcome img { width: 96px; height: 96px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; }
+.panel { border: 1px solid var(--rule); background: var(--surface); padding: 2px 16px 10px; min-width: 0; }
+.panel h2 { font-size: 1.15rem; margin: 12px 0 8px; padding-bottom: 4px; }
+.panel + .panel { margin-top: 20px; }
+.portals { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 0 0 20px; }
+.portal { display: block; border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; color: var(--fg); }
+.portal:hover { text-decoration: none; border-color: var(--accent); background: var(--accent-soft); }
+.portal b { display: block; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
+.portal small { color: var(--muted); font-size: 0.85rem; line-height: 1.35; display: block; }
+.next-holiday { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 2px; }
+.quote { font-family: var(--font-display); font-style: italic; font-size: 1.1rem; margin: 0.4rem 0 0.4rem; padding-left: 1.2rem; border-left: 2px solid var(--rule); }
+
+.ooc { clear: both; margin-top: 2rem; border: 1px solid var(--rule); background: var(--surface); padding: 4px 18px 10px; }
+.ooc h2, .ooc h3 { border-bottom: 0; }
+.ooc h2 { margin-top: 0.8rem; }
+.ooc .label, .label { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.72rem; font-weight: 700; color: var(--accent); }
+.seealso { margin-top: 1.6rem; font-size: 0.92rem; }
+
+.page-foot { clear: both; margin-top: 2.4rem; padding-top: 10px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.82rem; }
+.print-only { display: none; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .sidebar { position: static; max-height: none; overflow: visible; border: 1px solid var(--rule); background: var(--surface); border-radius: 4px; }
+  .sidebar summary { display: block; cursor: pointer; padding: 8px 12px; font-weight: 600; list-style: none; }
+  .sidebar summary::-webkit-details-marker { display: none; }
+  .sidebar summary::after { content: " ▾"; color: var(--muted); }
+  .sidebar[open] summary::after { content: " ▴"; }
+  .sidebar .navgroups { padding: 0 12px 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .navgroup + .navgroup { margin-top: 0; }
+}
+@media (min-width: 901px) {
+  .sidebar > .navgroups { display: block !important; }
+}
+@media (max-width: 760px) {
+  h1 { font-size: 1.9rem; }
+  .infobox { float: none; width: 100%; margin: 0 0 16px; }
+  .cols, .anatomy { grid-template-columns: minmax(0, 1fr); }
+  .org-cols { grid-template-columns: minmax(0, 1fr); }
+  .welcome img { width: 64px; height: 64px; }
+  .timeline li { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+@media print {
+  @page { size: A4; margin: 16mm 15mm 18mm;
+    @bottom-left { content: "Kagundi Encyclopedia \00B7  Edition 2 \00B7  October 2026"; font: 8pt "Source Sans 3", Arial, sans-serif; color: #6b6f66; }
+    @bottom-right { content: counter(page) " / " counter(pages); font: 8pt "Source Sans 3", Arial, sans-serif; color: #6b6f66; }
+  }
+  @page :first { @bottom-left { content: none; } @bottom-right { content: none; } }
+  :root { --bg: #ffffff; --surface: #f3f5f3; }
+  body { font-size: 10pt; }
+  .topbar, .sidebar, .no-print, body::before { display: none !important; }
+  .shell { display: block; padding: 0; max-width: none; }
+  html.js .page, .page { display: block !important; max-width: none; }
+  #main { display: none !important; }
+  .page { break-before: page; }
+  .print-only { display: block; }
+  .infobox { float: right; width: 64mm; margin: 0 0 12px 14px; font-size: 8.5pt; }
+  .org-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .timeline li { grid-template-columns: 92px minmax(0, 1fr); }
+  h1 { font-size: 24pt; }
+  h2, h3 { break-after: avoid; }
+  .eras, .ooc, figure.fig, .org, .flow, .bars, .scale, .anatomy, .timeline li, .wikitable tr { break-inside: avoid; }
+  .wikitable thead { display: table-header-group; }
+  .fig-wrap svg { min-width: 0; }
+  a { color: var(--fg); }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 10mm; }
+  .cover img.flag-img { width: 120mm; }
+  .cover h1 { border: 0; font-size: 34pt; margin: 0; }
+  .cover p { margin: 0; color: var(--muted); }
+  .toc-print { break-before: page; }
+  .toc-print ol { columns: 2; column-gap: 10mm; font-size: 10pt; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#main"><img src="../assets/kagundi-emblem.png" alt="" width="34" height="34"><span><b>Kagundi Encyclopedia</b><small>Reference for the Ro-Nation roleplay</small></span></a>
+    <div class="search" role="search">
+      <label for="q" class="note" style="position:absolute;left:-9999px">Search the encyclopedia</label>
+      <input id="q" type="search" placeholder="Search articles, places, people" autocomplete="off" aria-controls="results">
+      <ul id="results" class="results" hidden></ul>
+    </div>
+  </div>
+  <div class="stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+</header>
+
+<div class="shell">
+<details class="sidebar" id="nav" open>
+  <summary>Browse articles</summary>
+  <nav class="navgroups" aria-label="Articles">
+    <div class="navgroup"><h4>Start</h4><ul>
+      <li><a href="#main">Main page</a></li>
+      <li><a href="#kagundi">Kagundi</a></li>
+    </ul></div>
+    <div class="navgroup"><h4>History</h4><ul>
+      <li><a href="#history">History of Kagundi</a></li>
+      <li><a href="#revolution">Revolution of 1982</a></li>
+      <li><a href="#timeline">Timeline</a></li>
+      <li><a href="#biographies">Notable Kagundians</a></li>
+    </ul></div>
+    <div class="navgroup"><h4>Places</h4><ul>
+      <li><a href="#geography">Geography</a></li>
+      <li><a href="#gundiville">Gundiville</a></li>
+      <li><a href="#stokondo">Stokondo</a></li>
+      <li><a href="#kagundali">Kagundali</a></li>
+      <li><a href="#oberdueshuson">Oberdueshuson</a></li>
+    </ul></div>
+    <div class="navgroup"><h4>State and law</h4><ul>
+      <li><a href="#government">Government</a></li>
+      <li><a href="#leader">Leader of the Revolution</a></li>
+      <li><a href="#ideology">The Kagundian Way</a></li>
+      <li><a href="#security">Security forces</a></li>
+      <li><a href="#justice">Justice system</a></li>
+    </ul></div>
+    <div class="navgroup"><h4>Economy</h4><ul>
+      <li><a href="#economy">Economy</a></li>
+      <li><a href="#dinar">Dinar and banking</a></li>
+      <li><a href="#avk">AVK</a></li>
+    </ul></div>
+    <div class="navgroup"><h4>Society</h4><ul>
+      <li><a href="#people">Demographics</a></li>
+      <li><a href="#kagundisch">Kagundisch</a></li>
+      <li><a href="#culture">Culture</a></li>
+      <li><a href="#health">Health and emergencies</a></li>
+      <li><a href="#symbols">National symbols</a></li>
+    </ul></div>
+    <div class="navgroup"><h4>Out of character</h4><ul>
+      <li><a href="#playing">Playing in Ro-Nation</a></li>
+    </ul></div>
+  </nav>
+</details>
+
+<main id="content">
+
+<!-- Print cover and contents (only in the PDF) -->
+<section class="print-only cover">
+  <img class="flag-img" src="../assets/kagundi-flag.png" alt="Flag of Kagundi" width="454" height="270">
+  <h1>Kagundi Encyclopedia</h1>
+  <p>The Democratic Republic of Kagundi<br>Reference for players of the Ro-Nation roleplay</p>
+  <p>Edition 2 · 26 October 2026</p>
+</section>
+<section class="print-only toc-print">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#kagundi">Kagundi</a></li>
+    <li><a href="#history">History of Kagundi</a></li>
+    <li><a href="#revolution">Revolution of 1982</a></li>
+    <li><a href="#timeline">Timeline of Kagundian history</a></li>
+    <li><a href="#biographies">Notable Kagundians</a></li>
+    <li><a href="#geography">Geography of Kagundi</a></li>
+    <li><a href="#gundiville">Gundiville</a></li>
+    <li><a href="#stokondo">Stokondo</a></li>
+    <li><a href="#kagundali">Kagundali</a></li>
+    <li><a href="#oberdueshuson">Oberdueshuson</a></li>
+    <li><a href="#government">Government of Kagundi</a></li>
+    <li><a href="#leader">Leader of the Revolution</a></li>
+    <li><a href="#ideology">The Kagundian Way</a></li>
+    <li><a href="#security">Security forces of Kagundi</a></li>
+    <li><a href="#justice">Justice system of Kagundi</a></li>
+    <li><a href="#economy">Economy of Kagundi</a></li>
+    <li><a href="#dinar">Kagundi Dinar and banking</a></li>
+    <li><a href="#avk">AVK</a></li>
+    <li><a href="#people">Demographics of Kagundi</a></li>
+    <li><a href="#kagundisch">Kagundisch</a></li>
+    <li><a href="#culture">Culture of Kagundi</a></li>
+    <li><a href="#health">Health and emergency services</a></li>
+    <li><a href="#symbols">National symbols of Kagundi</a></li>
+    <li><a href="#playing">Playing in Ro-Nation</a></li>
+  </ol>
+  <p class="note">Kagundi and all its people, places and events are fictional and belong to the Ro-Nation roleplay on Roblox.</p>
+</section>
+
+<!-- ============ MAIN PAGE ============ -->
+<article class="page is-active" id="main" data-title="Main page">
+  <div class="welcome">
+    <div>
+      <h1>Welcome to the Kagundi Encyclopedia</h1>
+      <p class="lede" style="margin:0">The reference work on the <a href="#kagundi">Democratic Republic of Kagundi</a>, the country of the Ro-Nation roleplay: <b>24 articles</b> on its history, places, state, economy and people.</p>
+    </div>
+    <img src="../assets/kagundi-emblem.png" alt="Emblem of Kagundi" width="96" height="96">
+  </div>
+
+  <div class="portals">
+    <a class="portal" href="#kagundi"><b>The country</b><small>Facts, map and overview of Kagundi</small></a>
+    <a class="portal" href="#history"><b>History</b><small>From German-Kagundi to the revolutionary state</small></a>
+    <a class="portal" href="#geography"><b>Places</b><small>The East District and its four cities</small></a>
+    <a class="portal" href="#government"><b>State and law</b><small>Leader, secretariats, courts and security forces</small></a>
+    <a class="portal" href="#economy"><b>Economy</b><small>Mining, trade, the Dinar, banks and AVK</small></a>
+    <a class="portal" href="#culture"><b>Society</b><small>People, Kagundisch, customs and holidays</small></a>
+  </div>
+
+  <div class="cols">
+    <div>
+      <section class="panel">
+        <h2>Featured article</h2>
+        <p><b><a href="#revolution">Revolution of 1982</a></b>. On the night of 11 to 12 May 1982 the Movement of Free Officers marched from the garrison town of Oberdueshuson to Gundiville and occupied the radio station, the airport and the presidential palace. President Henri Ondaru fled abroad and the takeover was almost bloodless. The officers named four reasons: corruption, foreign control of the mines, unpaid wages and the order to fire on striking workers. Their leader, the 29-year-old Major Wachmann, announced the revolution on national radio and has been known since by his title, Leader of the Revolution. 12 May is celebrated every year as Revolution Day. <a href="#revolution">Read more</a></p>
+      </section>
+      <section class="panel">
+        <h2>Did you know …</h2>
+        <ul>
+          <li>… that the capital was founded as <i>Gundistadt</i> and renamed <a href="#gundiville">Gundiville</a> by the French administration in 1920?</li>
+          <li>… that the <a href="#dinar">Kagundi Dinar</a> is named after the Libyan dinar?</li>
+          <li>… that a mayor sitting as a judge is addressed as <i>Maista</i>? (<a href="#justice">Justice system</a>)</li>
+          <li>… that <a href="#kagundisch">Kagundisch</a> forms the plural with the Old Gundi prefix <i>ma-</i>, as in <i>ma-Haus</i>, "houses"?</li>
+          <li>… that the red stripe of the <a href="#symbols">flag</a> honours the miners of the 1917 Kagundali Strike?</li>
+          <li>… that every man in Kagundi serves two years in the armed forces and stays a reservist for life? (<a href="#security">Security forces</a>)</li>
+          <li>… that a common saying is <i>"Ohne Stempel nix"</i>, "nothing without a stamp"? (<a href="#culture">Culture</a>)</li>
+        </ul>
+      </section>
+    </div>
+    <div>
+      <section class="panel">
+        <h2>Next public holiday</h2>
+        <p class="next-holiday" id="next-holiday">Ahnentag · 2 November</p>
+        <p class="note" id="next-holiday-note">Ancestors' day, joined with All Souls' Day. Elders sing and give blessings in Old Gundi.</p>
+        <p class="note" style="margin:0"><a href="#c-holidays">All public holidays</a></p>
+      </section>
+      <section class="panel">
+        <h2>Kagundi at a glance</h2>
+        <ul style="list-style:none;padding:0;margin:0 0 6px">
+          <li><b>Capital:</b> <a href="#gundiville">Gundiville</a></li>
+          <li><b>Leader of the Revolution:</b> <a href="#b-wachmann">Dr. Justin Wachmann</a></li>
+          <li><b>Currency:</b> <a href="#dinar">Kagundi Dinar (KGD)</a></li>
+          <li><b>Languages:</b> German, English; everyday <a href="#kagundisch">Kagundisch</a></li>
+          <li><b>Exports:</b> gold, diamonds, palladium, timber, tobacco, beef</li>
+          <li><b>National day:</b> Revolution Day, 12 May</li>
+        </ul>
+      </section>
+      <section class="panel">
+        <h2>New in edition 2</h2>
+        <ul>
+          <li>Map of the East District and a plan of the capital's government district</li>
+          <li>Articles on all four cities, with landmarks and state housing</li>
+          <li>Organisation chart of the state, court procedure, security jurisdictions</li>
+          <li>Economy, banking, credit and AVK in detail</li>
+          <li>Timeline, biographies, flag anatomy and a Kagundisch phrasebook</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+  <p class="page-foot">Edition 2 · 26 October 2026. Kagundi and all its people, places and events are fictional and belong to the Ro-Nation roleplay on Roblox.</p>
+</article>
+
+<!-- ============ KAGUNDI ============ -->
+<article class="page" id="kagundi" data-title="Kagundi">
+  <h1>Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="hatnote">This article is about the country. For how to join and play, see <a href="#playing">Playing in Ro-Nation</a>.</p>
+
+  <table class="infobox" aria-label="Key facts about Kagundi">
+    <caption>Democratic Republic of Kagundi<span>Demokratische Republik Kagundi</span></caption>
+    <tbody>
+      <tr class="symbols"><td colspan="2"><div class="symbols-row">
+        <figure><img class="flag-img" src="../assets/kagundi-flag.png" alt="Flag of Kagundi" width="160" height="95"><figcaption><a href="#symbols">Flag</a></figcaption></figure>
+        <figure><img class="emblem-img" src="../assets/kagundi-emblem.png" alt="Emblem of Kagundi" width="80" height="80"><figcaption><a href="#sy-emblem">Emblem</a></figcaption></figure>
+      </div></td></tr>
+      <tr><th scope="row">Capital and largest city</th><td><a href="#gundiville">Gundiville</a></td></tr>
+      <tr><th scope="row">Official languages</th><td>German, English</td></tr>
+      <tr><th scope="row">Everyday language</th><td><a href="#kagundisch">Kagundisch</a></td></tr>
+      <tr><th scope="row">Ethnic groups</th><td><ul><li>90% Indigenous (mainly Gundi)</li><li>5% German</li><li>2.5% Argentinian</li><li>1.5% French</li><li>1% Uruguayan</li></ul></td></tr>
+      <tr><th scope="row">Religion</th><td>Christianity (Lutheran, Catholic); Old Gundi ancestor customs</td></tr>
+      <tr><th scope="row">Demonym</th><td>Kagundian</td></tr>
+      <tr><th scope="row">Government</th><td>Unitary presidential republic (de jure); authoritarian presidential dictatorship (de facto)</td></tr>
+      <tr class="sub"><th scope="row">Leader of the Revolution</th><td><a href="#b-wachmann">Dr. Justin Wachmann</a></td></tr>
+      <tr class="sub"><th scope="row">Head of government</th><td>Secretary-General of the People's Committee</td></tr>
+      <tr><th scope="row">Legislature</th><td>General People's Congress</td></tr>
+      <tr class="group"><th colspan="2" scope="colgroup">History</th></tr>
+      <tr class="sub"><th scope="row">German-Kagundi</th><td>1885</td></tr>
+      <tr class="sub"><th scope="row">German Regency</th><td>1915</td></tr>
+      <tr class="sub"><th scope="row">Kagundi Protectorate</th><td>1919</td></tr>
+      <tr class="sub"><th scope="row">Independence</th><td>22 November 1960</td></tr>
+      <tr class="sub"><th scope="row">Revolution</th><td>12 May 1982</td></tr>
+      <tr class="group"><th colspan="2" scope="colgroup">Economy</th></tr>
+      <tr><th scope="row">Currency</th><td>Kagundi Dinar (KGD)</td></tr>
+      <tr><th scope="row">Main exports</th><td>Gold, diamonds, palladium, timber, tobacco, beef</td></tr>
+      <tr><th scope="row">Main trading partner</th><td>Germany</td></tr>
+      <tr><th scope="row">National day</th><td>Revolution Day, 12 May</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>Kagundi</b>, officially the <b>Democratic Republic of Kagundi</b> (German: <span class="lang">Demokratische Republik Kagundi</span>; Kagundisch: <span class="lang">Demokratischi Republik Kagundi</span>), is a landlocked country in the highlands of Africa. Its capital and largest city is <a href="#gundiville">Gundiville</a>. Kagundi is formally a presidential republic, but in practice it is an authoritarian presidential dictatorship led by the <a href="#leader">Leader of the Revolution</a>, currently Dr. Justin Wachmann.</p>
+  <p>The territory was a German colony from 1885 and, after a four-year German military regency, a French protectorate until it negotiated its independence in 1960. A military-backed <a href="#revolution">revolution</a> on 12 May 1982 created the present order, whose institutions follow Muammar Gaddafi's Third Universal Theory in a Kagundian form, <a href="#ideology">the Kagundian Way</a>. The economy rests on gold, diamonds, palladium, timber, tobacco and beef, and Germany is the country's main trading partner.</p>
+  <p>About 90% of Kagundians are indigenous, most of them Gundi. German and English are the official languages, but most people speak <a href="#kagundisch">Kagundisch</a>, a German-based creole, in daily life. Kagundi's geography is modelled on Rwanda; its history and institutions are fictional.</p>
+
+  <h2 id="etymology">Name</h2>
+  <p>The name comes from Old Gundi, the ancestral language of the indigenous population. The prefix <i>Ka-</i> means "land of" or "place of", so <i>Kagundi</i> means "land of the Gundi". Before colonial rule the region was known as the Kagundi Basin or Territory of Kagundi, and German records also call it <i>Kagundiland</i>. The trade city <a href="#kagundali">Kagundali</a> adds the Old Gundi suffix <i>-ali</i>, "great", and means "great place of the Gundi".</p>
+
+  <h2 id="k-history">History</h2>
+  <p class="hatnote">Main articles: <a href="#history">History of Kagundi</a>, <a href="#timeline">Timeline</a></p>
+  <div class="eras" role="img" aria-label="Eras of Kagundi history to scale: German-Kagundi 1885 to 1915, German Regency 1915 to 1919, Kagundi Protectorate 1919 to 1960, First Republic 1960 to 1982, Revolutionary State 1982 to today">
+    <div class="eras-bar"><span></span><span></span><span></span><span></span><span class="now"></span></div>
+    <div class="eras-scale"><span>1885</span><span>today</span></div>
+  </div>
+  <p>German rule from 1885 left the country its administration, its architecture and the contact language that became Kagundisch. Cut off from Berlin in the First World War, Colonel Ernst Kessler ruled as Regent from 1915 to 1919; the brutal suppression of the 1917 Kagundali Strike became the founding story of Kagundian resistance. France governed the Kagundi Protectorate until independence on 22 November 1960. The First Republic was democratic on paper but ruled by a small elite, and it collapsed in scandal and economic crisis. The Free Officers took power on 12 May 1982 and built the revolutionary state that governs Kagundi today.</p>
+
+  <h2 id="k-geography">Geography</h2>
+  <p class="hatnote">Main article: <a href="#geography">Geography of Kagundi</a></p>
+  <p>Kagundi is landlocked and mostly mountainous, with high plateaus, forested hills, valleys and rolling farmland. The capital and all major cities lie in the <b>East District</b>: Gundiville in a central basin, <a href="#stokondo">Stokondo</a> to the north-west, <a href="#kagundali">Kagundali</a> in a south-western valley and <a href="#oberdueshuson">Oberdueshuson</a> on the north-eastern plateau. A cargo airport east of the capital and two international border crossings connect the country to the outside world.</p>
+
+  <h2 id="k-politics">Government and politics</h2>
+  <p class="hatnote">Main articles: <a href="#government">Government of Kagundi</a>, <a href="#leader">Leader of the Revolution</a>, <a href="#ideology">The Kagundian Way</a></p>
+  <p>The Leader of the Revolution holds supreme power. The Secretary-General of the People's Committee heads the government and its four secretariats. The General People's Congress and the local People's Councils provide formal representation through trade unions and professional organisations, but their influence is limited. Security is provided by the City Police, the Gendarmerie, the Land Forces and Air Force, the Revolutionary Guard and the Intelligence Service. Mayors judge all ordinary cases in the first instance, and appeals go to the court in Stokondo.</p>
+
+  <h2 id="k-economy">Economy</h2>
+  <p class="hatnote">Main articles: <a href="#economy">Economy of Kagundi</a>, <a href="#dinar">Kagundi Dinar and banking</a>, <a href="#avk">AVK</a></p>
+  <p>Kagundi has a resource-based economy built on mining, forestry, agriculture and cattle, with a growing service sector of transport, construction, retail, property and finance. Private businesses work alongside state-majority-owned enterprises that date from the nationalisation of 1984. Germany supplies machinery and buys most of the country's commodities; the European Union and China are further partners.</p>
+
+  <h2 id="k-society">Society and culture</h2>
+  <p class="hatnote">Main articles: <a href="#people">Demographics</a>, <a href="#kagundisch">Kagundisch</a>, <a href="#culture">Culture of Kagundi</a></p>
+  <p>Kagundian culture stands on German foundations with French and Old Gundi layers on top. Most people pair a German or French first name with a Gundi family name, go to Lutheran or Catholic churches while keeping ancestor customs, and value correct paperwork. Street stands sell <i>Brati</i> sausages, families meet for <i>Kaffi und Kuchi</i> on Sundays, and brass bands play <i>Trommelblas</i> at every festival.</p>
+
+  <h2 id="k-cities">Cities</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">City</th><th scope="col">Location</th><th scope="col">Role</th></tr></thead>
+      <tbody>
+        <tr><td><b><a href="#gundiville">Gundiville</a></b></td><td>Central basin</td><td>Capital; politics, administration, finance, university</td></tr>
+        <tr><td><b><a href="#stokondo">Stokondo</a></b></td><td>North-west</td><td>Justice and healthcare</td></tr>
+        <tr><td><b><a href="#kagundali">Kagundali</a></b></td><td>South-western valley</td><td>Trade, freight and mining</td></tr>
+        <tr><td><b><a href="#oberdueshuson">Oberdueshuson</a></b></td><td>North-eastern plateau</td><td>Military garrison and tobacco farming</td></tr>
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<!-- ============ HISTORY ============ -->
+<article class="page" id="history" data-title="History of Kagundi">
+  <h1>History of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="hatnote">See also: <a href="#timeline">Timeline of Kagundian history</a>, <a href="#revolution">Revolution of 1982</a></p>
+  <p class="lede">Kagundi's history runs through six eras: the pre-colonial Kagundi Basin, German rule, a short German military regency, the French protectorate, the First Republic, and the revolutionary state since 1982. The revolutionary state has now lasted 44 years, longer than the 41-year protectorate.</p>
+
+  <div class="eras" role="img" aria-label="Eras of Kagundi history to scale: German-Kagundi 1885 to 1915, German Regency 1915 to 1919, Kagundi Protectorate 1919 to 1960, First Republic 1960 to 1982, Revolutionary State 1982 to today">
+    <div class="eras-bar"><span></span><span></span><span></span><span></span><span class="now"></span></div>
+    <div class="eras-scale"><span>1885</span><span>today</span></div>
+    <ul class="eras-legend">
+      <li><i></i><span><b>German-Kagundi</b><br><small>1885–1915 · 30 years</small></span></li>
+      <li><i></i><span><b>German Regency</b><br><small>1915–1919 · 4 years</small></span></li>
+      <li><i></i><span><b>Kagundi Protectorate</b><br><small>1919–1960 · 41 years</small></span></li>
+      <li><i></i><span><b>First Republic</b><br><small>1960–1982 · 22 years</small></span></li>
+      <li class="now"><i></i><span><b>Revolutionary State</b><br><small>1982–today · 44 years</small></span></li>
+    </ul>
+  </div>
+
+  <h2 id="h-precolonial">Kagundi Basin (before 1885)</h2>
+  <p>Before colonial rule, the territory was home to indigenous communities with their own regional political structures. They spoke Old Gundi, and place names with the prefix <i>Ka-</i> ("land of", "place of") date from this period. They remain a hallmark of Kagundian geography, as in Kagundi and Kagundali. Highland clans kept cattle and farmed the valleys, and their ancestor customs survive today in the yearly Ahnentag.</p>
+
+  <h2 id="h-german">German-Kagundi (1885–1915)</h2>
+  <p>In 1885 the territory came under German colonial rule as <b>German-Kagundi</b>; the name <i>Kagundiland</i> also appears in records and maps. The German administration shaped the country's institutions, architecture, infrastructure and commerce, and later its political elite. German settler communities took root.</p>
+  <ul>
+    <li>The colonial capital, <b>Gundistadt</b>, was founded on the site of today's Gundiville.</li>
+    <li>Lutheran and Catholic missions opened the first schools. Schools, plantations and mines used a simplified German to communicate with the many local communities. The children of these workers grew up with it as their first language, and over generations it became <a href="#kagundisch">Kagundisch</a>.</li>
+    <li>Gold mining began in the hills around today's Kagundali, and tobacco plantations spread across the Oberdueshuson highlands.</li>
+    <li>The colonial defence force, the <i>Schutztruppe</i>, built its main garrison at Oberdueshuson. The town has been the country's military centre ever since.</li>
+  </ul>
+
+  <h2 id="h-regency">German Regency (1915–1919)</h2>
+  <p>The First World War cut German-Kagundi off from Berlin: no ships, mail, money or orders arrived. In 1915 the commander of the Schutztruppe, <a href="#b-kessler"><b>Colonel Ernst Kessler</b></a>, removed the civilian colonial administration and proclaimed himself <i>Landesverweser</i> (Regent). He claimed to hold the territory in trust for Germany but ruled on his own authority. Kagundians remember these years as the <i>Verweserzeit</i>, the Regency.</p>
+  <ul>
+    <li><b>1915:</b> Kessler declared martial law, and German settlers formed an armed militia to support the regime.</li>
+    <li><b>1916:</b> To pay his troops, the regime forced indigenous men to work in the Kagundali gold mines and requisitioned cattle and tobacco.</li>
+    <li><b>1917:</b> The miners of Kagundali went on strike and the Schutztruppe broke the strike by force. The <b>Kagundali Strike</b> became the founding story of Kagundian resistance, and the strikers are honoured as national heroes on Streiktag, 8 June.</li>
+    <li><b>1918:</b> The war ended in Europe. The regime lost its last claim to legitimacy, and food shortages spread.</li>
+    <li><b>1919:</b> Germany gave up Kagundi in the peace settlement. French troops entered Gundistadt; Kessler surrendered without a fight and was deported to Europe.</li>
+  </ul>
+  <p>The Regency left a lasting precedent: when civilian government fails, the military takes power. The officers of 1982 followed the same pattern, but they justified it in the name of the 1917 strikers, not the German regent.</p>
+
+  <h2 id="h-protectorate">Kagundi Protectorate (1919–1960)</h2>
+  <p>France governed the territory as the <b>Kagundi Protectorate</b>. French influence became a second layer in the country's institutions and culture, and many families gained mixed German and French ancestry.</p>
+  <ul>
+    <li><b>1920:</b> Gundistadt was renamed <b>Gundiville</b>.</li>
+    <li><b>1923:</b> The French administration founded the <i>Gendarmerie du Kagundi</i>, forerunner of today's Gendarmerie.</li>
+    <li>French words such as <i>mersi</i> (thanks), <i>biro</i> (office) and <i>schandarm</i> (gendarme) entered Kagundisch.</li>
+    <li><b>1950s:</b> Teachers, trade unionists and mission-school graduates founded the <b>Kagundi National Union</b> (<i>Kagundischer Nationalbund</i>), the movement that negotiated independence.</li>
+  </ul>
+
+  <h2 id="h-republic">Independence and the First Republic (1960–1982)</h2>
+  <p>Independence was proclaimed in Gundiville on <b>22 November 1960</b>, and the new state took the name Democratic Republic of Kagundi. Its first constitution combined a French-style presidency with a German-style civil service. The First Republic was democratic on paper, but power stayed with a small elite in Gundiville: German- and French-descended families, senior civil servants and the leadership of the National Union. Foreign companies kept most mining concessions, so most of the profit from gold and diamonds left the country.</p>
+  <ul>
+    <li><b>1960–1969:</b> President <a href="#b-kalembe"><b>Friedrich Kalembe</b></a>, leader of the independence movement, governed. His "national unity" policy kept the colonial civil service and officer corps in place.</li>
+    <li><b>1964:</b> The government recruited ranch managers, veterinarians and mining engineers from Argentina and Uruguay to modernise cattle farming and the mines. This is the origin of today's Argentinian and Uruguayan communities.</li>
+    <li><b>1969:</b> Kalembe died in office. <a href="#b-ondaru"><b>Henri Ondaru</b></a> won the 1970 presidential election amid widespread accusations of fraud.</li>
+    <li><b>1973:</b> Large palladium deposits were found near Kagundali. Ondaru sold the mining rights to a foreign consortium far below their value.</li>
+    <li><b>1977:</b> Army officers leaked the palladium contract. The <b>Concession Scandal</b> destroyed the government's reputation.</li>
+    <li><b>1979–1981:</b> Gold and commodity prices fell and the state ran out of money. The old currency, the <b>Kagundi Franc</b>, lost much of its value, and soldiers and teachers went unpaid for months.</li>
+    <li><b>1981:</b> Miners in Kagundali and tobacco workers around Oberdueshuson went on strike. Ondaru ordered the army to end the strikes by force, and several units refused.</li>
+  </ul>
+
+  <h2 id="h-revolution">Revolution of 1982</h2>
+  <p class="hatnote">Main article: <a href="#revolution">Revolution of 1982</a></p>
+  <p>On the night of 11 to 12 May 1982, the <b>Movement of Free Officers</b> marched from the Oberdueshuson garrison to Gundiville and took the radio station, the airport and the presidential palace. President Ondaru fled abroad and the takeover was almost bloodless. Their leader, <a href="#b-wachmann-sr">Major Wachmann</a>, announced the revolution on national radio and took the title <b>Leader of the Revolution</b>. The state kept its name, Democratic Republic of Kagundi.</p>
+
+  <h2 id="h-state">The revolutionary state (1982–today)</h2>
+  <ul>
+    <li><b>1982–1983:</b> A Revolutionary Command Council of the Free Officers governed, then handed formal power to the new system of People's Councils, the General People's Congress and the People's Committee.</li>
+    <li><b>1983:</b> The government adopted a Kagundian version of Gaddafi's <a href="#ideology">Third Universal Theory</a> as its state doctrine. The Leader visited Tripoli, and Libyan advisers helped build the congress system.</li>
+    <li><b>1983:</b> The <b>Kagundi Dinar</b>, named after the Libyan dinar, replaced the Kagundi Franc, and the officers who led the revolution formed the core of the new <b>Revolutionary Guard</b>.</li>
+    <li><b>1984:</b> Foreign mining concessions were nationalised and turned into state-majority-owned enterprises. The Leader published <i>Der Kagundische Weg</i> ("The Kagundian Way").</li>
+    <li><b>Late 1980s:</b> Despite its revolutionary language, the government signed machinery and trade agreements with West Germany. Germany became, and remains, Kagundi's main trading partner.</li>
+    <li><b>2000s:</b> Trade with the European Union and China grew.</li>
+    <li><b>2021:</b> The founding Leader died. The Revolutionary Guard proclaimed his son, <a href="#b-wachmann"><b>Dr. Justin Wachmann</b></a>, as the new Leader of the Revolution, and the General People's Congress confirmed him by acclamation.</li>
+    <li><b>Today:</b> Dr. Justin Wachmann leads the revolutionary state. Ro-Nation is set in the present day.</li>
+  </ul>
+</article>
+
+<!-- ============ REVOLUTION ============ -->
+<article class="page" id="revolution" data-title="Revolution of 1982">
+  <h1>Revolution of 1982</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+
+  <table class="infobox" aria-label="Key facts about the Revolution of 1982">
+    <caption>Revolution of 1982<span>Revolution vom 12. Mai</span></caption>
+    <tbody>
+      <tr><th scope="row">Date</th><td>Night of 11 to 12 May 1982</td></tr>
+      <tr><th scope="row">Route</th><td><a href="#oberdueshuson">Oberdueshuson</a> garrison to <a href="#gundiville">Gundiville</a></td></tr>
+      <tr><th scope="row">Targets taken</th><td>Radio station, airport, presidential palace</td></tr>
+      <tr><th scope="row">Result</th><td>Fall of the Ondaru government; revolutionary state founded</td></tr>
+      <tr class="group"><th colspan="2" scope="colgroup">Sides</th></tr>
+      <tr><th scope="row">Revolutionaries</th><td>Movement of Free Officers (<i>Bewegung der Freien Offiziere</i>)</td></tr>
+      <tr><th scope="row">Government</th><td>President Henri Ondaru</td></tr>
+      <tr><th scope="row">Leader</th><td><a href="#b-wachmann-sr">Major Wachmann</a></td></tr>
+      <tr><th scope="row">Casualties</th><td>Very few; the takeover was almost bloodless</td></tr>
+      <tr><th scope="row">Remembered on</th><td>Revolution Day, 12 May</td></tr>
+    </tbody>
+  </table>
+
+  <p class="lede">The <b>Revolution of 1982</b> was the military-backed takeover in which the Movement of Free Officers overthrew President Henri Ondaru and founded the revolutionary state that governs Kagundi today. It is the source of the office of the <a href="#leader">Leader of the Revolution</a> and of the state's legitimacy.</p>
+
+  <h2 id="r-background">Background</h2>
+  <p>The First Republic had promised democracy after independence in 1960, but power stayed with a small elite and foreign companies kept the mines. Three developments turned discontent into revolt:</p>
+  <ul>
+    <li><b>The Concession Scandal (1977).</b> In 1973 President Ondaru had sold the rights to newly found palladium deposits near Kagundali to a foreign consortium far below their value. When army officers leaked the contract in 1977, the government lost what was left of its reputation.</li>
+    <li><b>Economic collapse (1979–1981).</b> Gold and commodity prices fell, the treasury ran dry and the Kagundi Franc lost much of its value. Soldiers and teachers went unpaid for months.</li>
+    <li><b>The strike order (1981).</b> When miners in Kagundali and tobacco workers around Oberdueshuson struck, Ondaru ordered the army to end the strikes by force. Several units refused. To many officers the order recalled 1917, when the Schutztruppe had crushed the Kagundali Strike.</li>
+  </ul>
+
+  <h2 id="r-night">The night of 11 to 12 May</h2>
+  <p>A group of junior and mid-ranking officers, most of them from the Oberdueshuson garrison, had organised themselves as the <b>Movement of Free Officers</b>. On the evening of 11 May 1982 their units left the garrison and drove down from the plateau towards the capital. Before dawn they occupied the national radio station, the airport and the presidential palace in Gundiville. Most of the army stayed in its barracks or joined them. President Ondaru fled abroad, and the takeover was almost bloodless.</p>
+  <p>In the morning the leader of the officers, the 29-year-old <a href="#b-wachmann-sr">Major Wachmann</a> from a German-descended officer family, announced the revolution on national radio. From that day on he was known by his title, <b>Leader of the Revolution</b>.</p>
+
+  <h2 id="r-reasons">The four reasons</h2>
+  <p>In the radio announcement the officers named four reasons for the revolution. They are still taught in schools:</p>
+  <ol>
+    <li>The corruption of the Ondaru government.</li>
+    <li>Foreign control of the mines.</li>
+    <li>Unpaid wages.</li>
+    <li>The order to fire on striking workers.</li>
+  </ol>
+
+  <h2 id="r-council">Revolutionary Command Council</h2>
+  <p>From May 1982 a Revolutionary Command Council of the Free Officers governed the country. It kept the name Democratic Republic of Kagundi and, in 1983, handed formal power to a new system modelled on Libya: local People's Councils, the General People's Congress and the People's Committee with its Secretary-General and secretariats. The Leader kept supreme authority as the one who "guides" the revolution.</p>
+
+  <h2 id="r-aftermath">Aftermath</h2>
+  <ul>
+    <li><b>1983:</b> adoption of a Kagundian version of Gaddafi's Third Universal Theory as state doctrine; the Leader's visit to Tripoli; introduction of the Kagundi Dinar; formation of the Revolutionary Guard around the Free Officers.</li>
+    <li><b>1984:</b> nationalisation of the foreign mining concessions, which became state-majority-owned enterprises, and publication of <i>Der Kagundische Weg</i>.</li>
+    <li><b>Late 1980s:</b> a pragmatic turn towards West Germany, which became the main trading partner.</li>
+  </ul>
+
+  <h2 id="r-legacy">Legacy</h2>
+  <p>12 May is the national day, <b>Revolution Day</b>, marked by a military parade in Gundiville. The rayed yellow sun on the <a href="#symbols">flag</a> stands for the dawn of 12 May 1982. Many families of the Free Officers still hold high office, and the Revolutionary Guard sees itself as the protector of the revolution. The precedent of 1915 and 1982, that the military steps in when civilian government fails, remains part of the country's political memory.</p>
+</article>
+
+<!-- ============ TIMELINE ============ -->
+<article class="page" id="timeline" data-title="Timeline of Kagundian history">
+  <h1>Timeline of Kagundian history</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">Key dates from the colonial era to the present. For the full story see <a href="#history">History of Kagundi</a>.</p>
+  <ol class="timeline">
+    <li class="era-row"><span class="era">Kagundi Basin</span></li>
+    <li><span class="when">before 1885</span><span>Indigenous communities speaking Old Gundi live in the Kagundi Basin; place names with <i>Ka-</i> date from this time.</span></li>
+    <li class="era-row"><span class="era">German-Kagundi</span></li>
+    <li><span class="when">1885</span><span>German colonial rule begins. The capital Gundistadt is founded.</span></li>
+    <li><span class="when">1885–1915</span><span>Mission schools open; a simplified German spreads and becomes Kagundisch. Gold mining near Kagundali; tobacco around Oberdueshuson; Schutztruppe garrison at Oberdueshuson.</span></li>
+    <li class="era-row"><span class="era">German Regency</span></li>
+    <li><span class="when">1915</span><span>Colonel Ernst Kessler proclaims himself Regent and declares martial law.</span></li>
+    <li><span class="when">1916</span><span>Forced labour in the Kagundali gold mines; cattle and tobacco requisitioned.</span></li>
+    <li><span class="when">1917</span><span>Kagundali Strike, crushed by the Schutztruppe.</span></li>
+    <li><span class="when">1919</span><span>Germany gives up Kagundi. French troops enter Gundistadt; Kessler is deported.</span></li>
+    <li class="era-row"><span class="era">Kagundi Protectorate</span></li>
+    <li><span class="when">1920</span><span>Gundistadt renamed Gundiville.</span></li>
+    <li><span class="when">1923</span><span>Gendarmerie du Kagundi founded.</span></li>
+    <li><span class="when">1950s</span><span>Kagundi National Union founded.</span></li>
+    <li class="era-row"><span class="era">First Republic</span></li>
+    <li><span class="when">22 Nov 1960</span><span>Independence proclaimed in Gundiville. Friedrich Kalembe becomes President.</span></li>
+    <li><span class="when">1964</span><span>Skilled workers recruited from Argentina and Uruguay.</span></li>
+    <li><span class="when">1969–1970</span><span>Kalembe dies in office; Henri Ondaru wins a disputed election.</span></li>
+    <li><span class="when">1973</span><span>Palladium found near Kagundali; rights sold far below value.</span></li>
+    <li><span class="when">1977</span><span>Concession Scandal.</span></li>
+    <li><span class="when">1979–1981</span><span>Economic crisis; the Kagundi Franc collapses; wages unpaid.</span></li>
+    <li><span class="when">1981</span><span>Strikes in Kagundali and Oberdueshuson; army units refuse to fire.</span></li>
+    <li class="era-row"><span class="era">Revolutionary State</span></li>
+    <li><span class="when">12 May 1982</span><span>Revolution of the Free Officers. Major Wachmann becomes Leader of the Revolution.</span></li>
+    <li><span class="when">1983</span><span>Third Universal Theory adopted; Kagundi Dinar introduced; Revolutionary Guard formed; People's Councils and Congress take formal power.</span></li>
+    <li><span class="when">1984</span><span>Mining concessions nationalised; <i>Der Kagundische Weg</i> published.</span></li>
+    <li><span class="when">late 1980s</span><span>Trade agreements with West Germany.</span></li>
+    <li><span class="when">2000s</span><span>Trade with the European Union and China grows.</span></li>
+    <li><span class="when">2021</span><span>Death of the founding Leader. Dr. Justin Wachmann becomes Leader of the Revolution.</span></li>
+    <li><span class="when">2026</span><span>Present day of the Ro-Nation roleplay.</span></li>
+  </ol>
+</article>
+
+<!-- ============ BIOGRAPHIES ============ -->
+<article class="page" id="biographies" data-title="Notable Kagundians">
+  <h1>Notable Kagundians</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">Short biographies of the people who shaped Kagundi's history, in order of their time in power.</p>
+
+  <h2 id="b-kessler">Colonel Ernst Kessler</h2>
+  <p><b>Regent of Kagundi, 1915–1919.</b> Commander of the German Schutztruppe in German-Kagundi. When the First World War cut the colony off from Berlin, Kessler removed the civilian administration in 1915 and made himself <i>Landesverweser</i>. His regime used forced labour in the Kagundali gold mines and broke the 1917 Kagundali Strike by force. In 1919 he surrendered to French troops without a fight and was deported to Europe. In Kagundi his name stands for the <i>Verweserzeit</i>, the years of military rule in Germany's name.</p>
+
+  <h2 id="b-kalembe">Friedrich Kalembe</h2>
+  <p><b>First President of Kagundi, 1960–1969.</b> Leader of the Kagundi National Union, the movement of teachers, trade unionists and mission-school graduates that negotiated independence. As President he followed a policy of "national unity" that kept the colonial civil service and officer corps in place, and in 1964 he recruited skilled workers from Argentina and Uruguay. He died in office in 1969. His name is a typical Kagundian pairing of a German first name with a Gundi family name.</p>
+
+  <h2 id="b-ondaru">Henri Ondaru</h2>
+  <p><b>President of Kagundi, 1970–1982.</b> Won the 1970 presidential election amid widespread accusations of fraud. In 1973 he sold the rights to the palladium deposits near Kagundali far below their value, which led to the Concession Scandal of 1977. During the economic crisis of 1979–1981 he ordered the army to break the strikes in Kagundali and Oberdueshuson. When the Free Officers took Gundiville on 12 May 1982, he fled abroad.</p>
+
+  <h2 id="b-wachmann-sr">Major Wachmann</h2>
+  <p><b>Founding Leader of the Revolution, 1982–2021.</b> Born about 1953 into a German-descended officer family, he served at the Oberdueshuson garrison and led the Movement of Free Officers. At 29 he announced the revolution on national radio on 12 May 1982. He chaired the Revolutionary Command Council, adopted the Third Universal Theory in 1983, visited Tripoli, created the Kagundi Dinar and the Revolutionary Guard, and published <i>Der Kagundische Weg</i> in 1984. Despite his revolutionary language he made West Germany the country's main trading partner. He died in 2021 after 39 years in power. State media still call him "the founding Leader"; the title of Major he kept for life.</p>
+
+  <h2 id="b-wachmann">Dr. Justin Wachmann</h2>
+  <p><b>Leader of the Revolution since 2021.</b> Son of the founding Leader and, like his father, a German-descended Kagundian. He studied law and medicine at the national university in Gundiville, served as a general in the Land Forces and in the Revolutionary Guard protecting his father, and was his father's personal physician. After his father's death in 2021 the Revolutionary Guard proclaimed him Leader of the Revolution, and the General People's Congress confirmed him by acclamation. His residence is in Gundiville, and a large statue of him stands on the main square facing the General People's Congress. Officially he is addressed and quoted by his title.</p>
+  <div class="ooc"><p style="margin:10px 0 4px"><span class="label">Out of character</span></p><p>Dr. Justin Wachmann is played by the Owner of Ro-Nation.</p></div>
+</article>
+
+<!-- ============ GEOGRAPHY ============ -->
+<article class="page" id="geography" data-title="Geography of Kagundi">
+  <h1>Geography of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">Kagundi is a landlocked highland country of mountains, high plateaus, forested hills, valleys and farmland. The capital and all major cities lie in the <b>East District</b>, which is ringed by mountains and connected to its neighbours by two border crossings and a cargo airport.</p>
+
+  <h2 id="g-landscape">Landscape</h2>
+  <p>A ring of steep mountains encloses the East District. Inside it the land falls from the northern highlands and the north-eastern plateau, where Oberdueshuson stands, down to the central basin of Gundiville and the south-western valley of Kagundali. Forested hills separate the capital from Stokondo, and rolling lowland pastures fill the south-east. Mines and industrial sites lie outside the commercial centres, while tobacco farms and cattle ranches fill the rural districts.</p>
+
+  <h2 id="g-climate">Climate</h2>
+  <p>Like the African highlands it is modelled on, Kagundi has a mild climate that changes little through the year. Altitude matters more than season: the plateau around Oberdueshuson is the coolest part of the district, the valley of Kagundali the warmest. Two rainy seasons, in spring and in late autumn, keep the hills green.</p>
+
+  <h2 id="g-map">Map of the East District</h2>
+  <figure class="fig">
+    <div class="fig-wrap">
+      <svg viewBox="40 40 944 944" role="img" aria-labelledby="mapt mapd">
+        <title id="mapt">Map of the East District of Kagundi</title>
+        <desc id="mapd">Gundiville in the centre; Stokondo in the north-west; Kagundali in the south-west with gold, diamond and palladium mines; Oberdueshuson on the north-eastern plateau with the Revolutionary Guard barracks and tobacco farms; cargo airport east of Gundiville; border crossings in the east and south; roads link every city to the capital and to each other.</desc>
+        <rect class="m-mtn" x="40" y="40" width="944" height="944"/>
+        <rect class="m-land" x="72" y="72" width="880" height="880" rx="70"/>
+        <rect class="m-hill" x="282" y="72" width="420" height="58" rx="20"/>
+        <rect class="m-hill" x="690" y="150" width="262" height="230" rx="40"/>
+        <rect class="m-forest" x="292" y="252" width="130" height="110" rx="30"/>
+        <rect class="m-forest" x="120" y="380" width="120" height="140" rx="40"/>
+        <rect class="m-farm" x="562" y="132" width="130" height="110" rx="10"/>
+        <rect class="m-farm" x="702" y="82" width="110" height="90" rx="10"/>
+        <rect class="m-farm" x="652" y="682" width="240" height="210" rx="16"/>
+        <rect class="m-mine" x="82" y="852" width="80" height="80" rx="10"/>
+        <rect class="m-mine" x="82" y="592" width="60" height="70" rx="10"/>
+        <rect class="m-mine" x="322" y="722" width="60" height="80" rx="6"/>
+        <rect class="m-mil" x="822" y="162" width="110" height="100" rx="6"/>
+        <rect class="m-mil" x="862" y="272" width="80" height="90" rx="6"/>
+        <path class="m-water" d="M612 72 C 600 200, 640 300, 600 420 S 560 560, 610 620 S 520 860, 360 1000"/>
+        <rect class="m-built" x="682" y="572" width="240" height="70" rx="6"/>
+        <rect class="m-runway" x="692" y="600" width="220" height="12"/>
+        <path class="m-road" d="M512 512 C 430 450, 380 330, 212 282"/>
+        <path class="m-road" d="M512 512 C 470 620, 400 760, 242 782"/>
+        <path class="m-road" d="M512 512 C 600 420, 680 300, 752 232"/>
+        <path class="m-road" d="M512 512 C 620 540, 700 600, 802 607 S 930 560, 984 537"/>
+        <path class="m-road" d="M512 512 C 540 700, 540 860, 562 984"/>
+        <path class="m-road-minor" d="M212 282 C 140 400, 120 560, 112 627 S 180 760, 242 782"/>
+        <path class="m-road-minor" d="M212 282 C 280 120, 600 90, 752 232"/>
+        <path class="m-road-minor" d="M242 782 C 360 860, 470 880, 545 870"/>
+        <path class="m-road-minor" d="M752 232 C 860 280, 900 340, 880 420 S 820 560, 790 600"/>
+        <path class="m-road-minor" d="M242 782 C 180 830, 140 860, 122 892"/>
+        <rect class="m-border" x="968" y="525" width="16" height="24" rx="3"/>
+        <rect class="m-border" x="550" y="968" width="24" height="16" rx="3"/>
+        <rect class="m-capital" x="482" y="482" width="60" height="60" rx="8"/>
+        <circle class="m-city" cx="212" cy="282" r="22"/>
+        <circle class="m-city" cx="242" cy="782" r="22"/>
+        <circle class="m-city" cx="752" cy="232" r="22"/>
+        <text class="m-label" x="556" y="500">Gundiville</text>
+        <text class="m-sub" x="556" y="520">capital</text>
+        <text class="m-label" x="160" y="245">Stokondo</text>
+        <text class="m-sub" x="136" y="330">court · polyclinic</text>
+        <text class="m-label" x="272" y="770">Kagundali</text>
+        <text class="m-sub" x="272" y="790">trade · freight</text>
+        <text class="m-label" x="620" y="290">Oberdueshuson</text>
+        <text class="m-sub" x="640" y="310">garrison town</text>
+        <text class="m-sub" x="700" y="660">Cargo airport</text>
+        <text class="m-sub" x="836" y="155">Guard barracks</text>
+        <text class="m-sub" x="846" y="383">training</text>
+        <text class="m-sub" x="96" y="947">gold and diamonds</text>
+        <text class="m-sub" x="150" y="625">palladium</text>
+        <text class="m-sub" x="316" y="822">ore processing</text>
+        <text class="m-sub" x="565" y="125">tobacco farms</text>
+        <text class="m-sub" x="700" y="790">farmland and cattle ranches</text>
+        <text class="m-sub" x="300" y="380">forested hills</text>
+        <text class="m-sub" x="380" y="104">northern highlands and pass</text>
+        <text class="m-sub" x="842" y="520">border</text>
+        <text class="m-sub" x="586" y="962">border</text>
+        <text class="m-tiny" x="56" y="66">mountains</text>
+        <g transform="translate(110 130)"><path class="m-mark" d="M0 -26 L9 4 L0 -2 L-9 4 Z"/><text class="m-sub" x="-5" y="22" style="font-weight:700">N</text></g>
+      </svg>
+    </div>
+    <ul class="legend">
+      <li><i style="background:var(--accent)"></i>Capital</li>
+      <li><i class="line"></i>Main road</li>
+      <li><i class="line minor"></i>Regional road</li>
+      <li><i style="background:var(--map-mine)"></i>Mines and industry</li>
+      <li><i style="background:var(--map-farm)"></i>Farmland</li>
+      <li><i style="background:var(--map-forest)"></i>Forest</li>
+      <li><i style="background:var(--map-mil)"></i>Military area</li>
+      <li><i style="background:var(--map-water)"></i>River</li>
+    </ul>
+    <figcaption>Simplified map of the East District. Distances are not to scale.</figcaption>
+  </figure>
+
+  <h2 id="g-places">Places</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">What is there</th></tr></thead>
+      <tbody>
+        <tr><td><b><a href="#gundiville">Gundiville</a></b></td><td>Central basin</td><td>Capital; government district, central bank, university, central hospital, police headquarters, Brandwehr Crisis Response Center</td></tr>
+        <tr><td><b><a href="#stokondo">Stokondo</a></b></td><td>North-west, beyond the forested hills</td><td>Second-instance court, judicial administration and archive, major polyclinic</td></tr>
+        <tr><td><b><a href="#kagundali">Kagundali</a></b></td><td>South-western lowland valley</td><td>Trading companies, warehouses, freight yard; ore processing between the city and the capital road</td></tr>
+        <tr><td><b><a href="#oberdueshuson">Oberdueshuson</a></b></td><td>North-eastern plateau, the highest city</td><td>Garrison town; Revolutionary Guard barracks and training grounds to the east, tobacco farms to the north</td></tr>
+        <tr><td>Cargo airport</td><td>East of Gundiville</td><td>East–west runway, cargo apron and terminal; Kagundi's air link for exports</td></tr>
+        <tr><td>Gold fields and diamond workings</td><td>Hills south-west of Kagundali</td><td>Hill mines with haul roads</td></tr>
+        <tr><td>Palladium mine</td><td>Western hills near Kagundali</td><td>The deposits at the centre of the 1977 Concession Scandal</td></tr>
+        <tr><td>Farmland and cattle ranches</td><td>South-eastern lowlands</td><td>Pastures, ranches and rural settlements</td></tr>
+        <tr><td>East border crossing</td><td>Eastern edge, beyond the airport</td><td>International crossing with customs post</td></tr>
+        <tr><td>South border crossing</td><td>Southern edge</td><td>International crossing with customs post and truck inspection for freight from Kagundali</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="g-transport">Transport</h2>
+  <p>Without a coastline, Kagundi trades by air cargo and through its border crossings, so road freight connects the farms, forests and mines to the trading centres. The road network is built as a hub and a ring:</p>
+  <ul>
+    <li><b>Main roads</b> run from Gundiville to each of the other three cities, to the cargo airport and the east border, and to the south border.</li>
+    <li><b>Regional roads</b> form an outer ring: through the western valley from Stokondo to Kagundali past the palladium mine; over the northern pass from Stokondo to Oberdueshuson, the highest road in the country; from Kagundali to the southern main road, the freight route to the south border; and a military road from Oberdueshuson past the training grounds to the airport road.</li>
+    <li>Every city can be reached by at least two routes, which matters for emergency services and for roadblocks.</li>
+  </ul>
+  <p>A river runs from the northern highlands south past the eastern edge of Gundiville, crossed by several bridges.</p>
+
+  <h2 id="g-resources">Natural resources</h2>
+  <ul>
+    <li><b>Gold and diamonds:</b> the hills south-west of Kagundali, mined since the German period.</li>
+    <li><b>Palladium:</b> the western hills near Kagundali, discovered in 1973.</li>
+    <li><b>Timber:</b> the forested hills between Gundiville and Stokondo.</li>
+    <li><b>Tobacco:</b> the highlands around Oberdueshuson.</li>
+    <li><b>Cattle:</b> the south-eastern lowland pastures.</li>
+  </ul>
+
+  <h2 id="g-infrastructure">Infrastructure</h2>
+  <p>The East District has fuel stations in every city and along the main roads, vehicle workshops in Gundiville, Kagundali and Oberdueshuson, water and electricity networks, telecommunications, waste management, schools and vocational training. Bus stops line the main roads at city entrances and villages.</p>
+  <div class="ooc"><p style="margin:10px 0 4px"><span class="label">Out of character</span></p><p>The Roblox map is being built in stages. The positions on this map follow the current map plan and may still move a little.</p></div>
+</article>
+
+<!-- ============ GUNDIVILLE ============ -->
+<article class="page" id="gundiville" data-title="Gundiville">
+  <h1>Gundiville</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about Gundiville">
+    <caption>Gundiville<span>formerly Gundistadt</span></caption>
+    <tbody>
+      <tr><th scope="row">Status</th><td>Capital and largest city</td></tr>
+      <tr><th scope="row">Location</th><td>Central basin of the East District</td></tr>
+      <tr><th scope="row">Founded</th><td>German colonial period, as Gundistadt</td></tr>
+      <tr><th scope="row">Renamed</th><td>1920, by the French administration</td></tr>
+      <tr><th scope="row">Known for</th><td>General People's Congress, Hausali, Leader's residence, statue of the Leader</td></tr>
+      <tr><th scope="row">Roads</th><td>Main roads to all cities, the airport and both borders</td></tr>
+    </tbody>
+  </table>
+  <p class="lede"><b>Gundiville</b> is the capital and largest city of Kagundi and its political, administrative and commercial heart. All main roads of the East District meet here.</p>
+
+  <h2 id="gv-history">History</h2>
+  <p>The German colonial administration founded the city as <b>Gundistadt</b>. The French protectorate renamed it Gundiville in 1920. Independence was proclaimed here on 22 November 1960, and on the night of 11 to 12 May 1982 the Free Officers took its radio station, airport and presidential palace. Every 12 May the Revolution Day parade marches up the ceremonial avenue to the main square.</p>
+
+  <h2 id="gv-district">Government district</h2>
+  <p>The government district lies around the <b>main square</b>, a ceremonial and market square with market stalls along its east and west edges and space for parades in the middle. A tree-lined <b>ceremonial avenue</b> leads to it from the south.</p>
+  <figure class="fig">
+    <div class="fig-wrap">
+      <svg viewBox="0 0 960 900" role="img" aria-labelledby="gvt gvd">
+        <title id="gvt">Plan of central Gundiville</title>
+        <desc id="gvd">The ceremonial avenue runs north from the bus terminal to the main square. The General People's Congress closes the north end of the square, with the statue of the Leader in front of it. The Hausali stands on the east side of the square and the central bank on the west side. The Leader's residence is a walled compound to the north-east, the university to the north-west. The police station is on the avenue, the hospital and the Brandwehr Crisis Response Center lie to the east.</desc>
+        <rect class="m-land" x="0" y="0" width="960" height="900"/>
+        <rect class="p-res" x="10" y="230" width="225" height="660" rx="6"/>
+        <rect class="p-res" x="665" y="675" width="225" height="215" rx="6"/>
+        <rect class="p-green" x="670" y="50" width="140" height="120" rx="6"/>
+        <path class="m-water" d="M935 0 C 925 250, 950 500, 930 900"/>
+        <path class="p-street" d="M0 450 L 960 450"/>
+        <path class="p-street" d="M270 588 L 630 588"/>
+        <path class="p-street" d="M40 202 L 235 202"/>
+        <rect class="p-avenue" x="425" y="440" width="50" height="460"/>
+        <rect class="p-square" x="380" y="320" width="140" height="120"/>
+        <rect class="p-bldg" x="270" y="600" width="150" height="190" rx="3"/>
+        <rect class="p-bldg" x="480" y="600" width="150" height="190" rx="3"/>
+        <rect class="p-key" x="495" y="800" width="105" height="80" rx="3"/>
+        <rect class="p-key" x="380" y="230" width="140" height="75" rx="3"/>
+        <rect class="p-square" x="395" y="305" width="110" height="15"/>
+        <rect class="p-key" x="545" y="310" width="85" height="120" rx="3"/>
+        <rect class="p-key" x="285" y="325" width="70" height="95" rx="3"/>
+        <rect class="p-key" x="690" y="70" width="100" height="80" rx="3" style="stroke-dasharray:5 3"/>
+        <rect class="p-key" x="40" y="40" width="190" height="130" rx="3"/>
+        <rect class="p-key" x="300" y="520" width="105" height="55" rx="3"/>
+        <rect class="p-key" x="665" y="530" width="145" height="130" rx="3"/>
+        <rect class="p-key" x="665" y="400" width="105" height="40" rx="3"/>
+        <rect class="p-statue" x="438" y="372" width="24" height="24" rx="3"/>
+        <circle cx="450" cy="384" r="6" fill="var(--bg)"/>
+        <text class="p-label" x="450" y="262" text-anchor="middle">General People's</text>
+        <text class="p-label" x="450" y="280" text-anchor="middle">Congress</text>
+        <text class="p-small" x="450" y="356" text-anchor="middle">main square</text>
+        <text class="p-small" x="450" y="429" text-anchor="middle">statue of the Leader</text>
+        <text class="p-label" x="587" y="368" text-anchor="middle">Hausali</text>
+        <text class="p-small" x="587" y="386" text-anchor="middle">government</text>
+        <text class="p-label" x="320" y="368" text-anchor="middle">Central</text>
+        <text class="p-label" x="320" y="386" text-anchor="middle">bank</text>
+        <text class="p-label" x="740" y="104" text-anchor="middle">Leader's</text>
+        <text class="p-label" x="740" y="122" text-anchor="middle">residence</text>
+        <text class="p-small" x="740" y="188" text-anchor="middle">walled compound and gardens</text>
+        <text class="p-label" x="135" y="100" text-anchor="middle">National university</text>
+        <text class="p-small" x="135" y="118" text-anchor="middle">law programme</text>
+        <text class="p-small" x="138" y="222" text-anchor="middle">Embassy Row</text>
+        <text class="p-label" x="352" y="545" text-anchor="middle">City Police</text>
+        <text class="p-small" x="352" y="563" text-anchor="middle">headquarters</text>
+        <text class="p-label" x="737" y="585" text-anchor="middle">Central hospital</text>
+        <text class="p-small" x="737" y="603" text-anchor="middle">ambulance bay, helipad</text>
+        <text class="p-label" x="717" y="425" text-anchor="middle">Brandwehr CRC</text>
+        <text class="p-label" x="345" y="700" text-anchor="middle">Commercial</text>
+        <text class="p-label" x="345" y="718" text-anchor="middle">district</text>
+        <text class="p-label" x="555" y="700" text-anchor="middle">Commercial</text>
+        <text class="p-label" x="555" y="718" text-anchor="middle">district</text>
+        <text class="p-small" x="485" y="577">Market Street</text>
+        <text class="p-label" x="547" y="836" text-anchor="middle">Bus terminal</text>
+        <text class="p-small" x="547" y="854" text-anchor="middle">arrivals</text>
+        <text class="p-small" x="122" y="560" text-anchor="middle">residential</text>
+        <text class="p-small" x="777" y="785" text-anchor="middle">residential</text>
+        <text class="p-small" x="925" y="40" text-anchor="end">river</text>
+        <text class="p-small" x="20" y="440">to Stokondo and Kagundali</text>
+        <text class="p-small" x="940" y="440" text-anchor="end">to the airport and Oberdueshuson</text>
+        <text class="p-small" x="415" y="872" text-anchor="end">ceremonial avenue</text>
+      </svg>
+    </div>
+    <figcaption>Plan of central Gundiville. North is at the top.</figcaption>
+  </figure>
+
+  <h2 id="gv-landmarks">Landmarks</h2>
+  <ul>
+    <li><b>General People's Congress:</b> the tallest building of the district, with a central dome, closing the north end of the main square. Ceremonial steps lead down to the forecourt.</li>
+    <li><b>Statue of Dr. Justin Wachmann:</b> a large, permanent statue of the Leader of the Revolution on the ceremonial axis, directly in front of the Congress and facing it. It can be seen along the whole avenue.</li>
+    <li><b>Hausali:</b> the government headquarters (Kagundisch for "great house"), an administrative building on the east side of the square, seat of the Secretary-General and the secretariats.</li>
+    <li><b>Leader's residence:</b> a walled, guarded compound with gardens north-east of the square, set apart from the Congress and the Hausali and protected by the Revolutionary Guard.</li>
+    <li><b>Central Bank of Kagundi:</b> on the west side of the square.</li>
+    <li><b>National university:</b> a campus in the north-west with the country's only law programme, which grants the justice degree required of lawyers and prosecutors.</li>
+    <li><b>City Police headquarters:</b> the main police station, on the avenue south of the square, with a vehicle yard behind it.</li>
+    <li><b>Central hospital:</b> east of the avenue, with an ambulance bay and a helipad.</li>
+    <li><b>Brandwehr Crisis Response Center:</b> on the main east–west street, its apparatus bays opening towards the airport road.</li>
+    <li><b>Commercial district and Market Street:</b> shops, offices and a market hall along the avenue.</li>
+    <li><b>Bus terminal:</b> at the south end of the avenue, where most visitors arrive.</li>
+  </ul>
+
+  <h2 id="gv-housing">State housing and premises</h2>
+  <p>The state rents out the following units through the national property register. Rents are charged per day.</p>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Property</th><th scope="col">Type</th><th class="num" scope="col">Value (KGD)</th><th class="num" scope="col">Rent per day</th></tr></thead>
+      <tbody>
+        <tr><td>Central Apartment 1</td><td>Residential</td><td class="num">32,000</td><td class="num">160</td></tr>
+        <tr><td>Central Apartment 2</td><td>Residential</td><td class="num">32,000</td><td class="num">160</td></tr>
+        <tr><td>Riverside Apartment</td><td>Residential</td><td class="num">28,000</td><td class="num">140</td></tr>
+        <tr><td>Embassy Row House (also for sale)</td><td>Residential</td><td class="num">85,000</td><td class="num">340</td></tr>
+        <tr><td>Commercial District Office</td><td>Commercial</td><td class="num">60,000</td><td class="num">260</td></tr>
+        <tr><td>Market Street Retail Unit</td><td>Commercial</td><td class="num">50,000</td><td class="num">210</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Values and rents at the launch of the property register. Current listings: <code>/property</code> on the Discord server.</p>
+</article>
+
+<!-- ============ STOKONDO ============ -->
+<article class="page" id="stokondo" data-title="Stokondo">
+  <h1>Stokondo</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about Stokondo">
+    <caption>Stokondo</caption>
+    <tbody>
+      <tr><th scope="row">Role</th><td>Justice and healthcare</td></tr>
+      <tr><th scope="row">Location</th><td>North-west of Gundiville, beyond the forested hills</td></tr>
+      <tr><th scope="row">Known for</th><td>Second-instance court, judicial archive, polyclinic</td></tr>
+      <tr><th scope="row">Roads</th><td>Main road to Gundiville; regional roads to Kagundali and over the northern pass to Oberdueshuson</td></tr>
+    </tbody>
+  </table>
+  <p class="lede"><b>Stokondo</b> is Kagundi's centre of justice and healthcare outside the capital. It is a quieter regional civic centre, orderly and institutional but less monumental than Gundiville.</p>
+
+  <h2 id="st-court">Court quarter</h2>
+  <p>The court quarter is built around a central square with short walks between its buildings:</p>
+  <ul>
+    <li><b>Second-instance court:</b> the appeals court for the whole country. Appeals against a mayor's judgment must reach it within 72 hours. Its judges are appointed by the responsible secretary and are expected to hold a justice degree.</li>
+    <li><b>Central judicial administration:</b> the offices of the justice system under the Secretariat for Internal Affairs and Infrastructure.</li>
+    <li><b>Judicial archive:</b> every first-instance judgment in Kagundi is recorded here with a short written reason, along with the case files.</li>
+    <li>Public waiting areas and lawyers' chambers around the square.</li>
+  </ul>
+
+  <h2 id="st-health">Polyclinic</h2>
+  <p>Stokondo's major polyclinic is the country's second medical centre after the central hospital in Gundiville. It stands near the entrance from the capital road, so ambulances reach it quickly.</p>
+
+  <h2 id="st-life">Life in Stokondo</h2>
+  <p>Many of the town's residents work for the courts, the archive or the polyclinic, and Stokondo has a reputation as the home of lawyers and doctors. The road to the capital climbs through the forested hills, which also supply timber. A regional road leads south through the western valley to Kagundali, and another crosses the northern pass to Oberdueshuson.</p>
+
+  <h2 id="st-housing">State housing and premises</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Property</th><th scope="col">Type</th><th class="num" scope="col">Value (KGD)</th><th class="num" scope="col">Rent per day</th></tr></thead>
+      <tbody>
+        <tr><td>Courthouse Quarter Apartment</td><td>Residential</td><td class="num">26,000</td><td class="num">130</td></tr>
+        <tr><td>Polyclinic Lane Apartment</td><td>Residential</td><td class="num">26,000</td><td class="num">130</td></tr>
+        <tr><td>Legal Chambers Office</td><td>Commercial</td><td class="num">45,000</td><td class="num">190</td></tr>
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<!-- ============ KAGUNDALI ============ -->
+<article class="page" id="kagundali" data-title="Kagundali">
+  <h1>Kagundali</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about Kagundali">
+    <caption>Kagundali<span>"great place of the Gundi"</span></caption>
+    <tbody>
+      <tr><th scope="row">Role</th><td>Trade, freight and mining</td></tr>
+      <tr><th scope="row">Location</th><td>Lowland valley south-west of Gundiville</td></tr>
+      <tr><th scope="row">Known for</th><td>Gold, diamonds and palladium; 1917 Kagundali Strike</td></tr>
+      <tr><th scope="row">Roads</th><td>Main road to Gundiville; regional roads to Stokondo and to the south border</td></tr>
+    </tbody>
+  </table>
+  <p class="lede"><b>Kagundali</b> is the commercial and mining centre of Kagundi, an energetic town at the foot of rugged green hills. Its name combines <i>Ka-</i>, Gundi and the Old Gundi suffix <i>-ali</i>, "great".</p>
+
+  <h2 id="kg-history">History</h2>
+  <p>Gold mining began in the hills around Kagundali under German rule. During the Regency the regime forced indigenous men to work in the mines, and in <b>1917</b> the miners went on strike. The Schutztruppe broke the <b>Kagundali Strike</b> by force; it became the founding story of Kagundian resistance, and a memorial in the town honours the strikers. In 1973 palladium was found in the western hills, and the sale of the rights far below their value led to the Concession Scandal of 1977. The miners' strike of 1981 and the order to fire on them were among the causes of the Revolution of 1982.</p>
+
+  <h2 id="kg-economy">Economy</h2>
+  <ul>
+    <li><b>Mining:</b> gold fields and diamond workings in the hills to the south-west, and the palladium mine in the western hills, all with their own haul roads.</li>
+    <li><b>Ore processing:</b> an industrial zone between the town and the capital road.</li>
+    <li><b>Trade and freight:</b> trading companies, warehouses, loading bays and a freight yard on the east side of town. Freight leaves by the main road to Gundiville and the airport, or by the regional road to the south border.</li>
+    <li><b>Workshops and workforce housing</b> around the commercial core.</li>
+  </ul>
+
+  <h2 id="kg-housing">State housing and premises</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Property</th><th scope="col">Type</th><th class="num" scope="col">Value (KGD)</th><th class="num" scope="col">Rent per day</th></tr></thead>
+      <tbody>
+        <tr><td>Workers' Apartment 1</td><td>Residential</td><td class="num">22,000</td><td class="num">110</td></tr>
+        <tr><td>Workers' Apartment 2</td><td>Residential</td><td class="num">22,000</td><td class="num">110</td></tr>
+        <tr><td>Freight Warehouse</td><td>Industrial</td><td class="num">55,000</td><td class="num">230</td></tr>
+        <tr><td>Ore Yard Industrial Lot (also for sale)</td><td>Industrial</td><td class="num">70,000</td><td class="num">270</td></tr>
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<!-- ============ OBERDUESHUSON ============ -->
+<article class="page" id="oberdueshuson" data-title="Oberdueshuson">
+  <h1>Oberdueshuson</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about Oberdueshuson">
+    <caption>Oberdueshuson</caption>
+    <tbody>
+      <tr><th scope="row">Role</th><td>Military garrison and agriculture</td></tr>
+      <tr><th scope="row">Location</th><td>North-eastern highland plateau, the highest city</td></tr>
+      <tr><th scope="row">Known for</th><td>Revolutionary Guard barracks; tobacco; starting point of the 1982 revolution</td></tr>
+      <tr><th scope="row">Roads</th><td>Main road to Gundiville; regional roads over the northern pass to Stokondo and past the training grounds to the airport road</td></tr>
+    </tbody>
+  </table>
+  <p class="lede"><b>Oberdueshuson</b> is a highland garrison town and the centre of Kagundi's tobacco farming. A large military complex stands beside the civilian town and its fields.</p>
+
+  <h2 id="ob-history">History</h2>
+  <p>The German Schutztruppe built its main garrison here, and the town has been Kagundi's military centre ever since. Tobacco plantations spread across the surrounding highlands in the same period. In 1981 tobacco workers struck here as well as in Kagundali, and on the evening of 11 May 1982 the Free Officers set out from the Oberdueshuson garrison on their march to Gundiville.</p>
+
+  <h2 id="ob-military">Military complex</h2>
+  <ul>
+    <li><b>Revolutionary Guard main barracks</b> east of the town, with the Guard's administration and its vehicle and equipment depots.</li>
+    <li><b>Parade ground</b> for ceremonies and drill.</li>
+    <li><b>Training grounds</b> south-east of the barracks: firing range, drill ground and obstacle course.</li>
+    <li>Restricted military areas are clearly marked and separated from the civilian town.</li>
+  </ul>
+
+  <h2 id="ob-farming">Tobacco and the town</h2>
+  <p>Tobacco farms, storage and drying sheds and country roads fill the plateau north of the town. The civilian settlement is low-rise, with practical buildings rather than towers. The first Sunday in October, Erntefest, celebrates the tobacco and maize harvest.</p>
+
+  <h2 id="ob-housing">State housing and premises</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Property</th><th scope="col">Type</th><th class="num" scope="col">Value (KGD)</th><th class="num" scope="col">Rent per day</th></tr></thead>
+      <tbody>
+        <tr><td>Farmhouse (also for sale)</td><td>Residential</td><td class="num">30,000</td><td class="num">120</td></tr>
+        <tr><td>Tobacco Fields</td><td>Agricultural</td><td class="num">40,000</td><td class="num">150</td></tr>
+        <tr><td>Garrison Town Apartment</td><td>Residential</td><td class="num">20,000</td><td class="num">100</td></tr>
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<!-- ============ GOVERNMENT ============ -->
+<article class="page" id="government" data-title="Government of Kagundi">
+  <h1>Government of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">Kagundi is a centralised unitary state. Formally it is a presidential republic; in practice it is an authoritarian presidential dictatorship in which power is concentrated in the <a href="#leader">Leader of the Revolution</a>. A system of people's councils and congresses, modelled on Libya under Muammar Gaddafi, provides formal representation.</p>
+
+  <h2 id="gov-chart">Structure of the state</h2>
+  <div class="org" role="figure" aria-label="Organisation chart of the Kagundian state">
+    <div class="org-top"><div class="org-box key"><b>Leader of the Revolution</b><small>supreme authority; appoints the Secretary-General</small></div></div>
+    <div class="org-arrow" aria-hidden="true">▼</div>
+    <div class="org-cols">
+      <div class="org-col">
+        <div class="org-box key"><b>Secretary-General</b><small>of the People's Committee; head of government</small></div>
+        <div class="org-box child"><b>Internal Affairs and Infrastructure</b><small>administration, infrastructure, City Police, justice</small></div>
+        <div class="org-box child"><b>Defence and Foreign Affairs</b><small>defence, military administration, Gendarmerie, foreign relations</small></div>
+        <div class="org-box child"><b>Economy and Education</b><small>economic policy, budget, central bank, education</small></div>
+        <div class="org-box child"><b>Health and Crisis Management</b><small>healthcare, EMS, Brandwehr, crisis response</small></div>
+      </div>
+      <div class="org-col">
+        <div class="org-box key"><b>Revolutionary Guard</b><small>reports directly to the Leader</small></div>
+        <div class="org-box child"><b>Intelligence Service</b><small>subordinate to the Guard</small></div>
+        <div class="org-box child"><b>Military Tribunal</b><small>Guard members sit as judges</small></div>
+      </div>
+      <div class="org-col">
+        <div class="org-box key"><b>General People's Congress</b><small>confirms the Secretary-General, officials and decisions; reviews the budget</small></div>
+        <div class="org-box child"><b>People's Councils</b><small>local; chosen through trade unions and professional organisations; appoint mayors</small></div>
+        <div class="org-box child"><b>Mayors</b><small>run towns; judge all ordinary cases in the first instance</small></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="gov-sg">Secretary-General of the People's Committee</h2>
+  <p>The Secretary-General is the head of government and directs the administration. The Leader appoints the Secretary-General, and the General People's Congress confirms the appointment. The Secretary-General can give instructions to every secretariat, in coordination with the Leader, and decides whether women are called up for military service in wartime. Secretaries are appointed and dismissed jointly by the Secretary-General and the Leader.</p>
+
+  <h2 id="gov-secretariats">The four secretariats</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Secretariat</th><th scope="col">Responsibilities</th></tr></thead>
+      <tbody>
+        <tr><td>Internal Affairs and Infrastructure</td><td>State administration, public infrastructure, oversight of the City Police, administration of the justice system</td></tr>
+        <tr><td>Defence and Foreign Affairs</td><td>National defence, military administration, oversight of the Gendarmerie, foreign relations</td></tr>
+        <tr><td>Economy and Education</td><td>Economic policy, state finances and budget, the central bank, education, the National Economic Report, the business registry and credit office</td></tr>
+        <tr><td>Health and Crisis Management</td><td>Public healthcare, emergency medical services, fire and civil protection, crisis response</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="gov-congress">General People's Congress</h2>
+  <p>The General People's Congress is the national representative body. Its members come directly from the People's Councils. It reviews and discusses the budget, confirms designated officials, submits proposals and motions, and formally confirms government decisions. Its real influence is far smaller than the Leader's.</p>
+
+  <h2 id="gov-councils">People's Councils</h2>
+  <p>People's Councils work at the local level. They give advice and proposals, run limited municipal self-government and take part in appointing the mayors of towns and villages. Their members are chosen through trade unions and professional organisations. Criticism and opposing motions are allowed on paper but strongly restricted in practice.</p>
+
+  <h2 id="gov-parties">Parties and civic organisations</h2>
+  <p>Political parties are not expressly banned, but independent political organisations cannot operate freely. Trade unions and professional associations are directed by the state and are the main formal channels for representing workers and professions. The result is limited participation without real competition between parties.</p>
+
+  <h2 id="gov-admin">Administration</h2>
+  <p>The country is divided into districts; the East District contains the capital and all major cities. Towns and villages are run by mayors appointed through the People's Councils, while the national government keeps the main political and administrative powers. Laws and government decisions are published in the official government gazette and through state announcements. Paperwork matters: officials are addressed by title, as in <i>Herr Sekretär</i> or <i>Frau Maista</i>, and nothing happens without a stamp.</p>
+
+  <h2 id="gov-pay">Public service pay</h2>
+  <p>Public servants are paid by the National Treasury for each shift worked. Standard daily pay in 2026:</p>
+  <div class="bars" role="img" aria-label="Daily pay in the public service, in Kagundi Dinar">
+    <span class="grp">Government</span>
+    <span class="lbl">Leader of the Revolution</span><span class="track"><span class="bar" style="width:62%" title="1,000 KGD per day"></span><span class="val">1,000</span></span>
+    <span class="lbl">Secretary-General</span><span class="track"><span class="bar" style="width:55.8%" title="900 KGD per day"></span><span class="val">900</span></span>
+    <span class="lbl">Secretaries</span><span class="track"><span class="bar" style="width:52.7%" title="850 KGD per day"></span><span class="val">850</span></span>
+    <span class="lbl">Secretariat member</span><span class="track"><span class="bar" style="width:43.4%" title="700 KGD per day"></span><span class="val">700</span></span>
+    <span class="lbl">Government official</span><span class="track"><span class="bar" style="width:40.3%" title="650 KGD per day"></span><span class="val">650</span></span>
+    <span class="lbl">Congress representative</span><span class="track"><span class="bar" style="width:27.9%" title="450 KGD per day"></span><span class="val">450</span></span>
+    <span class="lbl">People's Council member</span><span class="track"><span class="bar" style="width:21.7%" title="350 KGD per day"></span><span class="val">350</span></span>
+    <span class="grp">Justice</span>
+    <span class="lbl">Judge</span><span class="track"><span class="bar" style="width:43.4%" title="700 KGD per day"></span><span class="val">700</span></span>
+    <span class="lbl">Justice officer (lawyer, prosecutor, clerk)</span><span class="track"><span class="bar" style="width:37.2%" title="600 KGD per day"></span><span class="val">600</span></span>
+    <span class="grp">Security and defence</span>
+    <span class="lbl">Revolutionary Guard Command</span><span class="track"><span class="bar" style="width:55.8%" title="900 KGD per day"></span><span class="val">900</span></span>
+    <span class="lbl">Gendarmerie / Armed Forces Command</span><span class="track"><span class="bar" style="width:49.6%" title="800 KGD per day"></span><span class="val">800</span></span>
+    <span class="lbl">Revolutionary Guard, Intelligence officer</span><span class="track"><span class="bar" style="width:46.5%" title="750 KGD per day"></span><span class="val">750</span></span>
+    <span class="lbl">City Police Command</span><span class="track"><span class="bar" style="width:46.5%" title="750 KGD per day"></span><span class="val">750</span></span>
+    <span class="lbl">Gendarme</span><span class="track"><span class="bar" style="width:40.3%" title="650 KGD per day"></span><span class="val">650</span></span>
+    <span class="lbl">City Police officer, Air Force airman</span><span class="track"><span class="bar" style="width:37.2%" title="600 KGD per day"></span><span class="val">600</span></span>
+    <span class="lbl">Land Forces soldier</span><span class="track"><span class="bar" style="width:34.1%" title="550 KGD per day"></span><span class="val">550</span></span>
+    <span class="grp">Public services</span>
+    <span class="lbl">EMS / Brandwehr Command</span><span class="track"><span class="bar" style="width:46.5%" title="750 KGD per day"></span><span class="val">750</span></span>
+    <span class="lbl">Paramedic, firefighter, AVK officer</span><span class="track"><span class="bar" style="width:37.2%" title="600 KGD per day"></span><span class="val">600</span></span>
+  </div>
+  <p class="note">Daily pay in KGD, before 10% income tax. The private sector pays between the legal minimum of 150 and the maximum of 2,500 KGD per day.</p>
+</article>
+
+<!-- ============ LEADER ============ -->
+<article class="page" id="leader" data-title="Leader of the Revolution">
+  <h1>Leader of the Revolution</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about the Leader of the Revolution">
+    <caption>Leader of the Revolution<span>Leiter der Revolution · di Laita</span></caption>
+    <tbody>
+      <tr class="symbols"><td colspan="2"><div class="symbols-row"><figure><img class="emblem-img" src="../assets/kagundi-emblem.png" alt="Emblem of Kagundi" width="80" height="80"></figure></div></td></tr>
+      <tr><th scope="row">Incumbent</th><td><a href="#b-wachmann">Dr. Justin Wachmann</a>, since 2021</td></tr>
+      <tr><th scope="row">Style</th><td>"the Leader of the Revolution"</td></tr>
+      <tr><th scope="row">Residence</th><td>Leader's residence, Gundiville</td></tr>
+      <tr><th scope="row">Protected by</th><td>Revolutionary Guard</td></tr>
+      <tr><th scope="row">Term</th><td>None; not an elected office</td></tr>
+      <tr><th scope="row">First holder</th><td><a href="#b-wachmann-sr">Major Wachmann</a> (1982–2021)</td></tr>
+      <tr><th scope="row">Created</th><td>12 May 1982</td></tr>
+    </tbody>
+  </table>
+  <p class="lede">The <b>Leader of the Revolution</b> is the highest authority in Kagundi. The office combines the functions of a president with nearly unrestricted power over the government and the security institutions.</p>
+
+  <h2 id="l-title">A title, not an office</h2>
+  <p>"Leader of the Revolution" is the holder's title, comparable to Gaddafi's title in Libya, "Brotherly Leader and Guide of the Revolution". It comes from leading the 1982 revolution, not from an election, so it has no term, no election and no age limit. In German it is <i>Leiter der Revolution</i>, in Kagundisch <i>di Laita</i>; the German word <i>Führer</i> is never used.</p>
+  <p>Officially the Leader is addressed and quoted by the title. The personal name is publicly known, but state media rarely use it.</p>
+
+  <h2 id="l-powers">Powers</h2>
+  <ul>
+    <li>Sets the political direction of the country and holds supreme executive authority.</li>
+    <li>Appoints the Secretary-General of the People's Committee, and with the Secretary-General appoints and dismisses the secretaries.</li>
+    <li>Commands the Revolutionary Guard directly, and through it the Intelligence Service.</li>
+    <li>Has direct influence over the highest government and security institutions.</li>
+  </ul>
+  <p>Official doctrine says the Leader only "guides" the revolution while the people govern themselves through their councils and congress. In practice the Leader holds the powers above.</p>
+
+  <h2 id="l-list">List of Leaders</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">#</th><th scope="col">Leader</th><th scope="col">In office</th><th scope="col">Background</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td><a href="#b-wachmann-sr">Major Wachmann</a></td><td>12 May 1982 – 2021</td><td>Officer of the Oberdueshuson garrison; leader of the Free Officers</td></tr>
+        <tr><td class="num">2</td><td><a href="#b-wachmann">Dr. Justin Wachmann</a></td><td>2021 – present</td><td>Son of the founding Leader; law and medicine; general; Revolutionary Guard</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="l-residence">Residence and statue</h2>
+  <p>The Leader lives in the Leader's residence in Gundiville, a walled compound with gardens north-east of the main square, guarded by the Revolutionary Guard. A large permanent statue of Dr. Justin Wachmann stands on the ceremonial axis of the main square, facing the General People's Congress.</p>
+  <div class="ooc"><p style="margin:10px 0 4px"><span class="label">Out of character</span></p><p>The Leader of the Revolution is played by the Owner. The Owner's in-character decisions follow the roleplay rules; real moderation stays a separate staff task.</p></div>
+</article>
+
+<!-- ============ IDEOLOGY ============ -->
+<article class="page" id="ideology" data-title="The Kagundian Way">
+  <h1>The Kagundian Way</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede"><b>The Kagundian Way</b> (<i>Der Kagundische Weg</i>) is the state doctrine of Kagundi since 1983: a selective, Kagundian version of Muammar Gaddafi's <b>Third Universal Theory</b>.</p>
+
+  <h2 id="i-origin">Origin</h2>
+  <p>Gaddafi set out the Third Universal Theory in his <i>Green Book</i> (1975–1979) as a third way between capitalism and communism, in which the people rule directly through congresses and committees instead of parliaments and parties. After the revolution the Free Officers looked to Libya for a model. In 1983 the Leader visited Tripoli and Libyan advisers helped build the congress system. In 1984 the Leader published the booklet <i>Der Kagundische Weg</i>, which explains which ideas apply to Kagundi.</p>
+
+  <h2 id="i-ideas">What Kagundi took from the Green Book</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Idea from the Green Book</th><th scope="col">In Kagundi</th></tr></thead>
+      <tbody>
+        <tr><td>"Representation is fraud": no parliament</td><td>The General People's Congress and People's Councils replace a parliament</td></tr>
+        <tr><td>Parties divide the people</td><td>Parties are not banned but cannot operate freely</td></tr>
+        <tr><td>Committees govern instead of ministers</td><td>The People's Committee, its Secretary-General and the secretariats; the names follow Libya</td></tr>
+        <tr><td>Workers and professions take part through their organisations</td><td>Council members are chosen through trade unions and professional organisations</td></tr>
+        <tr><td>"Partners, not wage-workers"</td><td>A slogan on posters only; wages, rent and private businesses stay legal because Kagundi depends on German trade and investment</td></tr>
+        <tr><td>The Leader guides, the people rule</td><td>The official doctrine of the Leader's role</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="i-practice">In daily life</h2>
+  <p>The <i>Green Book</i> is taught in schools in a German translation, and its slogans appear on posters and public buildings. The doctrine shapes the institutions and the language of the state, while the economy stays pragmatic and closely tied to Germany. The revolution's four reasons, from corruption to the order to fire on strikers, are part of every school curriculum.</p>
+  <div class="ooc"><p style="margin:10px 0 4px"><span class="label">Out of character</span></p><p>Inside the Roblox game, use the Kagundian names and slogans rather than pictures of the real Gaddafi, since Roblox has rules on content about real political figures.</p></div>
+</article>
+
+<!-- ============ SECURITY ============ -->
+<article class="page" id="security" data-title="Security forces of Kagundi">
+  <h1>Security forces of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">Kagundi has five security organisations, each with its own chain of command and its own place in the state.</p>
+
+  <h2 id="sec-overview">Overview</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Organisation</th><th scope="col">Reports to</th><th scope="col">Role</th><th scope="col">Base</th></tr></thead>
+      <tbody>
+        <tr><td><b>City Police</b> (<i>Polizai</i>)</td><td>Secretariat for Internal Affairs and Infrastructure</td><td>Patrols, traffic, public safety, arrests, evidence, ordinary crime, case files</td><td>Headquarters in Gundiville</td></tr>
+        <tr><td><b>Gendarmerie</b> (<i>Schandarm</i>)</td><td>Armed forces, overseen by the Secretariat for Defence and Foreign Affairs</td><td>Militarily organised national police; lead on serious crimes and major incidents</td><td>National</td></tr>
+        <tr><td><b>Land Forces and Air Force</b></td><td>Secretariat for Defence and Foreign Affairs</td><td>National defence and military training</td><td>National</td></tr>
+        <tr><td><b>Revolutionary Guard</b></td><td>Leader of the Revolution</td><td>Protection of the Leader and Secretary-General, state facilities, state security, misconduct in the security services</td><td>Main barracks in Oberdueshuson</td></tr>
+        <tr><td><b>Intelligence Service</b></td><td>Revolutionary Guard</td><td>Terrorism, mass murder, attacks on critical infrastructure, serious threats to national security</td><td>National</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="sec-jurisdiction">Who handles a case</h2>
+  <p>The seriousness of an offence decides which force takes the lead:</p>
+  <ol class="flow">
+    <li><b>Ordinary offence</b>City Police: theft, traffic, public order, assault.</li>
+    <li><b>Serious crime (<i>Verbrechen</i>)</b>Gendarmerie takes the lead once involved, under the German-law-inspired classification.</li>
+    <li><b>Threat to the nation</b>Intelligence Service: terrorism, mass murder, destruction of critical infrastructure.</li>
+    <li class="side"><b>Misconduct by officers</b>Revolutionary Guard investigates the security services themselves.</li>
+  </ol>
+  <p class="note">The <i>Verbrechen</i> category refers to the legal seriousness of an offence, not to the suspect's origin or nationality.</p>
+
+  <h2 id="sec-police">City Police</h2>
+  <p>The City Police are Kagundi's everyday police. They patrol, enforce traffic rules, keep public order, make arrests, secure evidence and investigate ordinary crime. They prepare the case files, and an officer with a justice degree prosecutes their cases in court. The force has its own command structure under the Secretariat for Internal Affairs and Infrastructure; its headquarters is the main police station on the ceremonial avenue in Gundiville.</p>
+
+  <h2 id="sec-gendarmerie">Gendarmerie</h2>
+  <p>The Gendarmerie is a militarily organised national police force. It belongs to the armed forces, is overseen by the Secretariat for Defence and Foreign Affairs and has full police authority. It is more heavily organised than the City Police and takes the lead in serious crimes and major security incidents. It traces its origin to the <i>Gendarmerie du Kagundi</i>, founded by the French protectorate in 1923.</p>
+
+  <h2 id="sec-armed">Land Forces and Air Force</h2>
+  <p>The armed forces are responsible for national defence and military training. All men serve two years of <b>basic military service</b> without ordinary exemptions and remain registered as reservists for life. In wartime the Secretary-General decides whether women are also called up.</p>
+
+  <h2 id="sec-guard">Revolutionary Guard</h2>
+  <p>The Revolutionary Guard is a special military unit directly under the Leader of the Revolution. It was formed in 1983 around the Free Officers and the units that marched on Gundiville in May 1982, and it sees itself as the protector of the revolution. It protects the Leader and the Secretary-General, guards designated state facilities, carries out state-security tasks and investigates misconduct within the security services. Its members sit as judges in the Military Tribunal. Its main barracks, parade ground and training grounds are in Oberdueshuson.</p>
+
+  <h2 id="sec-intelligence">Intelligence Service</h2>
+  <p>The Intelligence Service is subordinate to the Revolutionary Guard. It handles the most serious cases: terrorism, mass murder, major destruction of critical infrastructure and serious threats to national security. Ordinary offences stay with the police unless their seriousness requires the Service.</p>
+</article>
+
+<!-- ============ JUSTICE ============ -->
+<article class="page" id="justice" data-title="Justice system of Kagundi">
+  <h1>Justice system of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">The justice system is run by the Secretariat for Internal Affairs and Infrastructure. It has two instances, plus a separate Military Tribunal. A defining feature is that town mayors, sitting as <i>Maista</i>, judge every ordinary case in the first instance.</p>
+
+  <h2 id="j-flow">How a case goes</h2>
+  <ol class="flow">
+    <li><b>Investigation</b>The responsible police force secures evidence and prepares the case file.</li>
+    <li><b>Charge</b>An officer of that force with a justice degree brings the prosecution.</li>
+    <li><b>First instance</b>The mayor of the town where the offence happened hears the case and gives judgment with a written reason.</li>
+    <li><b>Appeal</b>Either side may appeal within 72 hours.</li>
+    <li><b>Second instance</b>The appeals court in Stokondo decides.</li>
+    <li class="side"><b>Military Tribunal</b>Military offences and state-security crimes go here instead, with Revolutionary Guard judges.</li>
+  </ol>
+
+  <h2 id="j-first">First instance: the mayors</h2>
+  <p>Mayors judge all ordinary cases in the first instance, from minor offences and civil disputes to serious crimes. A mayor sitting as judge is addressed as <i>Maista</i>. Rules of procedure:</p>
+  <ul>
+    <li><b>Which mayor:</b> the mayor of the town where the offence took place; in civil disputes, the mayor of the town where the defendant lives or where the business is registered.</li>
+    <li><b>Conflict of interest:</b> a mayor may not judge a case in which they are a party, a witness, a relative, or an employer or business partner of a party. The Secretariat for Internal Affairs and Infrastructure then gives the case to another town's mayor.</li>
+    <li><b>No degree needed:</b> mayors need no justice degree to judge, but they are bound by the published legal code.</li>
+    <li><b>Written record:</b> every judgment is recorded with a short written reason in the judicial archive in Stokondo.</li>
+  </ul>
+
+  <h2 id="j-second">Second instance: Stokondo</h2>
+  <p>The second instance hears appeals. Appeals must be filed within <b>72 hours</b> of the first-instance judgment. Its judges are appointed by the responsible secretary. There is no career of professional judges, but a justice degree is expected and preferred for appointment. The court sits in <a href="#stokondo">Stokondo</a>.</p>
+
+  <h2 id="j-tribunal">Military Tribunal</h2>
+  <p>The Military Tribunal handles military offences and state-security crimes. Members of the Revolutionary Guard serve as judges, and only in this tribunal.</p>
+
+  <h2 id="j-professions">Lawyers and prosecutors</h2>
+  <p>Defendants are assigned lawyers with a justice degree. The prosecution is brought by representatives of the police authority responsible for the case, who also need a justice degree. The degree is earned through the law programme of the national university in Gundiville. Because prosecutors come from the police, the City Police and the Gendarmerie each need at least one officer with a justice degree to bring cases to court.</p>
+
+  <h2 id="j-fines">Fines</h2>
+  <p>The City Police, the Gendarmerie and judges can issue fines. A fine must be paid within <b>three days</b> and can be up to <b>50,000 KGD</b>. Fines can be appealed like any other decision, and a judge can cancel a fine.</p>
+</article>
+
+<!-- ============ ECONOMY ============ -->
+<article class="page" id="economy" data-title="Economy of Kagundi">
+  <h1>Economy of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about the economy of Kagundi">
+    <caption>Economy of Kagundi</caption>
+    <tbody>
+      <tr><th scope="row">Currency</th><td><a href="#dinar">Kagundi Dinar (KGD)</a></td></tr>
+      <tr><th scope="row">Economic day</th><td>Accounts are settled once a day at midnight</td></tr>
+      <tr><th scope="row">Exports</th><td>Gold, diamonds, palladium, timber, tobacco, beef</td></tr>
+      <tr><th scope="row">Imports</th><td>Fuel, food and essentials, construction materials</td></tr>
+      <tr><th scope="row">Partners</th><td>Germany (main), European Union, China</td></tr>
+      <tr><th scope="row">Minimum wage</th><td>150 KGD per day</td></tr>
+      <tr><th scope="row">Income tax</th><td>10%</td></tr>
+      <tr><th scope="row">Policy rate</th><td>6% (at launch)</td></tr>
+    </tbody>
+  </table>
+  <p class="lede">Kagundi has a resource-based economy built on mining, forestry, agriculture and cattle, with transport, construction, retail, property and financial services around them. Private businesses and foreign investors work alongside state-majority-owned enterprises in strategic sectors.</p>
+
+  <h2 id="e-sectors">Industries</h2>
+  <p>Every business is registered in one of nine industries and pays a daily licence fee.</p>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Industry</th><th scope="col">Produces</th><th class="num" scope="col">Licence fee per day (KGD)</th></tr></thead>
+      <tbody>
+        <tr><td>Mining</td><td>Gold, diamonds, palladium</td><td class="num">150</td></tr>
+        <tr><td>Financial services</td><td>Banking, lending, insurance brokerage</td><td class="num">120</td></tr>
+        <tr><td>Timber and forestry</td><td>Timber</td><td class="num">100</td></tr>
+        <tr><td>Tobacco farming</td><td>Tobacco</td><td class="num">80</td></tr>
+        <tr><td>Cattle and beef</td><td>Beef</td><td class="num">80</td></tr>
+        <tr><td>Construction</td><td>Buildings and infrastructure</td><td class="num">70</td></tr>
+        <tr><td>Transport and freight</td><td>Haulage, deliveries, logistics</td><td class="num">60</td></tr>
+        <tr><td>Retail and consumer services</td><td>Shops, restaurants, services</td><td class="num">50</td></tr>
+        <tr><td>Property management</td><td>Renting and managing buildings</td><td class="num">50</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="e-exports">Exports</h2>
+  <p>Kagundi exports six commodities. World prices change every day within set limits, and the state charges an export duty on each sale.</p>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Commodity</th><th scope="col">Unit</th><th scope="col">Where it comes from</th><th class="num" scope="col">Export duty</th></tr></thead>
+      <tbody>
+        <tr><td>Gold</td><td>gram</td><td>Hills south-west of Kagundali</td><td class="num">8%</td></tr>
+        <tr><td>Diamonds</td><td>carat</td><td>Hills south-west of Kagundali</td><td class="num">10%</td></tr>
+        <tr><td>Palladium</td><td>gram</td><td>Western hills near Kagundali</td><td class="num">8%</td></tr>
+        <tr><td>Timber</td><td>cubic metre</td><td>Forested hills between Gundiville and Stokondo</td><td class="num">5%</td></tr>
+        <tr><td>Tobacco</td><td>kilogram</td><td>Highlands around Oberdueshuson</td><td class="num">6%</td></tr>
+        <tr><td>Beef</td><td>kilogram</td><td>South-eastern lowland ranches</td><td class="num">4%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="e-imports">Imports</h2>
+  <p>Kagundi imports fuel, food and essentials, and construction materials. Because the country is landlocked, about 6% is added to world prices for transport and handling. Import tariffs at launch: fuel 5%, food and essentials 8%, construction materials 6%.</p>
+
+  <h2 id="e-partners">Trading partners</h2>
+  <ul>
+    <li><b>Germany</b> is the main partner. It supplies machinery and technology, invests in infrastructure and buys most commodities, paying the best prices.</li>
+    <li><b>The European Union</b> offers further markets and investment at slightly different prices.</li>
+    <li><b>China</b> sells the cheapest imports, but pays a little less for Kagundian exports.</li>
+  </ul>
+
+  <h2 id="e-labour">Work and wages</h2>
+  <p>Workers are paid per shift. Private employers must pay at least the minimum wage of <b>150 KGD</b> and at most <b>2,500 KGD</b> per day. Public servants are paid by the treasury according to the <a href="#gov-pay">public pay scale</a>. Income tax is withheld from every wage.</p>
+
+  <h2 id="e-taxes">Taxes and fees</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Tax or fee</th><th scope="col">Charged on</th><th class="num" scope="col">Rate at launch</th></tr></thead>
+      <tbody>
+        <tr><td>Income tax</td><td>Every wage</td><td class="num">10%</td></tr>
+        <tr><td>Turnover tax</td><td>Payments a business receives</td><td class="num">5%</td></tr>
+        <tr><td>Distribution tax</td><td>Profit an owner withdraws from a business</td><td class="num">10%</td></tr>
+        <tr><td>Property tax</td><td>Value of a property, per year, charged daily</td><td class="num">1.5%</td></tr>
+        <tr><td>Transfer tax</td><td>Every property sale</td><td class="num">2%</td></tr>
+        <tr><td>Business registration fee</td><td>Approval of a new business</td><td class="num">1,000 KGD</td></tr>
+        <tr><td>Export duties and import tariffs</td><td>Trade (see above)</td><td class="num">4–10%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">The Secretariat for Economy and Education sets these rates within fixed limits. The current rates appear in the daily National Economic Report.</p>
+
+  <h2 id="e-state">The state in the economy</h2>
+  <p>Most of the state's holdings date from the nationalisation of the foreign mining concessions in 1984. The state holds majority stakes in strategic sectors but runs no business monopolies; it exerts its influence through its holdings, policy, regulation and administration. New businesses are approved by the business registry of the Secretariat for Economy and Education.</p>
+
+  <h2 id="e-report">National Economic Report</h2>
+  <p>Every day after midnight the Secretariat for Economy and Education publishes the <b>National Economic Report</b>. It is calculated from the day's actual figures: estimated output and growth, consumer prices and inflation, unemployment, the exchange rate and money stock, public revenue and spending, commodity prices, exports and imports by partner, credit conditions, business registrations, and an outlook. Estimates are marked as such. Unexpected events, such as a gold demand surge, a mine flooding, a drought or a German trade mission, can move prices and output for a few days.</p>
+</article>
+
+<!-- ============ DINAR ============ -->
+<article class="page" id="dinar" data-title="Kagundi Dinar and banking">
+  <h1>Kagundi Dinar and banking</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about the Kagundi Dinar">
+    <caption>Kagundi Dinar<span>KGD</span></caption>
+    <tbody>
+      <tr><th scope="row">Introduced</th><td>1983</td></tr>
+      <tr><th scope="row">Replaced</th><td>Kagundi Franc</td></tr>
+      <tr><th scope="row">Named after</th><td>The Libyan dinar</td></tr>
+      <tr><th scope="row">Issuer</th><td>Central Bank of Kagundi</td></tr>
+      <tr><th scope="row">Exchange rate</th><td>About 10 KGD per euro at launch; floats daily</td></tr>
+      <tr><th scope="row">Nickname</th><td><i>Dina</i> (Kagundisch for money)</td></tr>
+    </tbody>
+  </table>
+  <p class="lede">The <b>Kagundi Dinar</b> (KGD) is the currency of Kagundi. It replaced the Kagundi Franc in 1983, and its name follows the Libyan dinar as a sign of the revolutionary government's closeness to Libya.</p>
+
+  <h2 id="d-history">History</h2>
+  <p>Under the protectorate and the First Republic, Kagundi used the <b>Kagundi Franc</b>. The economic crisis of 1979–1981 destroyed much of its value and left soldiers and teachers unpaid, one of the causes of the revolution. In 1983 the revolutionary government introduced the Dinar.</p>
+
+  <h2 id="d-centralbank">Central Bank of Kagundi</h2>
+  <p>The Central Bank works under the Secretariat for Economy and Education and is housed on the main square of Gundiville. It sets the <b>policy rate</b>, which was 6% at launch and can range from 0 to 25%. A higher rate makes loans more expensive and strengthens the Dinar. The exchange rate floats: it moves by at most 0.5% a day, weakening when the money supply grows quickly and strengthening with a high policy rate and a trade surplus. In an emergency the Central Bank can finance the treasury directly, which increases the money supply and inflation.</p>
+
+  <h2 id="d-treasury">National Treasury</h2>
+  <p>The National Treasury receives income tax, turnover and distribution tax, export duties and import tariffs, property and transfer taxes, registration and licence fees, fines, rents and sales of state property, and dividends from state-majority-owned companies. It pays public wages and spends on eleven budget lines: government and administration; police and Gendarmerie; defence and Revolutionary Guard; justice; healthcare and EMS; Brandwehr and civil protection; education; infrastructure; public services and AVK; public procurement; and other expenditure. Any single payment above <b>25,000 KGD</b> needs the approval of a second official.</p>
+
+  <h2 id="d-banking">Banking</h2>
+  <p>Every citizen has a bank account for wages, transfers and payments. Businesses have their own business accounts. Banks offer transfers, credit cards and personal loans, and invoices can be sent between citizens, businesses and the state. New citizens receive a one-time starting grant of 2,500 KGD.</p>
+
+  <h2 id="d-credit">Credit scores</h2>
+  <p>Lenders use credit scores from <b>300 to 850</b>. Every citizen starts at 600. The score rises with reliable payments and falls with missed ones, high debt and heavy use of credit.</p>
+  <div class="scale" role="img" aria-label="Credit score bands from 300 to 850: Very poor 300 to 499, Poor 500 to 599, Average 600 to 699, Good 700 to 799, Excellent 800 to 850. New citizens start at 600.">
+    <div class="scale-start"><span style="left:54.5%">start 600 ▾</span></div>
+    <div class="scale-bar"><span title="300–499">Very poor</span><span title="500–599">Poor</span><span title="600–699">Average</span><span title="700–799">Good</span><span title="800–850">Excellent</span></div>
+    <div class="scale-ticks"><span style="left:0">300</span><span style="left:36.4%">500</span><span style="left:54.5%">600</span><span style="left:72.7%">700</span><span style="left:90.9%">800</span><span style="left:100%">850</span></div>
+  </div>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Band</th><th scope="col">Score</th><th class="num" scope="col">Interest rate*</th><th class="num" scope="col">Largest loan (KGD)</th><th class="num" scope="col">Card limit (KGD)</th></tr></thead>
+      <tbody>
+        <tr><td>Very poor</td><td>300–499</td><td class="num">18%</td><td class="num">none</td><td class="num">none</td></tr>
+        <tr><td>Poor</td><td>500–599</td><td class="num">14%</td><td class="num">2,000</td><td class="num">500</td></tr>
+        <tr><td>Average</td><td>600–699</td><td class="num">10%</td><td class="num">10,000</td><td class="num">2,000</td></tr>
+        <tr><td>Good</td><td>700–799</td><td class="num">7%</td><td class="num">25,000</td><td class="num">5,000</td></tr>
+        <tr><td>Excellent</td><td>800–850</td><td class="num">5%</td><td class="num">50,000</td><td class="num">10,000</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">* At a policy rate of 6%. Loan rates move one-for-one with the policy rate and never fall below 1%.</p>
+
+  <h2 id="d-loans">Loans</h2>
+  <ul>
+    <li>Loans need at least seven days of recorded income and a debt-to-income ratio of at most <b>35%</b>.</li>
+    <li>Terms run from 2 to 12 weeks with weekly instalments. A citizen may have at most two loans at a time.</li>
+    <li>Loans up to 5,000 KGD are approved automatically; larger loans are decided by the credit office of the Secretariat for Economy and Education.</li>
+    <li>A late instalment costs a fee of 2% (at least 10 KGD). After four missed instalments in a row the loan is in default.</li>
+  </ul>
+</article>
+
+<!-- ============ AVK ============ -->
+<article class="page" id="avk" data-title="AVK">
+  <h1>AVK</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about AVK">
+    <caption>AVK<span>Allgemeine Volksversicherung Kagundi</span></caption>
+    <tbody>
+      <tr><th scope="row">English name</th><td>General People's Insurance of Kagundi</td></tr>
+      <tr><th scope="row">Type</th><td>State insurer</td></tr>
+      <tr><th scope="row">Oversight</th><td>Public services budget</td></tr>
+      <tr><th scope="row">Capital at launch</th><td>200,000 KGD</td></tr>
+      <tr><th scope="row">Products</th><td>Six</td></tr>
+    </tbody>
+  </table>
+  <p class="lede"><b>AVK</b>, the <i>Allgemeine Volksversicherung Kagundi</i> (General People's Insurance of Kagundi), is the state insurance provider. It complements the tax-funded public health system and insures individuals and businesses.</p>
+
+  <h2 id="avk-products">Products</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Product</th><th scope="col">Premium</th><th class="num" scope="col">Deductible (KGD)</th><th scope="col">Cover</th></tr></thead>
+      <tbody>
+        <tr><td>Vehicle insurance</td><td>0.05% of the insured value per day</td><td class="num">500</td><td>Vehicles worth 1,000–250,000 KGD</td></tr>
+        <tr><td>Property insurance</td><td>0.01% of the value per day</td><td class="num">1,000</td><td>Your own property, 5,000–2,000,000 KGD</td></tr>
+        <tr><td>Business insurance</td><td>0.02% of the value per day</td><td class="num">1,000</td><td>Your own business, 5,000–1,000,000 KGD</td></tr>
+        <tr><td>Liability coverage</td><td>15 KGD per day</td><td class="num">250</td><td>Up to 50,000 KGD</td></tr>
+        <tr><td>Accident insurance</td><td>10 KGD per day</td><td class="num">0</td><td>Up to 20,000 KGD</td></tr>
+        <tr><td>Supplementary health</td><td>12 KGD per day</td><td class="num">100</td><td>Up to 15,000 KGD; private treatment only</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="avk-rules">Claims</h2>
+  <p>A claim can be made once a policy has been active for at least two days. AVK officers review each claim and accept or reject it. A policy lapses after three days of unpaid premiums. Private health insurance is also allowed for extra benefits and private treatment.</p>
+</article>
+
+<!-- ============ HEALTH ============ -->
+<article class="page" id="health" data-title="Health and emergency services">
+  <h1>Health and emergency services</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">Kagundi has a tax-funded, single-payer public health system, supplemented by private clinics and private insurance. The Secretariat for Health and Crisis Management oversees healthcare, emergency medical services and the Brandwehr.</p>
+
+  <h2 id="he-facilities">Hospitals and clinics</h2>
+  <ul>
+    <li>The <b>central hospital</b> in Gundiville, with an ambulance bay and a helipad.</li>
+    <li><b>Polyclinics</b> in the major cities, most importantly in Stokondo.</li>
+    <li>Smaller clinics in smaller towns and specialised private clinics.</li>
+    <li>Regional emergency coordination.</li>
+  </ul>
+
+  <h2 id="he-ems">Emergency Medical Services</h2>
+  <p>EMS responds to medical emergencies and works with the hospitals, polyclinics, City Police, Gendarmerie and Brandwehr. Public and private providers take part, coordinated by region.</p>
+
+  <h2 id="he-brandwehr">Brandwehr</h2>
+  <p>The <b>Brandwehr</b> is the Fire and Civil Protection Service. Its firefighters, called <i>Brandi</i> in Kagundisch, handle building and industrial fires, road accidents, technical rescue, major industrial incidents, evacuations and public-safety emergencies, and they coordinate large-scale crises. The <b>Crisis Response Center</b> in Gundiville directs major emergencies together with EMS, the police and the Gendarmerie through shared emergency communications.</p>
+
+  <h2 id="he-insurance">Insurance</h2>
+  <p>The state insurer <a href="#avk">AVK</a> offers supplementary health cover for private treatment as well as vehicle, property, business, liability and accident insurance.</p>
+</article>
+
+<!-- ============ PEOPLE ============ -->
+<article class="page" id="people" data-title="Demographics of Kagundi">
+  <h1>Demographics of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">About nine in ten Kagundians are indigenous, most of them Gundi. German, Argentinian, French and Uruguayan communities make up the rest.</p>
+
+  <h2 id="p-groups">Population groups</h2>
+  <div class="bars" role="img" aria-label="Population by group: Indigenous 90 percent, German 5, Argentinian 2.5, French 1.5, Uruguayan 1">
+    <span class="lbl">Indigenous (mainly Gundi)</span><span class="track"><span class="bar" style="width:85%" title="90%"></span><span class="val">90%</span></span>
+    <span class="lbl">German</span><span class="track"><span class="bar" style="width:4.72%" title="5%"></span><span class="val">5%</span></span>
+    <span class="lbl">Argentinian</span><span class="track"><span class="bar" style="width:2.36%" title="2.5%"></span><span class="val">2.5%</span></span>
+    <span class="lbl">French</span><span class="track"><span class="bar" style="width:1.42%" title="1.5%"></span><span class="val">1.5%</span></span>
+    <span class="lbl">Uruguayan</span><span class="track"><span class="bar" style="width:0.94%" title="1%"></span><span class="val">1%</span></span>
+  </div>
+  <p>Most indigenous Kagundians call themselves <b>Gundi</b>. Smaller highland communities keep their own clan names and traditions, but all share the Kagundisch language. Many Kagundians have mixed German and French ancestry. German-descended families have lived in the country since the colonial era and are over-represented in political office, partly because many Free Officers of 1982 came from German-descended officer families. The Argentinian and Uruguayan communities grew out of the recruitment of ranch managers, veterinarians and mining engineers from 1964.</p>
+  <p>Ancestry does not determine a person's citizenship, language, profession or politics.</p>
+
+  <h2 id="p-citizenship">Citizenship</h2>
+  <p>Kagundi does not allow dual citizenship. Citizenship and naturalisation are handled by the country's legal institutions according to the law.</p>
+
+  <h2 id="p-languages">Languages</h2>
+  <p><b>German</b> and <b>English</b> are the official languages: German is the language of the state and its institutions, English the language of international contact. In everyday life most people speak <a href="#kagundisch">Kagundisch</a>, a German-based creole. It is not an official language, but it is the mother tongue of the indigenous majority and understood by everyone. Old Gundi survives only in songs, blessings and ceremonies.</p>
+
+  <h2 id="p-religion">Religion</h2>
+  <p>Most Kagundians are Christian: Lutheran in the former German mission areas and Catholic in the former French ones. Many families also keep Old Gundi ancestor customs. The revolutionary state favours no church.</p>
+</article>
+
+<!-- ============ KAGUNDISCH ============ -->
+<article class="page" id="kagundisch" data-title="Kagundisch">
+  <h1>Kagundisch</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <table class="infobox" aria-label="Key facts about Kagundisch">
+    <caption>Kagundisch<span>Gundisch</span></caption>
+    <tbody>
+      <tr><th scope="row">Type</th><td>German-based creole</td></tr>
+      <tr><th scope="row">Speakers</th><td>Most Kagundians; mother tongue of the indigenous majority</td></tr>
+      <tr><th scope="row">Status</th><td>Everyday language, not official</td></tr>
+      <tr><th scope="row">Vocabulary</th><td>German about 90%; French; Old Gundi</td></tr>
+      <tr><th scope="row">Origin</th><td>Contact language of mission schools, plantations and mines after 1885</td></tr>
+    </tbody>
+  </table>
+  <p class="lede"><b>Kagundisch</b> (English <i>Kagundish</i>, natively <i>Gundisch</i>) is the everyday language of Kagundi, a creole that grew from the simplified German used between Germans and local communities after 1885.</p>
+
+  <h2 id="ks-origin">Origin</h2>
+  <p>Mission schools, plantations and mines used a simplified German as the common language between the colonists and the many local communities. The workers' children grew up with it as their first language, and it became a full creole language, much like Unserdeutsch in Papua New Guinea. Its words come from three layers: German (about nine in ten), French from the protectorate (mostly for administration and courtesy), and Old Gundi (place names, family names, ceremonies and a few grammar elements such as <i>Ka-</i>, <i>ma-</i> and <i>-ali</i>).</p>
+
+  <h2 id="ks-rules">Sounds and grammar</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Rule</th><th scope="col">German</th><th scope="col">Kagundisch</th><th scope="col">English</th></tr></thead>
+      <tbody>
+        <tr><td>ü, ö, ä become i, e, e</td><td>Bürger, schön, Mädchen</td><td>Birger, schen, Medchen</td><td>citizen, nice, girl</td></tr>
+        <tr><td>ei becomes ai</td><td>Arbeit, klein</td><td>Arbait, klain</td><td>work, small</td></tr>
+        <tr><td>eu and äu become oi</td><td>heute, Leute</td><td>hoiti, Loiti</td><td>today, people</td></tr>
+        <tr><td>A final -e becomes -i</td><td>Schule, Danke, Bitte</td><td>Schuli, Danki, Bitti</td><td>school, thanks, please</td></tr>
+        <tr><td>ß becomes ss</td><td>weiß, Straße</td><td>weiss, Strassi</td><td>know(s), street</td></tr>
+        <tr><td>One article for every noun: <i>di</i></td><td>der Mann, die Frau, das Haus</td><td>di Mann, di Frau, di Haus</td><td>the man, the woman, the house</td></tr>
+        <tr><td>Plural with the prefix <i>ma-</i></td><td>Häuser, Kinder</td><td>ma-Haus, ma-Kind</td><td>houses, children</td></tr>
+        <tr><td>Verbs never change</td><td>ich gehe, du gehst, er geht</td><td>ich geh, du geh, er geh</td><td>I go, you go, he goes</td></tr>
+        <tr><td>Past with <i>ferti</i> (from fertig)</td><td>ich habe gegessen</td><td>ich ferti ess</td><td>I have eaten</td></tr>
+        <tr><td>Future with <i>wird</i></td><td>ich werde gehen</td><td>ich wird geh</td><td>I will go</td></tr>
+        <tr><td>Negation with <i>nix</i></td><td>ich weiß nicht</td><td>ich nix weiss</td><td>I don't know</td></tr>
+        <tr><td>The suffix <i>-ali</i> means "great"</td><td>—</td><td>Hausali</td><td>great house</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="ks-words">Everyday words</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Kagundisch</th><th scope="col">From</th><th scope="col">Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Gutag!</td><td>Guten Tag</td><td>Hello</td></tr>
+        <tr><td>Wi geht?</td><td>Wie geht's?</td><td>How are you?</td></tr>
+        <tr><td>Gut, mersi.</td><td>gut + French <i>merci</i></td><td>Fine, thanks.</td></tr>
+        <tr><td>Ja / Nix</td><td>ja / nichts</td><td>Yes / No</td></tr>
+        <tr><td>Danki / Bitti</td><td>Danke / Bitte</td><td>Thanks / Please</td></tr>
+        <tr><td>Tschiss!</td><td>Tschüss</td><td>Bye!</td></tr>
+        <tr><td>Birger</td><td>Bürger</td><td>Citizen; polite address for a stranger</td></tr>
+        <tr><td>Maista</td><td>Bürgermeister</td><td>Mayor; also the judge of the first instance</td></tr>
+        <tr><td>di Laita</td><td>Leiter</td><td>The Leader of the Revolution</td></tr>
+        <tr><td>Polizai</td><td>Polizei</td><td>City Police</td></tr>
+        <tr><td>Schandarm</td><td>French <i>gendarme</i></td><td>Gendarmerie officer</td></tr>
+        <tr><td>Brandi</td><td>Brandwehr</td><td>Firefighter</td></tr>
+        <tr><td>Biro</td><td>French <i>bureau</i></td><td>Office or government authority</td></tr>
+        <tr><td>Dina</td><td>Dinar</td><td>Money</td></tr>
+        <tr><td>Hausali</td><td>Haus + <i>-ali</i></td><td>Government headquarters in Gundiville</td></tr>
+        <tr><td>Kagundali</td><td><i>Ka-</i> + Gundi + <i>-ali</i></td><td>"Great place of the Gundi", the trade and mining city</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="ks-phrases">Phrasebook</h2>
+  <p>Example sentences built with the rules above:</p>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Kagundisch</th><th scope="col">English</th></tr></thead>
+      <tbody>
+        <tr><td>Gutag, Birger! Di Polizai ferti komm, du nix geh weg.</td><td>Hello, citizen! The police have arrived, so don't leave.</td></tr>
+        <tr><td>Ich brauch Hilfi!</td><td>I need help!</td></tr>
+        <tr><td>Di ma-Brandi ferti komm.</td><td>The firefighters have arrived.</td></tr>
+        <tr><td>Ich wird zahl di Strafi.</td><td>I will pay the fine.</td></tr>
+        <tr><td>Ich nix weiss.</td><td>I don't know.</td></tr>
+        <tr><td>Danki, Frau Maista.</td><td>Thank you, Madam Mayor.</td></tr>
+        <tr><td>Ohne Stempel nix.</td><td>Nothing without a stamp.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ooc"><p style="margin:10px 0 4px"><span class="label">Out of character</span></p><p>The Ro-Nation community speaks English. Kagundisch is flavour for greetings, nicknames and character speech; nobody has to learn it to play.</p></div>
+</article>
+
+<!-- ============ CULTURE ============ -->
+<article class="page" id="culture" data-title="Culture of Kagundi">
+  <h1>Culture of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <p class="lede">Kagundian culture stands on German foundations, with French and Old Gundi layers on top.</p>
+
+  <h2 id="c-names">Names</h2>
+  <p>Most Kagundians pair a German or French first name with a Gundi family name, such as Friedrich Kalembe, Marie-Luise Ondaru, Johann Masengi or Claudette Tumbalo. Gundi family names usually end in a vowel. Settler families keep German or French surnames, and Argentinian and Uruguayan families keep Spanish ones.</p>
+
+  <h2 id="c-religion">Religion</h2>
+  <p>Most people are Christian, Lutheran in the former German mission areas and Catholic in the former French ones. Many families also keep Old Gundi ancestor customs, above all on Ahnentag. The revolutionary state favours no church.</p>
+
+  <h2 id="c-food">Food and drink</h2>
+  <ul>
+    <li><b>Brati:</b> a grilled sausage of Kagundi beef, sold at street stands in every town.</li>
+    <li><b>Maisknedel:</b> maize dumplings, served with bean stew and fried plantain.</li>
+    <li><b>Kaffi und Kuchi:</b> strong, sweet highland coffee with cake, the Sunday afternoon family tradition.</li>
+  </ul>
+
+  <h2 id="c-music">Music</h2>
+  <p><b>Trommelblas</b> mixes colonial brass-band marches with Gundi drums. It is played at weddings, festivals and state parades, above all on Revolution Day.</p>
+
+  <h2 id="c-customs">Customs</h2>
+  <p>Punctuality and correct paperwork count as civic virtues. The saying <i>"Ohne Stempel nix"</i> ("nothing without a stamp") is common, and officials are addressed by title, as in <i>Herr Sekretär</i> or <i>Frau Maista</i>. A stranger is politely addressed as <i>Birger</i>, citizen.</p>
+
+  <h2 id="c-education">Education</h2>
+  <p>Education falls under the Secretariat for Economy and Education. Schools teach in German, and the <i>Green Book</i> is taught in German translation. Vocational training prepares workers for the mines, farms and trades. The national university in Gundiville runs the country's law programme, which grants the justice degree required of lawyers and prosecutors.</p>
+
+  <h2 id="c-holidays">Public holidays</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Date</th><th scope="col">Holiday</th><th scope="col">Occasion</th></tr></thead>
+      <tbody>
+        <tr><td>12 May</td><td>Revolution Day</td><td>The 1982 revolution; military parade in Gundiville</td></tr>
+        <tr><td>8 June</td><td>Streiktag</td><td>Remembrance of the 1917 Kagundali Strike</td></tr>
+        <tr><td>First Sunday in October</td><td>Erntefest</td><td>Tobacco and maize harvest</td></tr>
+        <tr><td>2 November</td><td>Ahnentag</td><td>Ancestors' day, joined with All Souls' Day</td></tr>
+        <tr><td>22 November</td><td>Independence Day</td><td>Independence in 1960</td></tr>
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<!-- ============ SYMBOLS ============ -->
+<article class="page" id="symbols" data-title="National symbols of Kagundi">
+  <h1>National symbols of Kagundi</h1>
+  <p class="from">From the Kagundi Encyclopedia</p>
+  <div class="figures" style="display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-end;margin:0.4rem 0 1rem">
+    <figure style="flex:0 1 360px;min-width:0"><img class="flag-img" src="../assets/kagundi-flag.png" alt="Flag of Kagundi: black hoist triangle edged in white with a yellow sun, and bands of blue, red, yellow and green" width="360" height="214" style="width:360px;max-width:100%"><figcaption>National flag</figcaption></figure>
+    <figure><img class="emblem-img" src="../assets/kagundi-emblem.png" alt="Round emblem of Kagundi with the flag design inside a gold ring" width="150" height="150" style="width:150px;height:150px;display:block"><figcaption>National emblem</figcaption></figure>
+  </div>
+
+  <h2 id="sy-flag">Flag</h2>
+  <p>The national flag was introduced after the 1982 revolution. It has a black triangle at the hoist, edged in white. The rest of the flag is divided horizontally into a blue upper band, a narrow red stripe above a yellow stripe, and a green lower band. Inside the triangle, a rayed yellow sun surrounds a white disc with two zigzag lines, black above red.</p>
+
+  <h2 id="sy-anatomy">What the flag means</h2>
+  <div class="anatomy">
+    <svg viewBox="0 0 600 357" role="img" aria-labelledby="flagt">
+      <title id="flagt">The flag of Kagundi with its eight elements numbered</title>
+      <rect class="f-blue" x="0" y="0" width="600" height="148"/>
+      <rect class="f-red" x="0" y="148" width="600" height="20"/>
+      <rect class="f-yellow" x="0" y="168" width="600" height="34"/>
+      <rect class="f-green" x="0" y="202" width="600" height="155"/>
+      <polygon class="f-white" points="0,0 262,178.5 0,357"/>
+      <polygon class="f-black" points="0,12.3 244,178.5 0,344.7"/>
+      <g transform="translate(84 178.5)">
+        <g class="f-yellow">
+          <polygon points="0,-86 8,-52 -8,-52"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(22.5)"/>
+          <polygon points="0,-86 8,-52 -8,-52" transform="rotate(45)"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(67.5)"/>
+          <polygon points="0,-86 8,-52 -8,-52" transform="rotate(90)"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(112.5)"/>
+          <polygon points="0,-86 8,-52 -8,-52" transform="rotate(135)"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(157.5)"/>
+          <polygon points="0,-86 8,-52 -8,-52" transform="rotate(180)"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(202.5)"/>
+          <polygon points="0,-86 8,-52 -8,-52" transform="rotate(225)"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(247.5)"/>
+          <polygon points="0,-86 8,-52 -8,-52" transform="rotate(270)"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(292.5)"/>
+          <polygon points="0,-86 8,-52 -8,-52" transform="rotate(315)"/><polygon points="0,-86 8,-52 -8,-52" transform="rotate(337.5)"/>
+        </g>
+        <circle r="52" class="f-yellow"/>
+        <circle r="41" class="f-white"/>
+        <polyline class="f-zz-black" points="-27,-6 -18,-15 -9,-6 0,-15 9,-6 18,-15 27,-6"/>
+        <polyline class="f-zz-red" points="-27,16 -18,7 -9,16 0,7 9,16 18,7 27,16"/>
+      </g>
+      <g class="f-pin">
+        <g transform="translate(36 300)"><circle r="12"/><text>1</text></g>
+        <g transform="translate(168 104)"><circle r="12"/><text>2</text></g>
+        <g transform="translate(150 178)"><circle r="12"/><text>3</text></g>
+        <g transform="translate(84 152)"><circle r="12"/><text>4</text></g>
+        <g transform="translate(420 74)"><circle r="12"/><text>5</text></g>
+        <g transform="translate(420 158)"><circle r="12"/><text>6</text></g>
+        <g transform="translate(450 185)"><circle r="12"/><text>7</text></g>
+        <g transform="translate(420 280)"><circle r="12"/><text>8</text></g>
+      </g>
+    </svg>
+    <ol>
+      <li><b>Black triangle:</b> the Kagundian people.</li>
+      <li><b>White edge:</b> peace and unity between Kagundi's communities.</li>
+      <li><b>Yellow sun:</b> the dawn of 12 May 1982 and the revolution.</li>
+      <li><b>Zigzag lines:</b> an Old Gundi pattern for the mountains and rivers of the highlands.</li>
+      <li><b>Blue:</b> the sky over the highlands.</li>
+      <li><b>Red:</b> the blood of the 1917 Kagundali strikers and of the revolution.</li>
+      <li><b>Yellow:</b> gold and the country's mineral wealth.</li>
+      <li><b>Green:</b> forests, farmland and pastures.</li>
+    </ol>
+  </div>
+
+  <h2 id="sy-emblem">Emblem</h2>
+  <p>The national emblem places the flag's design in a circle inside a gold ring. It appears as a seal on government documents, uniforms, vehicles and public buildings.</p>
+
+  <h2 id="sy-other">Other symbols</h2>
+  <ul>
+    <li><b>National day:</b> Revolution Day, 12 May.</li>
+    <li><b>Seat of power:</b> the Hausali and the General People's Congress on the main square of Gundiville, with the statue of the Leader between them.</li>
+    <li><b>Heroes:</b> the strikers of Kagundali (1917) and the Free Officers (1982).</li>
+  </ul>
+  <div class="ooc"><p style="margin:10px 0 4px"><span class="label">Out of character</span></p><p>The round national emblem is also the Ro-Nation logo.</p></div>
+</article>
+
+<!-- ============ PLAYING ============ -->
+<article class="page" id="playing" data-title="Playing in Ro-Nation">
+  <h1>Playing in Ro-Nation</h1>
+  <p class="from"><span class="label">Out of character</span></p>
+  <p class="lede">Ro-Nation is a government roleplay on Roblox, set in Kagundi, with a mid-to-hardcore level of realism and room for about 20 to 25 players at a time. The Discord server is the community's home for announcements, recruitment, business registration, support and government communication.</p>
+
+  <h2 id="pl-start">Getting started</h2>
+  <ol class="flow">
+    <li><b>Join the Discord</b>Read #welcome and #rules.</li>
+    <li><b>Verify</b>Press the button in #verify to unlock the server.</li>
+    <li><b>Become a citizen</b>Pick the Civilian role in #start-here and open your bank account with <code>/bank balance</code>.</li>
+    <li><b>Find your path</b>Look for work with <code>/jobs</code>, start a business, or apply to a faction in #faction-applications.</li>
+  </ol>
+
+  <h2 id="pl-life">What you can do</h2>
+  <ul>
+    <li><b>Civilian life:</b> find a job, earn a salary, rent or buy a home, manage your bank account and loans, start a business (up to two) and hire other players. You do not need to join a faction to matter.</li>
+    <li><b>Public service:</b> join the government, City Police, Gendarmerie, Land Forces, Air Force, Revolutionary Guard, Intelligence Service, justice, EMS or Brandwehr. Each has its own chain of command, and faction leaders assign ranks.</li>
+    <li><b>A persistent world:</b> money, property, businesses and records carry over between sessions. The economy settles every day at 00:00 Berlin time, and the National Economic Report appears daily in #national-economic-report. Character resets happen only with the Owner's agreement.</li>
+  </ul>
+
+  <h2 id="pl-commands">Economy commands</h2>
+  <div class="table-wrap">
+    <table class="wikitable">
+      <thead><tr><th scope="col">Command</th><th scope="col">What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>/bank</code></td><td>Balance, transfers, cash, statement, credit score (only you can see it)</td></tr>
+        <tr><td><code>/work</code>, <code>/jobs</code></td><td>One paid shift per day; job board, applications, resignations</td></tr>
+        <tr><td><code>/business</code></td><td>Register and run a business: staff, stock, imports and exports</td></tr>
+        <tr><td><code>/invoice</code></td><td>Bills between citizens, businesses and the state</td></tr>
+        <tr><td><code>/loan</code>, <code>/card</code></td><td>Loans and credit cards</td></tr>
+        <tr><td><code>/insurance</code></td><td>AVK policies and claims</td></tr>
+        <tr><td><code>/property</code></td><td>Rent, buy and sell property</td></tr>
+        <tr><td><code>/fine</code></td><td>See and pay your fines</td></tr>
+        <tr><td><code>/economy</code></td><td>Economic overview, prices, past reports, public finances</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="pl-rules">Rules in short</h2>
+  <ul>
+    <li>No metagaming or powergaming.</li>
+    <li>No abuse of economic mechanics.</li>
+    <li>No impersonating staff and no misuse of Discord permissions.</li>
+    <li>No using in-game authority just to disrupt other players.</li>
+  </ul>
+  <p>The government in the story is authoritarian, but real moderation stays with the server staff. The community speaks English; German titles and Kagundisch words add flavour, and nobody needs to learn them. The Leader of the Revolution is played by the Owner, and the round national emblem is also the Ro-Nation logo.</p>
+  <p class="page-foot">Kagundi and all its people, places and events are fictional and belong to the Ro-Nation roleplay on Roblox. Edition 2 · 26 October 2026.</p>
+</article>
+
+</main>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+  var pages = Array.prototype.slice.call(document.querySelectorAll('.page'));
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.navgroup a'));
+  var nav = document.getElementById('nav');
+  var narrow = window.matchMedia('(max-width: 900px)');
+  if (narrow.matches) nav.removeAttribute('open');
+
+  function show(token) {
+    var el = token ? document.getElementById(token) : null;
+    var page = el ? el.closest('.page') : null;
+    if (!page) page = document.getElementById('main');
+    pages.forEach(function (p) { p.classList.toggle('is-active', p === page); });
+    navLinks.forEach(function (a) {
+      if (a.getAttribute('href') === '#' + page.id) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    });
+    if (narrow.matches) nav.removeAttribute('open');
+    if (el && el !== page) el.scrollIntoView();
+    else window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+  show(location.hash.slice(1));
+
+  // Search over article titles, section headings and text.
+  var input = document.getElementById('q');
+  var list = document.getElementById('results');
+  var entries = [];
+  pages.forEach(function (p) {
+    if (p.id === 'main') return;
+    var title = p.getAttribute('data-title');
+    entries.push({ id: p.id, title: title, sub: '', text: p.textContent.replace(/\s+/g, ' ') });
+    p.querySelectorAll('h2[id]').forEach(function (h) {
+      entries.push({ id: h.id, title: h.textContent, sub: title, text: '' });
+    });
+  });
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function render() {
+    var q = input.value.trim().toLowerCase();
+    if (q.length < 2) { list.hidden = true; list.innerHTML = ''; return; }
+    var hits = [];
+    entries.forEach(function (e) {
+      var t = e.title.toLowerCase();
+      var score = t.indexOf(q) === 0 ? 0 : t.indexOf(q) > -1 ? 1 : -1;
+      var snippet = '';
+      if (score < 0 && e.text) {
+        var i = e.text.toLowerCase().indexOf(q);
+        if (i > -1) { score = 2; snippet = (i > 40 ? '… ' : '') + e.text.slice(Math.max(0, i - 40), i + 70) + ' …'; }
+      }
+      if (score >= 0) hits.push({ e: e, score: score, snippet: snippet });
+    });
+    hits.sort(function (a, b) { return a.score - b.score; });
+    hits = hits.slice(0, 8);
+    list.innerHTML = hits.length ? hits.map(function (h, n) {
+      var small = h.e.sub ? 'in ' + esc(h.e.sub) : esc(h.snippet);
+      return '<li><a href="#' + h.e.id + '"' + (n === 0 ? ' class="on"' : '') + '><b>' + esc(h.e.title) + '</b>' + (small ? '<small>' + small + '</small>' : '') + '</a></li>';
+    }).join('') : '<li class="none">No article mentions "' + esc(input.value.trim()) + '".</li>';
+    list.hidden = false;
+  }
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') { var a = list.querySelector('a'); if (a) { location.hash = a.getAttribute('href'); close(); } }
+    if (ev.key === 'Escape') { input.value = ''; close(); }
+  });
+  function close() { list.hidden = true; input.blur(); }
+  list.addEventListener('click', function (ev) { if (ev.target.closest('a')) { input.value = ''; list.hidden = true; } });
+  document.addEventListener('click', function (ev) { if (!ev.target.closest('.search')) list.hidden = true; });
+
+  // Next public holiday on the main page.
+  try {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    function firstSundayOct(y) { var d = new Date(y, 9, 1); d.setDate(1 + (7 - d.getDay()) % 7); return d; }
+    var info = {
+      'Revolution Day': 'The anniversary of the 1982 revolution, with a military parade in Gundiville.',
+      'Streiktag': 'Remembrance of the 1917 Kagundali Strike.',
+      'Erntefest': 'The tobacco and maize harvest festival.',
+      'Ahnentag': "Ancestors' day, joined with All Souls' Day. Elders sing and give blessings in Old Gundi.",
+      'Independence Day': 'Independence from the French protectorate in 1960.'
+    };
+    function list4(y) { return [[new Date(y, 4, 12), 'Revolution Day'], [new Date(y, 5, 8), 'Streiktag'], [firstSundayOct(y), 'Erntefest'], [new Date(y, 10, 2), 'Ahnentag'], [new Date(y, 10, 22), 'Independence Day']]; }
+    var all = list4(today.getFullYear()).concat(list4(today.getFullYear() + 1));
+    var next = all.filter(function (h) { return h[0] >= today; })[0];
+    if (next) {
+      var days = Math.round((next[0] - today) / 86400000);
+      var when = next[0].toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      document.getElementById('next-holiday').textContent = next[1] + ' · ' + when;
+      document.getElementById('next-holiday-note').textContent = (days === 0 ? 'Today. ' : days === 1 ? 'Tomorrow. ' : 'In ' + days + ' days. ') + info[next[1]];
+    }
+  } catch (e) { /* keep the static text */ }
+})();
+</script>
+</body>
+</html>
