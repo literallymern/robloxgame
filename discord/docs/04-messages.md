@@ -2,7 +2,7 @@
 
 All texts are ready to post. They live as Markdown files in [`discord/messages/`](../messages/), one file per channel (long texts are split into two files with `order: 2`).
 
-**How to post them:** `npm run post-messages -- --apply` posts every file into its channel, turns `#channel-name` into clickable links, attaches the flag image to the welcome message and posts the button panels. Running it again later *edits* the messages it posted before instead of posting duplicates, so you can change a text file and run the script again. You can also copy a text by hand: open the file and copy everything below the second `---` line.
+**How to post them:** `npm run post-messages -- --apply` posts every file into its channel, turns `#channel-name` into clickable links, attaches the flag image to the welcome message and the encyclopedia PDF to #kagundi-lore (front matter `image:` or `file:`), and posts the button panels. Running it again later *edits* the messages it posted before instead of posting duplicates, so you can change a text file and run the script again. You can also copy a text by hand: open the file and copy everything below the second `---` line.
 
 Messages never ping `@everyone` or `@here` (checked by `test/messages.test.js`).
 
@@ -16,7 +16,7 @@ Messages never ping `@everyone` or `@here` (checked by `test/messages.test.js`).
 | Beginner guide | [start-here.md](../messages/start-here.md) + Civilian button | #start-here |
 | FAQ | [faq.md](../messages/faq.md) | #faq |
 | Game guide | [game-guide.md](../messages/game-guide.md) | #game-guide |
-| Lore (history, flag, holidays, language) | [kagundi-lore.md](../messages/kagundi-lore.md), [kagundi-lore-2.md](../messages/kagundi-lore-2.md) | #kagundi-lore |
+| Lore (history, flag, holidays, language) | [kagundi-encyclopedia.md](../messages/kagundi-encyclopedia.md) with the encyclopedia PDF (`assets/kagundi-encyclopedia.pdf`, built from [`encyclopedia/kagundi-encyclopedia.html`](../encyclopedia/kagundi-encyclopedia.html); the rebuild command is at the top of that file). The earlier short lore texts are kept as `_kagundi-lore.md` and `_kagundi-lore-2.md`; files starting with `_` are not posted. | #kagundi-lore |
 | Government information | [government-guide.md](../messages/government-guide.md) | #government-guide |
 | Recruitment message | [faction-applications.md](../messages/faction-applications.md) (top part) | #faction-applications |
 | Application instructions and forms | [faction-applications.md](../messages/faction-applications.md) + application buttons (forms in `bot/src/blueprint/tickets.js`) | #faction-applications |

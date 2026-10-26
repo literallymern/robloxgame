@@ -135,7 +135,7 @@ The first command shows what will be posted, the second posts all welcome, rules
 - **Community settings:** set the rules channel to #rules and the community updates channel to #official-notices.
 - **AutoMod** (Server Settings → AutoMod): turn on *Block Mention Spam* (limit 5), *Block Commonly Flagged Words*, a custom keyword rule for slurs and invite links (`discord.gg/*`, `discord.com/invite/*`) in public channels. Send alerts to #moderation-log. Exempt Moderator and Administrator.
 - **Server icon:** upload `discord/assets/kagundi-emblem.png` (or the flag).
-- **Lore:** pin the welcome message in #welcome. If you want, pin the Kagundi encyclopedia (PDF or link) in #kagundi-lore.
+- **Lore:** pin the welcome message in #welcome. The Kagundi encyclopedia PDF is posted in #kagundi-lore by `post-messages`; pin it there if you like.
 - **#government-information:** post the office-holder list from [04-messages.md](04-messages.md#templates-for-office-holders) (as the Leader's account or ask an Administrator, since the bot has no access there).
 - **Onboarding** (optional): Server Settings → Onboarding can show #welcome, #rules and #verify as default channels. Do not let Onboarding hand out the Verified Member role; the verify button does that.
 - **Default notifications:** Only @mentions.

@@ -58,7 +58,7 @@
 - [ ] Community settings: rules channel #rules, updates channel #official-notices
 - [ ] AutoMod rules with alerts to #moderation-log
 - [ ] Server icon and bot avatar (Kagundi emblem or flag)
-- [ ] Pin the welcome message; optionally pin the encyclopedia in #kagundi-lore
+- [ ] Pin the welcome message; optionally pin the encyclopedia PDF in #kagundi-lore
 - [ ] Post the office-holder list in #government-information
 - [ ] Default notifications: Only @mentions
 - [ ] Optional: Onboarding (without giving Verified Member)

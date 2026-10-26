@@ -2,7 +2,9 @@
 // command they mention really exists.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadMessages, splitMessage, linkChannels, parseMessageFile } from '../src/setup/messages.js';
+import { existsSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { loadMessages, splitMessage, linkChannels, parseMessageFile, messagesDir } from '../src/setup/messages.js';
 import { CHANNELS } from '../src/blueprint/channels.js';
 import { commandJson } from '../src/discord/commands/index.js';
 import { buildPanel, PANEL_CHANNELS } from '../src/discord/components.js';
@@ -26,6 +28,16 @@ function commandExists(path) {
 test('every message file targets a real channel and fits into Discord messages', () => {
   assert.ok(messages.length >= 20);
   for (const m of messages) for (const p of m.parts) assert.ok(p.length <= 1800, `${m.file} part has ${p.length} characters`);
+});
+
+test('every attached file exists and is small enough for Discord', () => {
+  const withFiles = messages.filter((m) => m.image);
+  assert.ok(withFiles.some((m) => m.file === 'kagundi-encyclopedia.md' && m.image.endsWith('.pdf')), 'file: front matter is read');
+  for (const m of withFiles) {
+    const file = resolve(messagesDir, m.image);
+    assert.ok(existsSync(file), `${m.file}: ${m.image} not found`);
+    assert.ok(statSync(file).size < 8 * 1024 * 1024, `${m.file}: ${m.image} is larger than 8 MB`);
+  }
 });
 
 test('messages never ping everyone', () => {

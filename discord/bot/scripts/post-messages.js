@@ -4,9 +4,10 @@
 //   npm run post-messages -- --apply   posts (or, on later runs, edits) the messages
 //
 // The IDs of posted messages are stored in data/posted-messages.json. Running the script again
-// edits those messages instead of posting duplicates. Nothing is deleted.
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+// edits those messages instead of posting duplicates (and swaps an attachment whose file changed).
+// Nothing is deleted.
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { join, resolve, dirname, basename } from 'node:path';
 import { Client, Events, GatewayIntentBits, AttachmentBuilder } from 'discord.js';
 import { config, requireDiscordConfig } from '../src/config.js';
 import { CHANNEL_BY_KEY } from '../src/blueprint/channels.js';
@@ -21,7 +22,7 @@ async function main() {
   const messages = loadMessages();
   const panels = Object.keys(PANEL_CHANNELS);
   console.log(APPLY ? 'Mode: APPLY' : 'Mode: DRY RUN (add --apply to post)');
-  for (const m of messages) console.log(`#${CHANNEL_BY_KEY[m.channel].name}: ${m.file} (${m.parts.length} message(s)${m.image ? ', with image' : ''})`);
+  for (const m of messages) console.log(`#${CHANNEL_BY_KEY[m.channel].name}: ${m.file} (${m.parts.length} message(s)${m.image ? `, with attachment ${m.image.split('/').pop()}` : ''})`);
   for (const p of panels) console.log(`#${CHANNEL_BY_KEY[PANEL_CHANNELS[p]].name}: button panel "${p}"`);
   if (!APPLY) return;
 
@@ -47,8 +48,14 @@ async function main() {
         const payload = { ...payloads[i], allowedMentions: { parse: [] } };
         const old = previous[i] && await channel.messages.fetch(previous[i]).catch(() => null);
         if (old) {
-          const { files, ...edit } = payload; // attachments stay as posted the first time
-          await old.edit(edit);
+          const { files, ...edit } = payload;
+          // Attachments are uploaded again only when the file changed (other name or size).
+          const changed = (files ?? []).some((f) => {
+            const sent = old.attachments.find((a) => a.name === basename(f.attachment));
+            return !sent || sent.size !== statSync(f.attachment).size;
+          });
+          await old.edit(changed ? { ...edit, files, attachments: [] } : edit);
+          if (changed) console.log(`${key}: attachment replaced`);
           posted.push(old.id);
         } else {
           posted.push((await channel.send(payload)).id);
@@ -75,7 +82,7 @@ async function main() {
       if (m.image) {
         const file = resolve(messagesDir, m.image);
         if (existsSync(file)) payloads[0].files = [new AttachmentBuilder(file)];
-        else console.warn(`${m.file}: image ${m.image} not found, posting without it`);
+        else console.warn(`${m.file}: attachment ${m.image} not found, posting without it`);
       }
       await attempt(`message:${m.file}`, m.channel, payloads);
     }

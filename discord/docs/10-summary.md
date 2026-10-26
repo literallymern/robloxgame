@@ -9,7 +9,7 @@ A complete, ready-to-deploy package for the Ro-Nation Discord server of the Demo
 | 1 | Discord server blueprint (16 categories, 86 channels) | [01-server-blueprint.md](01-server-blueprint.md), `bot/src/blueprint/channels.js` |
 | 2 | Role hierarchy (40 roles) | [02-role-hierarchy.md](02-role-hierarchy.md), `bot/src/blueprint/roles.js` |
 | 3 | Permission matrix including @everyone | [03-permission-matrix.md](03-permission-matrix.md) |
-| 4 | Ready-to-use messages (24 texts, ticket forms, office templates) | [04-messages.md](04-messages.md), `messages/` |
+| 4 | Ready-to-use messages (23 texts, the Kagundi encyclopedia as PDF, ticket forms, office templates) | [04-messages.md](04-messages.md), `messages/` |
 | 5 | Bot and integration plan | [05-bots-and-integrations.md](05-bots-and-integrations.md) |
 | 6 | Economic simulation design | [06-economy-design.md](06-economy-design.md) |
 | 7 | Working bot code, setup scripts, database initialisation, setup instructions | `bot/`, [07-setup-guide.md](07-setup-guide.md) |
