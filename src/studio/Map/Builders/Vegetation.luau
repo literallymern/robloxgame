@@ -96,6 +96,8 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 	local sink = (1 + plant.Slope * 1.4) / h
 	local leanX, leanZ = (r(3) - 0.5) * 0.12, (r(4) - 0.5) * 0.1
 	local fuller = r(5) < 0.42
+	-- Fork bases are interpolated on the actual trunk axis, including its buried foot.
+	-- Independent offsets can leave a floating branch beside a leaning trunk.
 
 	if plant.Kind == "Pine" then
 		-- Two tapered whorls with perpendicular ridges break up the former pill-shaped crown.
@@ -122,8 +124,9 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 			end
 		end
 	elseif plant.Kind == "Acacia" then
-		local fork = point(leanX, 0.54, leanZ)
-		stem(point(0, -sink, 0), point(leanX - 0.16, 0.7, leanZ - 0.04), math.max(0.75, 0.043 * h), false)
+		local foot, top = point(0, -sink, 0), point(leanX - 0.16, 0.7, leanZ - 0.04)
+		stem(foot, top, math.max(0.75, 0.043 * h), false)
+		local fork = foot:Lerp(top, (0.54 + sink) / (0.7 + sink))
 		stem(fork, point(0.28 + leanX, 0.75, 0.05 + leanZ), math.max(0.45, 0.025 * h), true)
 		leaf(leanX - 0.18, 0.75, leanZ - 0.05, 0.76, 0.2 + r(9) * 0.06, 0.58, 20)
 		leaf(leanX + 0.25, 0.79, leanZ + 0.08, 0.65, 0.18, 0.53, 26)
@@ -131,21 +134,19 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 			leaf(leanX + 0.03, 0.84, leanZ - 0.18, 0.5, 0.17, 0.44, 32)
 		end
 	elseif plant.Kind == "Eucalyptus" then
-		stem(point(0, -sink, 0), point(leanX, 0.9, leanZ), math.max(0.9, 0.035 * h), false)
-		stem(
-			point(leanX * 0.6, 0.52, leanZ * 0.6),
-			point(leanX + 0.13, 0.75, leanZ + 0.06),
-			math.max(0.4, 0.018 * h),
-			true
-		)
+		local foot, top = point(0, -sink, 0), point(leanX, 0.9, leanZ)
+		stem(foot, top, math.max(0.9, 0.035 * h), false)
+		local fork = foot:Lerp(top, (0.52 + sink) / (0.9 + sink))
+		stem(fork, point(leanX + 0.13, 0.75, leanZ + 0.06), math.max(0.4, 0.018 * h), true)
 		leaf(leanX - 0.035, 0.87, leanZ - 0.025, 0.27, 0.27, 0.2, 20)
 		leaf(leanX + 0.14, 0.75, leanZ + 0.065, 0.26, 0.24, 0.19, 26)
 		if fuller then
 			leaf(leanX - 0.1, 0.65, leanZ + 0.06, 0.22, 0.2, 0.18, 32)
 		end
 	else
-		local fork = point(leanX * 0.7, 0.36, leanZ * 0.7)
-		stem(point(0, -sink, 0), point(leanX - 0.09, 0.68, leanZ - 0.04), math.max(0.85, 0.05 * h), false)
+		local foot, top = point(0, -sink, 0), point(leanX - 0.09, 0.68, leanZ - 0.04)
+		stem(foot, top, math.max(0.85, 0.05 * h), false)
+		local fork = foot:Lerp(top, (0.36 + sink) / (0.68 + sink))
 		stem(fork, point(leanX + 0.2, 0.65, leanZ + 0.09), math.max(0.5, 0.028 * h), true)
 		local spread = 0.92 + r(6) * 0.2
 		leaf(leanX - 0.11, 0.74, leanZ - 0.06, 0.5 * spread, 0.4, 0.38, 20)

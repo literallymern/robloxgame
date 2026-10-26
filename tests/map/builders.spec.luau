@@ -177,7 +177,21 @@ local savedClears = stats.clears
 local customSign = Instance.new("Part")
 customSign.Name = "AuthoredSign"
 customSign.Parent = retainedSigns
-BuildMap.refreshEnvironment()
+local refreshed = BuildMap.refreshEnvironment()
+check(
+	"refresh reports its applied geometry revision",
+	refreshed ~= nil
+		and refreshed.Revision == BuildMap.EnvironmentRevision
+		and map:GetAttribute("EnvironmentGeometryRevision") == BuildMap.EnvironmentRevision
+)
+check(
+	"refresh reports actual vegetation and road work",
+	refreshed.Trees > 4000 and refreshed.VegetationParts > 0 and refreshed.RoadParts > 0 and refreshed.BridgeParts > 0
+)
+check(
+	"refresh explicitly reports terrain was not rebuilt",
+	refreshed.TerrainRebuilt == false and map:GetAttribute("LastEnvironmentRefreshRebuiltTerrain") == false
+)
 check("refresh keeps terrain voxels", stats.clears == savedClears)
 check(
 	"refresh keeps places and property instances",

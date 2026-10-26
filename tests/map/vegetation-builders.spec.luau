@@ -94,11 +94,36 @@ local plants = Vegetation.new(Layout, hf, RoadDetails.new(Layout, hf))
 local root = Instance.new("Folder")
 local parts = Builder.build(plants, root)
 local actual = 0
+local connected, forkCount, worstSeparation = true, 0, 0
 for _, item in root:GetDescendants() do
+	-- A named branch alone does not establish a visible fork. Its base must actually start
+	-- on the finite trunk axis, including the buried part of a trunk on sloping ground.
+	if item:IsA("Model") and item:GetAttribute("VegetationSpecies") ~= "Pine" then
+		local trunk = item:FindFirstChild("Trunk")
+		local branch = item:FindFirstChild("Branch")
+		if not trunk or not branch then
+			connected = false
+		else
+			local a = trunk.CFrame.Position - trunk.CFrame.RightVector * trunk.Size.X / 2
+			local b = trunk.CFrame.Position + trunk.CFrame.RightVector * trunk.Size.X / 2
+			local base = branch.CFrame.Position - branch.CFrame.RightVector * branch.Size.X / 2
+			local axis = b - a
+			local t = math.clamp((base - a):Dot(axis) / axis:Dot(axis), 0, 1)
+			local separation = (base - (a + axis * t)).Magnitude
+			worstSeparation = math.max(worstSeparation, separation)
+			connected = connected and separation < 1e-6
+			forkCount += 1
+		end
+	end
 	if item:IsA("BasePart") then
 		actual += 1
 	end
 end
+check(
+	"trees: every full-map branch grows from its trunk, without disconnected forks",
+	connected and forkCount > 3000,
+	`{forkCount} forks; maximum axis separation {worstSeparation}`
+)
 check("vegetation: reported count matches all generated parts", parts == actual)
 check("vegetation: full map stays below 36000 actual parts", actual <= 36000, tostring(actual))
 print(`INFO detailed vegetation: {#plants.trees} trees, {actual} actual parts`)

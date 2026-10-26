@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Run pure environment math and the actual service with an offline scheduler (no Studio)."""
+"""Run environment math, service scheduling and presentation migration offline (no Studio)."""
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +38,10 @@ def main():
         stream.write("\n".join(chunks))
         bundle = stream.name
     try:
-        return subprocess.run([LUAU, bundle]).returncode
+        result = subprocess.run([LUAU, bundle]).returncode
+        if result:
+            return result
+        return subprocess.run([sys.executable, str(ROOT / "tests/map/run.py"), str(ROOT / "tests/environment/presentation.spec.luau")]).returncode
     finally:
         os.unlink(bundle)
 

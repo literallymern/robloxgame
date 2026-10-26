@@ -39,15 +39,22 @@ function Environment.apply(log: (string) -> ())
 	if not ok then
 		log("Could not switch on animated grass: select Workspace > Terrain and tick Decoration.")
 	end
+	local skipped: { string } = {}
 	if Config.Enabled then
-		Presentation.apply(
-			Presentation.new(),
-			Config.Profiles[Config.InitialWeather],
-			Config.StartClockTime,
-			Config.Altitude.Base
-		)
+		-- A previously saved place may still contain the original project's strong bloom
+		-- and saturation. Only exact old project presets are migrated; custom edits stay.
+		Presentation.migrateLegacy(log)
+		local handles = Presentation.new()
+		skipped = handles.Skipped
+		Presentation.apply(handles, Config.Profiles[Config.InitialWeather], Config.StartClockTime, Config.Altitude.Base)
+	else
+		table.insert(skipped, "Lighting disabled by Config.Environment.Enabled")
 	end
-	log("Natural highland lighting, terrain colours, river water, grass and clouds set.")
+	log("Terrain colours, river water and grass set; natural lighting preset applied where available.")
+	if #skipped > 0 then
+		log(`Lighting controls skipped: {table.concat(skipped, ", ")}. See Output warnings for conflicts.`)
+	end
+	return skipped
 end
 
 return Environment
