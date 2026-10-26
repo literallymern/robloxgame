@@ -1,6 +1,6 @@
 # 04 · Assumptions, Proposals and Blockers
 
-Status: updated in Milestone 1, 2026-10-26. Items are removed or updated as they are confirmed or solved.
+Status: updated in Milestone 2, 2026-10-26. Items are removed or updated as they are confirmed or solved.
 
 ## 1. Assumptions
 
@@ -21,6 +21,12 @@ Status: updated in Milestone 1, 2026-10-26. Items are removed or updated as they
 | A13 | A Local Secret can be bound to the domain `localhost`. | **Confirmed 2026-10-26** (Studio shows a form: Name, Domain, value) |
 | A14 | `GroupService:GetRolesInGroupAsync` returns `IsMember` and the roles with their `Rank` (used for staff checks; `GetRankInGroup` is deprecated). | Studio checklist: the test buttons appear for the Owner; staff ranks are tested when staff join |
 | A15 | `StreamingEnabled` and `Lighting.ClockTime` can be set from `default.project.json` with `$properties`. | `CheckSetup` prints OK for streaming |
+| A16 | Code run from the Studio command bar in edit mode may yield (`task.wait`), so the long map build keeps Studio usable, and its changes are saved with the place. | Yielding confirmed in Milestone 1 (CheckSetup waits for asset info); the long build is confirmed in Justin's Milestone 2 test |
+| A17 | Studio writes the full terrain (about 71 million voxels in 25,600 chunks, solid fill below) in a few minutes and saves it with the place. | Offline run of the real builder: 42 s in the Luau command line tool, including the stand-in's checks. Studio's time is measured in the Milestone 2 test |
+| A18 | `Terrain:WriteVoxels` takes materials and occupancy as `[x][y][z]` arrays at resolution 4, and occupancy below 1 gives smooth slopes. | Roblox documentation; the offline test rebuilds probe heights from the arrays. Confirmed visually in the Milestone 2 test |
+| A19 | Characters can climb steep terrain (default `MaxSlopeAngle` 89°), so mountains alone do not keep players in; invisible walls at the map edge do. | Roblox default; checked in the Milestone 2 test (step 12) |
+| A20 | The place still has the template `Baseplate` and `SpawnLocation` (A1). Both would end up inside the new terrain, so the builder removes exactly these two and logs it. | A1; Justin backs up the place before the build |
+| A21 | With a 1,024-stud streaming radius, clients do not load distant terrain, so the horizon can look empty from high points. | To be checked in the Milestone 2 Play test. Options if it bothers: a larger radius, an Atmosphere haze, low-detail mountain models (Milestones 8–9) |
 
 ## 2. Proposed implementation choices (not canon)
 
@@ -30,7 +36,7 @@ These are additions needed to build the game. None of them changes an establishe
 |---|---|---|
 | P1 | Development road numbers N1–N5 and R1–R4 | The canon names no roads; numbers help building and signage |
 | P2 | Two international border crossings: East and South. Neighbouring countries stay unnamed for now. | The canon requires border crossings but names no neighbours |
-| P3 | An unnamed river running from the northern highlands past Gundiville to the south | Rwanda-like highlands; gives bridges and the water-treatment site. Optional |
+| P3 | An unnamed river running from the northern highlands past Gundiville to the south | Rwanda-like highlands; gives bridges and the water-treatment site. Built in the Milestone 2 blockout with five bridges |
 | P4 | Statue faces **north, towards the Congress** | Justin's city reference guide describes the statue as "facing Congress". Arriving players walk up the avenue behind it and see the Congress over its shoulders |
 | P5 | Statue finish: the avatar in its **original colours and clothing** on a stone pedestal; a single-material (stone or bronze) version stays an option | The reference screenshot shows that the suit, tie and beard are 2D clothing and face textures. A single-material statue would lose them and keep only blocky shapes, hair and glasses. Decided in Milestone 3 after seeing both in Studio |
 | P6 | Statue scale about 6× (figure about 30 studs) on a 14-stud pedestal | Visible along the 900-stud avenue without hiding the Congress façade |
@@ -43,6 +49,11 @@ These are additions needed to build the game. None of them changes an establishe
 | P13 | Property locations for the 16 genesis properties, incl. a "Market Street" and an "Embassy Row" in Gundiville | The bot's property names need places on the map; see [02](02-map-plan.md), section 10 |
 | P14 | Staging is a bridge-only process (`npm run bridge-staging`) with its own database, key and port, and a console that stands in for `/link confirm`, instead of a second full bot instance | A second bot instance would log in with the live bot's Discord token or need a second Discord application. The bridge-only process never touches Discord or the live database. Built in Milestone 1 |
 | P15 | The "safe test transaction" moves 1 KGD between the player's own bank account and cash, only on staging (`BRIDGE_TEST_OPERATIONS=true`) and only for staff in game | Needs one linked account instead of two, cannot pay anybody else, and still tests operation IDs, retries and the ledger key. Replaces the `citizenPay` test transfer of the Milestone 0 design; see [05](05-economy-integration.md), section 4.4 |
+| P16 | Roads start and end on the edge of a place or on another road; streets inside cities are designed with the cities (Milestones 3 and 5) | The first sketch ran N4 through the hospital site and N5 across the bus terminal. Details in [02](02-map-plan.md), section 12 |
+| P17 | A cattle ranch yard with a farm road from N5, and access roads to the training grounds and the Oberdueshuson farmhouse | Every route ends at a place, as the road plan requires |
+| P18 | Property plots are identified by the bot's property **name** (attribute `PropertyName`) until the bridge offers a property lookup | The bot creates the IDs at genesis and the game cannot know them; the names are unique in `GENESIS_PROPERTIES`, and an offline test compares them |
+| P19 | The new-player spawn has no spawn force field (`Duration = 0`) | Roleplay game; spawning is designed in Milestone 4 |
+| P20 | Placeholder blocks for the Gundiville government district in the blockout | Lets Justin walk the layout before Milestone 3 replaces them |
 
 ## 3. Open decisions for Justin
 
