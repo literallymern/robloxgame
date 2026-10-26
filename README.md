@@ -100,3 +100,5 @@ Dann ist alles richtig eingerichtet.
 - `default.project.json` sagt Rojo, welcher Ordner wohin in Studio kommt.
 - `rokit.toml` legt die Rojo-Version fest.
 - `src/` enthält den ganzen Code.
+- `docs/game/` enthält den Bauplan für Ro-Nation (Architektur, Kartenplan, Meilensteine). Start: [`docs/game/MILESTONES.md`](docs/game/MILESTONES.md).
+- `discord/` enthält den Discord-Server-Plan und den Wirtschafts-Bot.
