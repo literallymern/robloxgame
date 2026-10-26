@@ -6,8 +6,8 @@ Last update: 2026-10-26. The sequence below is the **integration-aware plan from
 
 | # | Milestone | Status | Key prerequisites | Main deliverable |
 |---|---|---|---|---|
-| 0 | Technical and repository audit | **Done, waiting for `NEXT MILESTONE`** | — | `docs/game/` (this folder), incl. bot audit and system boundaries ([05](05-economy-integration.md)) |
-| 1 | Core architecture and integration prototype | Not started | Milestone 0; Studio API access and HTTP requests on (03, steps 4–5); a staging key | Roblox foundation (services, remotes, logging, permissions); bridge prototype in the bot (off by default); account linking; verified staging test: read an account and make one safe test transfer exactly once |
+| 0 | Technical and repository audit | **Done** | — | `docs/game/` (this folder), incl. bot audit and system boundaries ([05](05-economy-integration.md)) |
+| 1 | Core architecture and integration prototype | **In progress:** code done and checked in the cloud; Justin's Studio staging test outstanding | Milestone 0; Studio API access and HTTP requests on (03, steps 4–5); a staging key | Roblox foundation (services, remotes, logging, permissions); bridge prototype in the bot (off by default); account linking; verified staging test: read an account and make one safe test transfer exactly once |
 | 2 | Complete country map blockout | Not started | Milestone 1; Justin runs builders and saves the place | Terrain, roads, footprints of all four cities, airport, border crossings |
 | 3 | Gundiville government district | Not started | Milestone 2; flag and emblem IDs (done) | General People's Congress, Hausali, Leader's residence, square, statue of Dr. Justin Wachmann |
 | 4 | First playable gameplay loop | Not started | Milestones 1–3; bot reachable over HTTPS for live tests | Spawning, navigation, one working vehicle, bank interface, one civilian job, one property interaction, connected to the bot where feasible; Roblox player profiles (non-financial) |
@@ -37,23 +37,25 @@ Where topics of the earlier plan went: Roblox player profiles → 4; vehicles �
 - Recorded Justin's decisions: the bot stays the only economy (D1), the game runs under the group (D2), the bot changes for the bridge are approved (D4), flag and emblem uploaded.
 - Tests: `rojo build` with Rojo 7.7.1 succeeded; the bot's test suite passed (67/67) on the current default branch; both plans were rendered and checked visually. No Roblox tests (no Studio access).
 
-## Milestone 1 plan (preview)
+### Milestone 1 — Core architecture and integration prototype (2026-10-26)
 
-Details are fixed when the milestone starts.
+Two pull requests: the game (branch `claude/project-thread-55jwuj`) and the bot bridge (branch `claude/project-thread-55jwuj-bridge`).
 
-**Roblox foundation**
-1. Extend `default.project.json`: `ServerStorage.StudioTools`, `Workspace` streaming properties, basic `Lighting` settings.
-2. `Main.server.luau` service loader with dependency order and isolated failures; `Main.client.luau` controller loader.
-3. Shared modules: `Config/GameConfig`, `Config/Lore`, `Config/Assets` (flag `104179974183727`, emblem `88703156887446`), `Net/Remotes`, `Util/Log`, `Util/Signal`, `Util/Result`.
-4. Server services: `LogService`, `RemoteService` (validation, rate limits), `PermissionService` (Owner and staff), `EconomyGateway` (bridge client with operation IDs, timeouts, bounded retries, pending-operation store).
-5. Client controllers: `InteractionController`, `UIController`, `NotificationController`, plus a minimal "Link Discord" and "My account" screen for the prototype.
-6. Replace the German test scripts with a startup message from the new entry points; pin StyLua, selene and Lune in `rokit.toml`.
+- **Roblox foundation:** `default.project.json` (name *Ro-Nation*, `ServerStorage.StudioTools`, streaming, lighting); `Main.server.luau` and `Main.client.luau` load services and controllers in a fixed order, each failure isolated; shared `Config` (GameConfig with universe ID `10773079581`, group, Owner, staff rank), `Lore`, `Assets` (flag, emblem), `Net/Remotes`, `Types/Economy`, `Util/Log`, `Util/Signal`, `Util/Format`.
+- **Server services:** `PermissionService` (Owner and staff from the group rank), `RemoteService` (creates the remotes, rate limits per player, safe error replies), `EconomyGateway` (bridge client: secret header, timeout, 3 retries with the same operation ID, pending operations in a DataStore, reconciliation, health checks), `AccountLinkService` (account view, link code, transactions, staff-only test transfer).
+- **Client:** `NotificationController`, `UIController` (menu), `AccountController` ("Kagundi Bank Account": status, balances with "as of" time, Link Discord with code and command, last 5 bank transactions, test buttons for staff on staging).
+- **Studio tool:** `CheckSetup` prints OK/FIX for the game ID, group owner, HTTP requests, streaming, asset types of flag and emblem, and the remotes.
+- **Bot (off by default):** bridge module with 6 endpoints, migration 2 (`account_links`, `link_codes`, `bridge_operations`), `/link`, `/econ-admin link-remove`, optional ledger key for cash withdraw/deposit, `npm run bridge-staging`; see [05](05-economy-integration.md), sections 4, 6 and 8.
+- **Tools:** StyLua 2.6.0 and selene 0.28.0 pinned in `rokit.toml` with `stylua.toml` and `selene.toml`.
+- **Tests that ran (cloud session):** bot tests 89/89 (67 earlier + 22 new); staging smoke run of `npm run bridge-staging` (link, summary, one test transfer, replay returned the same transaction); `rojo build` OK; StyLua, selene and luau-lsp (strict, Roblox definitions) with 0 findings.
+- **Not tested yet:** everything inside Roblox Studio. The checklist is [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md). Open points: A11–A15 in [04](04-assumptions-and-blockers.md).
+- **Deviations from the preview:** `InteractionController` moved to Milestone 4 (no interactive objects exist yet); `LogService` became the small utility `Util/Log`; `Util/Result` was not needed (the remotes use one `Reply` type); Lune not pinned (no pure-module tests yet); the test transaction is a 1 KGD bank ↔ cash movement on one's own account instead of a payment between two players, and `citizenPay` gets its key in Milestone 4 (P15).
 
-**Bot (pull request, bridge off by default)**
-7. `src/bridge/` with authentication, rate limits, audit records and the minimal operations from [05](05-economy-integration.md), section 4.4.
-8. Migration: `account_links`, `link_codes`, `bridge_operations`; optional idempotency key for `citizenPay`; `/link` commands; regenerated command reference.
-9. Tests: second shift refused, third business refused, bridge authentication, linking, idempotency, maintenance and outage behaviour.
+## Milestone 2 plan (preview)
 
-**Verification**
-10. Automated: `rojo build`, bot tests (old and new), Luau checks if approved in this environment.
-11. Staging test in Studio by Justin with a checklist: link a test account, read the same balance as `/bank balance`, send one test transfer, repeat the request, confirm exactly one transaction in Discord.
+Details are fixed when the milestone starts. Source: [02-map-plan.md](02-map-plan.md).
+
+1. `src/shared/Config/MapLayout.luau`: coordinates, footprints, heights and roads from the map plan as the single source.
+2. Builder scripts in `src/studio/` that Justin runs once in Studio: terrain (basins, highland plateau, hills, boundary mountains, optional river), road builder from reusable segments (N1–N5, R1–R4, bridges), city footprints as simple blocks, airport runway and apron, both border crossings, property plots tagged with their property IDs.
+3. Spawn at the Gundiville bus terminal; streaming checked with the blockout.
+4. Studio checklist: run the builders, walk and fly the map, check drive times, save and back up the place.

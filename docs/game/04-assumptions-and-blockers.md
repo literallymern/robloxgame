@@ -1,6 +1,6 @@
 # 04 · Assumptions, Proposals and Blockers
 
-Status: Milestone 0, 2026-10-26 (updated after Justin's architecture update of the same day). Items are removed or updated as they are confirmed or solved.
+Status: updated in Milestone 1, 2026-10-26. Items are removed or updated as they are confirmed or solved.
 
 ## 1. Assumptions
 
@@ -15,7 +15,12 @@ Status: Milestone 0, 2026-10-26 (updated after Justin's architecture update of t
 | A7 | Faction membership comes from Discord roles assigned with `/roster`. | Follows from the architecture update (Discord is the identity source); used in Milestone 6 |
 | A8 | All in-game text is English; German titles and Kagundisch words are used as flavour, as in the encyclopedia. | Canon |
 | A9 | The encyclopedia PDF of 26 Oct 2026 is the latest canon. Justin's city reference guide of the same date gives the visual direction and is not canon where it differs. | Justin sends a new version if it changes |
-| A10 | The bot behaves as recorded in [05-economy-integration.md](05-economy-integration.md), section 2, checked against the source code on the default branch at commit `b8e905e`. | Re-checked at the start of Milestone 1 before any bot change |
+| A10 | The bot behaves as recorded in [05-economy-integration.md](05-economy-integration.md), section 2, checked against the source code on the default branch at commit `b8e905e`. | **Re-checked in Milestone 1:** the bridge branch starts from `7caabc7`, and `discord/bot` has no changes between `b8e905e` and `7caabc7`; the 67 earlier tests still pass next to the new ones |
+| A11 | Roblox Studio lets game scripts call `http://localhost:8788` (the staging bridge on Justin's PC). The documentation asks for HTTPS; developer reports say Studio allows localhost. | Studio checklist, step "Link Discord". If refused: staging over an HTTPS tunnel or on the 24/7 host (`BridgeConfig.BaseUrl`) |
+| A12 | Roblox accepts a `Secret` in the `Authorization` header (`Secret:AddPrefix("Bearer ")`). | Studio checklist. If refused: `BridgeConfig.AuthHeader = "X-Api-Key"` without the prefix; the bridge accepts both |
+| A13 | A Local Secret can be bound to the domain `localhost`. | Studio checklist. If refused: domain `*`, acceptable only for the local staging key, never for the live key |
+| A14 | `GroupService:GetRolesInGroupAsync` returns `IsMember` and the roles with their `Rank` (used for staff checks; `GetRankInGroup` is deprecated). | Studio checklist: the test buttons appear for the Owner; staff ranks are tested when staff join |
+| A15 | `StreamingEnabled` and `Lighting.ClockTime` can be set from `default.project.json` with `$properties`. | `CheckSetup` prints OK for streaming |
 
 ## 2. Proposed implementation choices (not canon)
 
@@ -36,6 +41,8 @@ These are additions needed to build the game. None of them changes an establishe
 | P11 | The bridge is a module inside the existing bot process (`src/bridge/`), off by default, with a staging instance first | Uses the bot's own economy services and database directly, so no second copy of any rule exists. Details in [05](05-economy-integration.md), section 4. Built as a prototype in Milestone 1 |
 | P12 | Discord ↔ Roblox account link through a single-use, time-limited code shown in game and confirmed with `/link confirm` in Discord | No third-party bot needed; both sides take part; the link lives in the economy bot. Details in [05](05-economy-integration.md), section 4.3 |
 | P13 | Property locations for the 16 genesis properties, incl. a "Market Street" and an "Embassy Row" in Gundiville | The bot's property names need places on the map; see [02](02-map-plan.md), section 10 |
+| P14 | Staging is a bridge-only process (`npm run bridge-staging`) with its own database, key and port, and a console that stands in for `/link confirm`, instead of a second full bot instance | A second bot instance would log in with the live bot's Discord token or need a second Discord application. The bridge-only process never touches Discord or the live database. Built in Milestone 1 |
+| P15 | The "safe test transaction" moves 1 KGD between the player's own bank account and cash, only on staging (`BRIDGE_TEST_OPERATIONS=true`) and only for staff in game | Needs one linked account instead of two, cannot pay anybody else, and still tests operation IDs, retries and the ledger key. Replaces the `citizenPay` test transfer of the Milestone 0 design; see [05](05-economy-integration.md), section 4.4 |
 
 ## 3. Open decisions for Justin
 
@@ -52,7 +59,7 @@ These are additions needed to build the game. None of them changes an establishe
 |---|---|---|---|
 | B1 | No Studio access for Claude | Claude cannot place parts, run Play tests or publish | Builder scripts + Studio checklists run by Justin |
 | B2 | Roblox web APIs are blocked from Claude's environment | The avatar data cannot be read from here | Justin's screenshot serves as the visual reference; the statue builder uses Roblox's engine functions inside Studio (Milestone 3) |
-| B3 | Running downloaded dev tools (luau-lsp, selene, StyLua, Lune) was blocked in this session | No automated Luau checks here yet | Ask for approval in Milestone 1; Justin can run them locally through Rokit |
-| B4 | The economy bot runs only while Justin's PC is on and has no HTTP bridge | No money features in game until both exist | Justin is arranging 24/7 hosting (2026-10-26); bridge prototype against a staging instance in Milestone 1; until the bot is reachable, the game shows "temporarily unavailable" and never invents balances |
-| B5 | Flag and emblem uploaded on 2026-10-26 (flag `104179974183727`, emblem `88703156887446`); not yet checked in Studio | If an ID is a decal ID instead of an image ID, scripts cannot show it | Milestone 1 puts both IDs into `Config/Assets.luau` and the Studio checklist shows both images; fix the IDs there if one does not load |
+| B3 | Running downloaded dev tool binaries was blocked in the cloud session | — | **Resolved in Milestone 1:** with Justin's approval (2026-10-26) StyLua and selene were built from crates.io and luau-lsp from its source code; all Milestone 1 code passes them. StyLua and selene are pinned in `rokit.toml` for Justin's PC |
+| B4 | The economy bot runs only while Justin's PC is on; the bridge exists (Milestone 1 bot pull request) but is off and not deployed | No money features on live servers yet | Justin is arranging 24/7 hosting (2026-10-26). Studio tests use the staging bridge on Justin's PC. Until the bot is reachable, the game shows "temporarily unavailable" and never invents balances |
+| B5 | Flag and emblem uploaded on 2026-10-26 (flag `104179974183727`, emblem `88703156887446`); not yet checked in Studio | If an ID is a decal ID instead of an image ID, scripts cannot show it | Both IDs are in `src/shared/Config/Assets.luau`. `CheckSetup` reads their asset type in Studio (Image = OK, Decal = needs the image ID); fix the IDs there if one is wrong |
 | B6 | Claude cannot see the current place file | Hand-built content could be missed | Resolved for now: Justin confirmed nothing is built (A1) |

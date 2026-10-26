@@ -1,3 +1,7 @@
 # Werkzeuge für dieses Projekt. Mit "rokit install" werden sie installiert.
 [tools]
 rojo = "rojo-rbx/rojo@7.7.1"
+# Prüft Luau-Code auf typische Fehler: selene src
+selene = "Kampfkarren/selene@0.28.0"
+# Formatiert Luau-Code einheitlich: stylua src
+stylua = "JohnnyMorganz/StyLua@2.6.0"

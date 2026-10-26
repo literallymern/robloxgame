@@ -12,5 +12,6 @@ Technical documentation for the Roblox game **Ro-Nation**, set in the Democratic
 | [04-assumptions-and-blockers.md](04-assumptions-and-blockers.md) | what is assumed, proposed (not canon), still open or blocked |
 | [05-economy-integration.md](05-economy-integration.md) | how the game connects to the Discord economy bot, the only economy |
 | [FILE-INVENTORY.md](FILE-INVENTORY.md) | what every file in the project is for |
+| [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md) | how to test the Milestone 1 bank window against the staging bridge in Studio |
 
 Related: the Discord server and economy bot are documented in [`discord/docs/`](../../discord/docs/).
