@@ -1,18 +1,18 @@
 # 09 · QA Report
 
-**Date:** 26 October 2026 · **Environment:** Linux build container, Node.js 22.22.0, discord.js 14.27.0 · **Discord access:** none (discord.com was not reachable from the build environment and no bot token was available).
+**Date:** 26 October 2026 · **Environment:** Linux build container, Node.js 22.22.0, discord.js 14.27.0 · **Discord access:** none from the build environment (discord.com was not reachable and no bot token was available). The Owner's own first setup is described below.
 
 ## Summary
 
 | Area | Result |
 |---|---|
-| Automated tests | **66 of 66 passed**, 0 failed (`npm test`) |
+| Automated tests | **67 of 67 passed**, 0 failed (`npm test`) |
 | 30-day offline simulation | **Passed**: books balanced on every day, report generated from recorded data |
 | Syntax check of every source file | Passed |
 | Scripts without credentials | Passed: dry runs work; missing settings give a clear message |
 | Live Discord test (setup, commands, buttons, tickets, report posting) | **Not done**: no server, token or network access. Must be done by the Owner (checklist [08 · H](08-build-checklist.md#h-test-before-opening-owner-with-a-second-account)) |
 
-Nothing in this repository has been deployed to Discord or hosted anywhere.
+The Owner built the server with `npm run setup-server` on 26 October 2026. Starting the bot and posting the messages failed on Windows; the causes are fixed in this version (see below) and still need to be confirmed on the Owner's PC.
 
 ## What was tested, and how
 
@@ -129,6 +129,16 @@ Commands were run against fake Discord interactions (no network).
 | `npm run setup-server` | Stops with "Missing settings in .env …" and changes nothing |
 | `npm start` | Stops with "Missing settings in .env …" |
 | `npm start` with a dummy token | Stops with "Login failed" (no network to Discord), database created cleanly |
+
+## Problems found in the first real setup (26 October 2026, fixed)
+
+The Owner ran the setup on Windows. Building the server worked; starting the bot and posting the messages did not. Causes found and fixed:
+
+- **`npm run post-messages` did nothing on Windows.** The script compared its own file path in a way that never matched on Windows, so it exited without doing anything. The script now always runs; the shared code moved to `src/setup/messages.js`.
+- **Message files with Windows line endings** (Git for Windows converts line endings by default) were not split at paragraphs. They are now normalised when read (new test).
+- **Bot start on Node.js 22.13–22.15:** the database code used a Node feature that only exists from 22.16, so the first start could fail with "cannot start a transaction within a transaction". The code no longer needs it.
+- **Unclear error on old Node.js versions:** every script now checks the Node.js version first and says which version is needed.
+- **Posting stopped at the first failing channel:** it now continues with the other channels and lists every failure with a hint at the end.
 
 ## Problems found during development (all fixed)
 

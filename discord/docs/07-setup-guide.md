@@ -54,7 +54,7 @@ On the computer that will run the bot:
    npm test
    ```
 
-   Expected: `# pass 66` and `# fail 0`.
+   Expected: `# pass 67` and `# fail 0`.
 
 ## Step 4 · Look at the plan (dry run)
 
@@ -142,6 +142,22 @@ Use a second Discord account (an alt) to check:
 3. `/bank balance` shows 2,500 KGD (if the alt is older than 14 days) only to the alt.
 4. Opening a support ticket creates a private channel only the alt, the Support Team and Administrators can see.
 5. After the next midnight (Europe/Berlin) the first report appears in #national-economic-report.
+
+## Troubleshooting
+
+| What you see | What to do |
+|---|---|
+| `npm run post-messages` prints nothing at all | You have the old version from before 26 October 2026 (Windows bug). Pull the latest code and run it again. |
+| `Posting failed: … could not be posted` with "Missing Access" | The bot cannot see that channel. Check the bot role permissions (Step 6) and run `npm run setup-server` (dry run) to find channels whose permissions differ. |
+| `channel not found on the server` | Run `npm run setup-server -- --apply` first, then post again. |
+| `Login failed: enable "Server Members Intent"` | Developer Portal → Bot → Privileged Gateway Intents → Server Members Intent on, save, start again. |
+| `Node.js … is too old` or `No such built-in module: node:sqlite` | Install the current Node.js LTS from nodejs.org, then `npm install` again. |
+| `cannot start a transaction within a transaction` | Old version of the code on Node.js 22.13–22.15. Pull the latest code. |
+| `Missing settings in .env` | The `.env` file is missing or not in `discord/bot/`. On Windows make sure it is called `.env` and not `.env.txt`. |
+| The bot is offline in Discord | The bot only runs while the terminal with `npm start` is open. Closing the window stops it. For 24/7 use a server or pm2 (Step 8). |
+| Slash commands say "The application did not respond" | The bot is not running, or it crashed: look at the terminal where you started it. |
+
+When asking for help, copy the last 20 lines of the terminal output (never the token).
 
 ## Everyday operation
 

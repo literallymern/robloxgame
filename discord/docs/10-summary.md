@@ -18,7 +18,7 @@ A complete, ready-to-deploy package for the Ro-Nation Discord server of the Demo
 | 10 | This summary | — |
 | + | Slash command reference | [appendix-command-reference.md](appendix-command-reference.md) |
 
-**Status:** code and documents are finished and tested offline (66/66 tests, 30-day simulation). **Nothing has been created, configured or deployed on Discord**, because no server, bot token or network access to Discord was available. The Owner performs the setup with the guide in about one hour.
+**Status:** code and documents are finished and tested offline (67/67 tests, 30-day simulation). The Owner built the Discord server with the setup script on 26 October 2026. Starting the bot and posting the messages failed on Windows at first; the causes are fixed (see [09](09-qa-report.md)) and need to be confirmed on the Owner's PC.
 
 ## What the Owner must supply
 

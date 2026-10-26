@@ -9,11 +9,11 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning src/index.js",
-    "deploy-commands": "node --disable-warning=ExperimentalWarning scripts/deploy-commands.js",
-    "setup-server": "node --disable-warning=ExperimentalWarning scripts/setup-server.js",
-    "post-messages": "node --disable-warning=ExperimentalWarning scripts/post-messages.js",
-    "simulate": "node --disable-warning=ExperimentalWarning scripts/simulate.js",
+    "start": "node --disable-warning=ExperimentalWarning --import ./src/check-node.js src/index.js",
+    "deploy-commands": "node --disable-warning=ExperimentalWarning --import ./src/check-node.js scripts/deploy-commands.js",
+    "setup-server": "node --disable-warning=ExperimentalWarning --import ./src/check-node.js scripts/setup-server.js",
+    "post-messages": "node --disable-warning=ExperimentalWarning --import ./src/check-node.js scripts/post-messages.js",
+    "simulate": "node --disable-warning=ExperimentalWarning --import ./src/check-node.js scripts/simulate.js",
     "generate-docs": "node --disable-warning=ExperimentalWarning scripts/generate-docs.js",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
   },

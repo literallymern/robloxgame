@@ -5,66 +5,17 @@
 //
 // The IDs of posted messages are stored in data/posted-messages.json. Running the script again
 // edits those messages instead of posting duplicates. Nothing is deleted.
-import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { Client, Events, GatewayIntentBits, AttachmentBuilder } from 'discord.js';
 import { config, requireDiscordConfig } from '../src/config.js';
-import { CHANNEL_BY_KEY, CHANNELS } from '../src/blueprint/channels.js';
+import { CHANNEL_BY_KEY } from '../src/blueprint/channels.js';
 import { createResolver } from '../src/discord/ids.js';
 import { buildPanel, PANEL_CHANNELS } from '../src/discord/components.js';
+import { loadMessages, linkChannels, messagesDir } from '../src/setup/messages.js';
 
 const APPLY = process.argv.includes('--apply');
-const messagesDir = resolve(config.root, '..', 'messages');
 const stateFile = join(config.root, 'data', 'posted-messages.json');
-
-// Front matter: lines "key: value" between two "---" lines at the top of the file.
-export function parseMessageFile(text) {
-  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
-  if (!m) throw new Error('Missing front matter (--- channel: ... ---)');
-  const meta = Object.fromEntries(m[1].split(/\r?\n/).filter(Boolean).map((l) => {
-    const i = l.indexOf(':');
-    return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-  }));
-  return { meta, body: m[2].trim() };
-}
-
-// Splits a long text into Discord messages (max 2,000 characters) at blank lines.
-export function splitMessage(text, max = 1800) {
-  const parts = [];
-  let current = '';
-  for (const block of text.split(/\n{2,}/)) {
-    const candidate = current ? `${current}\n\n${block}` : block;
-    if (candidate.length <= max) { current = candidate; continue; }
-    if (current) parts.push(current);
-    if (block.length <= max) { current = block; continue; }
-    // A single very long block: split by lines.
-    current = '';
-    for (const line of block.split('\n')) {
-      const c2 = current ? `${current}\n${line}` : line;
-      if (c2.length <= max) current = c2;
-      else { parts.push(current); current = line.slice(0, max); }
-    }
-  }
-  if (current) parts.push(current);
-  return parts;
-}
-
-// Turns "#channel-name" into a clickable channel link when the channel exists on the server.
-export function linkChannels(text, ids) {
-  return text.replace(/(^|[\s(*_>])#([a-z0-9-]+)/g, (all, pre, name) => {
-    const ch = CHANNELS.find((c) => c.name === name);
-    const id = ch && ids.channel(ch.key);
-    return id ? `${pre}<#${id}>` : all;
-  });
-}
-
-export function loadMessages() {
-  return readdirSync(messagesDir).filter((f) => f.endsWith('.md') && !f.startsWith('_')).sort().map((file) => {
-    const { meta, body } = parseMessageFile(readFileSync(join(messagesDir, file), 'utf8'));
-    if (!CHANNEL_BY_KEY[meta.channel]) throw new Error(`${file}: unknown channel key "${meta.channel}"`);
-    return { file, channel: meta.channel, order: Number(meta.order ?? 0), image: meta.image ?? null, parts: splitMessage(body) };
-  }).sort((a, b) => a.channel.localeCompare(b.channel) || a.order - b.order);
-}
 
 async function main() {
   const messages = loadMessages();
@@ -88,7 +39,7 @@ async function main() {
     // Posts new messages or edits the ones posted earlier (same key).
     const upsert = async (key, channelKey, payloads) => {
       const channelId = ids.channel(channelKey);
-      if (!channelId) { console.warn(`skip ${key}: channel #${CHANNEL_BY_KEY[channelKey].name} not found`); return; }
+      if (!channelId) throw new Error('channel not found on the server (run "npm run setup-server" first)');
       const channel = await client.channels.fetch(channelId);
       const previous = state[key]?.channelId === channelId ? state[key].messageIds : [];
       const posted = [];
@@ -109,6 +60,16 @@ async function main() {
       console.log(`${previous.length ? 'updated' : 'posted'} ${key} in #${channel.name}`);
     };
 
+    // One failing channel does not stop the others; failures are listed at the end.
+    const failures = [];
+    const attempt = async (key, channelKey, payloads) => {
+      try {
+        await upsert(key, channelKey, payloads);
+      } catch (err) {
+        failures.push(`${key} (#${CHANNEL_BY_KEY[channelKey].name}): ${err.message}`);
+        console.error(`FAILED ${key} in #${CHANNEL_BY_KEY[channelKey].name}: ${err.message}`);
+      }
+    };
     for (const m of messages) {
       const payloads = m.parts.map((content) => ({ content: linkChannels(content, ids) }));
       if (m.image) {
@@ -116,17 +77,20 @@ async function main() {
         if (existsSync(file)) payloads[0].files = [new AttachmentBuilder(file)];
         else console.warn(`${m.file}: image ${m.image} not found, posting without it`);
       }
-      await upsert(`message:${m.file}`, m.channel, payloads);
+      await attempt(`message:${m.file}`, m.channel, payloads);
     }
-    for (const p of panels) await upsert(`panel:${p}`, PANEL_CHANNELS[p], [buildPanel(p, config)]);
+    for (const p of panels) await attempt(`panel:${p}`, PANEL_CHANNELS[p], [buildPanel(p, config)]);
+    if (failures.length) throw new Error(`${failures.length} message(s) could not be posted:\n  ${failures.join('\n  ')}`);
+    console.log('\nAll messages and panels are posted.');
   } finally {
     await client.destroy();
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname)) {
-  main().catch((err) => {
-    console.error(`Posting failed: ${err.message}`);
-    process.exit(1);
-  });
-}
+main().catch((err) => {
+  console.error(`Posting failed: ${err.message}`);
+  if (/Missing Access|Missing Permissions/i.test(err.message)) {
+    console.error('The bot cannot see or write in that channel. Check that the bot role has View Channels, Send Messages, Embed Links and Attach Files, and run "npm run setup-server" (dry run) to see whether channel permissions differ from the blueprint.');
+  }
+  process.exit(1);
+});
