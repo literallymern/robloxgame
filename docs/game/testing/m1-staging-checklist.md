@@ -28,8 +28,8 @@ Result of the last run: **not run yet**.
 | 11 | In the terminal: `balance` | The same two numbers as in step 10 | Same balance on both sides |
 | 12 | Look at the buttons | **Link Discord** is gone while the account is linked (a second link is refused by the bot; tested automatically) | One link per account |
 | 13 | **Test: withdraw 1 KGD**, then **Refresh** | "Done: transaction #N."; Bank 2,499.00, Cash 1.00 | Safe test transaction |
-| 14 | In the terminal: `history` | Exactly one new cash withdrawal of 1.00 KGD with a key `[bridge:…]` | Exactly once, ledger key |
-| 15 | **Test: deposit 1 KGD**, **Refresh**, then `history` | Bank 2,500.00, Cash 0.00; exactly one new deposit line | Exactly once |
+| 14 | In the terminal: `history` | Exactly one new transaction number with a key `[bridge:…]`; it is listed under *Bank* as `-1.00 KGD` and under *Cash* as `+1.00 KGD` (one movement, two accounts) | Exactly once, ledger key |
+| 15 | **Test: deposit 1 KGD**, **Refresh**, then `history` | Bank 2,500.00, Cash 0.00; exactly one more new transaction number | Exactly once |
 | 16 | Stop the staging bridge (`quit`). In Studio press **Test: withdraw 1 KGD** and wait | After about 10 seconds: "The economy did not answer in time. The request is saved …"; **Refresh** shows "Financial services are temporarily unavailable"; yellow `GET /v1/health failed` lines in Output are expected | Downtime: nothing invented |
 | 17 | Start the staging bridge again (`npm run bridge-staging`) and stay in Play for 2 minutes | Notification "A delayed economy request was cancelled. Nothing was changed."; Output `Settled operation …: voided` | Reconciliation, pending store |
 | 18 | In the terminal: `balance` and `history` | Unchanged since step 15: no transaction from step 16 | Backend failure creates no money |
@@ -47,6 +47,7 @@ Optional: `unlink` in the terminal removes the staging link, so steps 7–12 can
 | `No DataStore for pending operations` | Studio API access is off, or the place is not the published one | Step 1; open the published place |
 | Test buttons missing | Not Owner/staff, or the bridge is not the staging one | Use the Owner account; staging must be running |
 | CheckSetup `FIX` for flag or emblem | The ID is a decal ID | Send Claude the line |
+| PowerShell: *running scripts is disabled on this system* | Windows execution policy blocks `npm.ps1` | Use `npm.cmd install` and `npm.cmd run bridge-staging` |
 | The Local Secret is gone after restarting Studio | Studio keeps only about 2,500 bytes of local secrets in total (known Roblox limit) | Delete unused local secrets, then add `RoNationBridgeKey` again |
 
 ## Record
