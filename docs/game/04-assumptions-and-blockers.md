@@ -26,7 +26,7 @@ These are additions needed to build the game. None of them changes an establishe
 | P2 | Two international border crossings: East and South. Neighbouring countries stay unnamed for now. | The canon requires border crossings but names no neighbours |
 | P3 | An unnamed river running from the northern highlands past Gundiville to the south | Rwanda-like highlands; gives bridges and the water-treatment site. Optional |
 | P4 | Statue faces **south**, down the ceremonial avenue, with its back to the Congress | Arriving players see the statue's face with the Congress behind it. Alternative: facing the Congress |
-| P5 | Statue finish: stone or bronze material that keeps the avatar's exact shapes, accessories and proportions, with an option to keep the original colours | A monument usually is one material; the avatar stays recognisable by its silhouette and accessories. Decided in Milestone 3 after seeing the result |
+| P5 | Statue finish: the avatar in its **original colours and clothing** on a stone pedestal; a single-material (stone or bronze) version stays an option | The reference screenshot shows that the suit, tie and beard are 2D clothing and face textures. A single-material statue would lose them and keep only blocky shapes, hair and glasses. Decided in Milestone 3 after seeing both in Studio |
 | P6 | Statue scale about 6× (figure about 30 studs) on a 14-stud pedestal | Visible along the 900-stud avenue without hiding the Congress façade |
 | P7 | A memorial to the 1917 Kagundali Strike at the gold fields or in Kagundali | The canon marks the strike as founding history and a public holiday (Streiktag) |
 | P8 | The Air Force uses a military apron at the cargo airport | The canon lists an Air Force but no air base |
@@ -41,14 +41,14 @@ These are additions needed to build the game. None of them changes an establishe
 |---|---|---|---|
 | D1 | Should the economy bot stay the only place where money exists, with the game connected through a bridge that is built before Milestone 7? | **Decided 2026-10-26: yes.** The minimum bridge comes with Milestones 6/7. | — |
 | D2 | Publish the experience under the group "Democratic Republic of Kagundi"? | Yes, before any saved player data exists | Milestone 6 |
-| D3 | Statue direction and finish (P4, P5) | South-facing; material chosen after a test render in Studio | Milestone 3 |
+| D3 | Statue direction and finish (P4, P5) | South-facing; original colours on a stone pedestal, confirmed after a test render in Studio | Milestone 3 |
 
 ## 4. Blockers and limits
 
 | ID | Blocker | Effect | Work-around |
 |---|---|---|---|
 | B1 | No Studio access for Claude | Claude cannot place parts, run Play tests or publish | Builder scripts + Studio checklists run by Justin |
-| B2 | Roblox web APIs are blocked from Claude's environment | The avatar cannot be previewed from here | The statue builder uses Roblox's engine functions inside Studio (Milestone 3) |
+| B2 | Roblox web APIs are blocked from Claude's environment | The avatar data cannot be read from here | Justin's screenshot serves as the visual reference; the statue builder uses Roblox's engine functions inside Studio (Milestone 3) |
 | B3 | Running downloaded dev tools (luau-lsp, selene, StyLua, Lune) was blocked in this session | No automated Luau checks here yet | Ask for approval in Milestone 1; Justin can run them locally through Rokit |
 | B4 | The economy bot runs only while Justin's PC is on and has no HTTP bridge | No real money in game until both exist | Studio-only sandbox money for testing; bridge work as soon as hosting exists |
 | B5 | Flag and emblem are not uploaded to Roblox | Flags and seals cannot show in game | Justin uploads them (03, step 2); builders use plain colour placeholders until then |

@@ -70,6 +70,8 @@ The Economy Bridge for the game will be added inside `discord/bot/src/` (planned
 | `lore/Kagundi-Encyclopedia.pdf` | Authoritative lore reference (15 pages) |
 | `lore/kagundi-flag.png`, `lore/kagundi-emblem.png` | Official visual references |
 | `rojo/Rojo-Anleitung.md` | German Rojo guide (copy of the README section) |
+| `game/milestone-0/map-plan.png`, `gundiville-plan.png` | Rendered map plans from Milestone 0 |
+| `game/reference/owner-avatar-2595858454.jpg` | Justin's avatar screenshot, visual reference for the statue |
 
 ## Roblox (outside Git)
 

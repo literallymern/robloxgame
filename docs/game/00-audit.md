@@ -62,7 +62,7 @@ Both have to be uploaded to Roblox as images before they can be used in the game
 ## 6. Statue avatar (Roblox user `2595858454`)
 
 - The public profile exists: username **LiterallyDrJustin**, display name **Bustin** (read from the profile page).
-- The avatar's appearance could **not** be inspected from here, because the Roblox avatar API is blocked by the network policy. Nothing about the avatar has been assumed.
+- The Roblox avatar API is blocked from here by the network policy. Justin sent a screenshot of the current avatar on 2026-10-26, saved as the **visual reference** in project files `game/reference/owner-avatar-2595858454.jpg`. It shows a classic blocky body with light skin; messy dark-brown hair; round wire-rim glasses; a face with stubble beard and a smirk; a navy pinstripe double-breasted suit with gold buttons, white shirt and a red/orange/brown striped tie (2D clothing); dark shoes. Whether the rig is R6 or R15 cannot be told from the screenshot; the builder reads it from the avatar data. The statue is checked against this reference in Milestone 3.
 - Planned method (Milestone 3): Roblox's own engine functions `Players:GetHumanoidDescriptionFromUserId` and `Players:CreateHumanoidModelFromDescription`, run by a builder script in Studio. The result is converted into a static, anchored model, scaled with `Model:ScaleTo` and saved in the place. Before relying on this, Milestone 3 verifies that these functions behave as expected in the current Studio version.
 - Fallback if the automatic method fails: Justin loads his avatar in a Play session, copies the character model, stops, pastes it into the place, and the same builder converts it into the statue. If that also fails, the blocker is reported; no generic figure is substituted.
 
