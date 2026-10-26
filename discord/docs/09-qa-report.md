@@ -1,18 +1,18 @@
 # 09 · QA Report
 
-**Date:** 26 October 2026 · **Environment:** Linux build container, Node.js 22.22.0, discord.js 14.27.0 · **Discord access:** none (discord.com was not reachable from the build environment and no bot token was available).
+**Date:** 26 October 2026 · **Environment:** Linux build container, Node.js 22.22.0, discord.js 14.27.0 · **Discord access:** none from the build environment (discord.com was not reachable and no bot token was available). The Owner's own first setup is described below.
 
 ## Summary
 
 | Area | Result |
 |---|---|
-| Automated tests | **66 of 66 passed**, 0 failed (`npm test`) |
+| Automated tests | **67 of 67 passed**, 0 failed (`npm test`) |
 | 30-day offline simulation | **Passed**: books balanced on every day, report generated from recorded data |
 | Syntax check of every source file | Passed |
 | Scripts without credentials | Passed: dry runs work; missing settings give a clear message |
 | Live Discord test (setup, commands, buttons, tickets, report posting) | **Not done**: no server, token or network access. Must be done by the Owner (checklist [08 · H](08-build-checklist.md#h-test-before-opening-owner-with-a-second-account)) |
 
-Nothing in this repository has been deployed to Discord or hosted anywhere.
+The Owner built the server with `npm run setup-server` on 26 October 2026. Starting the bot and posting the messages failed on Windows; the causes are fixed in this version (see below) and still need to be confirmed on the Owner's PC.
 
 ## What was tested, and how
 
@@ -130,6 +130,19 @@ Commands were run against fake Discord interactions (no network).
 | `npm start` | Stops with "Missing settings in .env …" |
 | `npm start` with a dummy token | Stops with "Login failed" (no network to Discord), database created cleanly |
 
+## Problems found in the first real setup (26 October 2026, fixed)
+
+The Owner ran the setup on Windows. Building the server worked; starting the bot and posting the messages did not. Causes found and fixed:
+
+- **`npm run post-messages` did nothing on Windows.** The script compared its own file path in a way that never matched on Windows, so it exited without doing anything. The script now always runs; the shared code moved to `src/setup/messages.js`.
+- **Message files with Windows line endings** (Git for Windows converts line endings by default) were not split at paragraphs. They are now normalised when read (new test).
+- **Bot start on Node.js 22.13–22.15:** the database code used a Node feature that only exists from 22.16, so the first start could fail with "cannot start a transaction within a transaction". The code no longer needs it.
+- **Unclear error on old Node.js versions:** every script now checks the Node.js version first and says which version is needed.
+- **Posting stopped at the first failing channel:** it now continues with the other channels and lists every failure with a hint at the end.
+- **The bot did not stay online with pm2 on Windows.** The guide said `pm2 start npm --name ro-nation -- start`. On Windows pm2 then loads `npm.cmd` as JavaScript and crashes with `SyntaxError: Unexpected token ':'`. The bot now has a pm2 settings file (`bot/ecosystem.config.cjs`) that starts Node directly; the guide uses `pm2 start ecosystem.config.cjs`. Tested with pm2 7.1 on Linux; on Windows the bot was confirmed to run with `npm start`, the pm2 settings file itself not yet.
+
+After these fixes the following ran without errors on the Owner's Windows PC (Node.js 24.22, 26 October 2026): `npm test` (67/67), `npm run setup-server` dry run (all 40 roles, 16 categories and 86 channels present), `npm run deploy-commands` (21 commands registered) and `npm start` (logged in, all roles and channels found).
+
 ## Problems found during development (all fixed)
 
 - Setup: a bot can only grant permissions it holds → the setup now requires temporary Administrator, warns before any change, and the guide removes it afterwards.
@@ -146,11 +159,11 @@ Commands were run against fake Discord interactions (no network).
 
 | Item | Why | What to do |
 |---|---|---|
-| Running the setup on a real server | No Discord access | Owner: [07](07-setup-guide.md) Steps 4–6, then checklist [08 · H](08-build-checklist.md) |
+| Running the setup on a real server | Done by the Owner on 26 October 2026, see above. Locking down the bot role (Step 6) is still open | Owner: [07](07-setup-guide.md) Step 6, then checklist [08 · H](08-build-checklist.md) |
 | Real button clicks, ticket channels, transcripts, DMs | No Discord access | Owner test with a second account |
 | Posting the report and price board to Discord | No Discord access | Wait for the first midnight after the start |
 | Exact appearance of embeds and long messages | Not visible offline | Look once after `post-messages` and adjust texts if needed |
 | Real Discord permission behaviour | Checked with an offline copy of the algorithm, not on a live server | Owner test with the persona list in [03](03-permission-matrix.md) |
-| Running on Windows or macOS | Tested on Linux only | `npm test` on the hosting machine |
+| Running on Windows or macOS | Windows: tests, setup dry run, command registration and bot start work (see above). macOS not tested | `npm test` on the hosting machine |
 | Load with many players at once | Not tested; designed for 20–25 players (SQLite, one process) | Watch #bot-alerts in the first week |
 | Link between the Roblox game and the economy | Not built (out of scope) | Future work, see [10](10-summary.md) |

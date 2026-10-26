@@ -18,7 +18,7 @@ A complete, ready-to-deploy package for the Ro-Nation Discord server of the Demo
 | 10 | This summary | — |
 | + | Slash command reference | [appendix-command-reference.md](appendix-command-reference.md) |
 
-**Status:** code and documents are finished and tested offline (66/66 tests, 30-day simulation). **Nothing has been created, configured or deployed on Discord**, because no server, bot token or network access to Discord was available. The Owner performs the setup with the guide in about one hour.
+**Status:** code and documents are finished and tested offline (67/67 tests, 30-day simulation). The Owner built the Discord server with the setup script on 26 October 2026. Starting the bot and posting the messages failed on Windows at first; the causes are fixed (see [09](09-qa-report.md)). Since then the bot runs on the Owner's Windows PC and the 21 slash commands are registered. Posting the messages with the fixed script and locking down the bot role (Step 6 of the guide) are still open.
 
 ## What the Owner must supply
 
@@ -60,7 +60,7 @@ All four IDs and the token go into `discord/bot/.env`, which is never committed.
 
 ## Known limitations and future work
 
-- No live Discord test yet (see [09](09-qa-report.md#not-tested--incomplete)).
+- Buttons, tickets and the daily report have not been tested live yet (see [09](09-qa-report.md#not-tested--incomplete)).
 - No link between the Roblox game and the economy. A later version could add a small authenticated web endpoint next to the bot and call it from the game with `HttpService` (for example to pay out shifts worked in-game or show balances on in-game terminals).
 - Roblox account linking is optional and not built in (Bloxlink or RoVer can be added with restricted permissions).
 - Designed for 20–25 players on one server (SQLite, one process). Hundreds of active players would need a review.

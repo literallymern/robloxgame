@@ -52,16 +52,22 @@ function runMigrations(db) {
 
 // Runs fn inside one database transaction. Nested calls join the outer transaction.
 // If fn throws, every change made inside it is rolled back.
+// (Tracked here instead of db.isTransaction, which only exists from Node.js 22.16.)
+const openTransactions = new WeakSet();
+
 export function transaction(db, fn) {
-  if (db.isTransaction) return fn();
+  if (openTransactions.has(db)) return fn();
   db.exec('BEGIN IMMEDIATE');
+  openTransactions.add(db);
   try {
     const result = fn();
     db.exec('COMMIT');
     return result;
   } catch (err) {
-    if (db.isTransaction) db.exec('ROLLBACK');
+    try { db.exec('ROLLBACK'); } catch { /* SQLite already rolled back */ }
     throw err;
+  } finally {
+    openTransactions.delete(db);
   }
 }
 

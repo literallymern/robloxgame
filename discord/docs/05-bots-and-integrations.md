@@ -35,9 +35,9 @@ Everything else uses features Discord already has (AutoMod, Community, Onboardin
 | `src/db/` | Database schema and backup helper |
 | `src/discord/` | Slash commands, buttons and tickets, bot-level permission checks, ID lookup |
 | `src/blueprint/` | Single source of truth for roles, channels, permission overwrites and ticket types |
-| `src/setup/` | Compares the blueprint with the live server and plans changes |
+| `src/setup/` | Compares the blueprint with the live server and plans changes; reads the message files; builds the generated docs |
 | `scripts/` | `setup-server`, `deploy-commands`, `post-messages`, `simulate`, `generate-docs` |
-| `test/` | 66 automated tests |
+| `test/` | 67 automated tests |
 
 ### Slash commands
 
@@ -122,6 +122,8 @@ The bot must run 24/7 so the daily tick happens at midnight. Requirements: Node.
 | Small Linux VPS (any provider) | Recommended. Always on, a few euros per month | You run `npm` and a process manager (pm2 or systemd) yourself |
 | Raspberry Pi or an always-on home PC | Free if you already have one | Power cuts and internet outages delay ticks (the bot catches up) |
 | "Free" bot hosts that sleep or wipe the disk | Not recommended | Lost database = lost economy; sleeping hosts miss midnight |
+
+For pm2 the bot ships a settings file, `bot/ecosystem.config.cjs` (`pm2 start ecosystem.config.cjs`, details in [07](07-setup-guide.md#step-8--start-the-bot)). It starts Node directly, which also works on Windows.
 
 If the bot is offline at midnight, nothing is lost: when it starts again it processes the missed days in order (late days collect obligations but skip penalties) and posts the newest report.
 

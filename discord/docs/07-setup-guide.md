@@ -1,6 +1,6 @@
 # 07 · Setup Guide
 
-Step-by-step instructions for the Owner. Allow about one hour. Nothing in this guide has been run on a real Discord server yet; the scripts were tested offline only (see [09-qa-report.md](09-qa-report.md)).
+Step-by-step instructions for the Owner. Allow about one hour. Steps 1–5, 7 and 8 were run on the Owner's Windows PC on 26 October 2026; the problems found there are fixed (see [09-qa-report.md](09-qa-report.md)).
 
 ## What you need to provide
 
@@ -54,7 +54,7 @@ On the computer that will run the bot:
    npm test
    ```
 
-   Expected: `# pass 66` and `# fail 0`.
+   Expected: `# pass 67` and `# fail 0`.
 
 ## Step 4 · Look at the plan (dry run)
 
@@ -103,14 +103,21 @@ Registers the 21 commands on your server (they appear within seconds). `npm run 
 npm start
 ```
 
-The bot logs "Logged in as …" and how many roles and channels it found, and creates `data/economy.db`. **The first start is economic day 1.** Keep it running: on a VPS use a process manager, for example
+The bot logs "Logged in as …" and how many roles and channels it found, and creates `data/economy.db`. **The first start is economic day 1.** The bot runs only while this terminal window is open.
+
+To keep it running in the background and restart it after a crash, use the process manager pm2 instead (from `discord/bot`, after stopping the bot in the terminal with Ctrl+C, so that only one copy runs):
 
 ```
 npm install -g pm2
-pm2 start npm --name ro-nation -- start
+pm2 start ecosystem.config.cjs
 pm2 save
-pm2 startup
 ```
+
+`pm2 logs ro-nation` shows the bot's output, `pm2 restart ro-nation` restarts it (for example after an update), `pm2 stop ro-nation` stops it.
+
+- **Linux VPS:** also run `pm2 startup` once and follow its instructions, so the bot starts again after a reboot.
+- **Windows:** `pm2 startup` does not work there. After restarting the PC, open a terminal and run `pm2 resurrect`.
+- Do **not** use `pm2 start npm …`. On Windows that crashes immediately (see Troubleshooting).
 
 If the bot stops with "Used disallowed intents", Server Members Intent is still off (Step 2.3).
 
@@ -142,6 +149,23 @@ Use a second Discord account (an alt) to check:
 3. `/bank balance` shows 2,500 KGD (if the alt is older than 14 days) only to the alt.
 4. Opening a support ticket creates a private channel only the alt, the Support Team and Administrators can see.
 5. After the next midnight (Europe/Berlin) the first report appears in #national-economic-report.
+
+## Troubleshooting
+
+| What you see | What to do |
+|---|---|
+| `npm run post-messages` prints nothing at all | You have the old version from before 26 October 2026 (Windows bug). Pull the latest code and run it again. |
+| `Posting failed: … could not be posted` with "Missing Access" | The bot cannot see that channel. Check the bot role permissions (Step 6) and run `npm run setup-server` (dry run) to find channels whose permissions differ. |
+| `channel not found on the server` | Run `npm run setup-server -- --apply` first, then post again. |
+| `Login failed: enable "Server Members Intent"` | Developer Portal → Bot → Privileged Gateway Intents → Server Members Intent on, save, start again. |
+| `Node.js … is too old` or `No such built-in module: node:sqlite` | Install the current Node.js LTS from nodejs.org, then `npm install` again. |
+| `cannot start a transaction within a transaction` | Old version of the code on Node.js 22.13–22.15. Pull the latest code. |
+| `Missing settings in .env` | The `.env` file is missing or not in `discord/bot/`. On Windows make sure it is called `.env` and not `.env.txt`. |
+| The bot is offline in Discord | The bot only runs while the terminal with `npm start` is open. Closing the window stops it. For 24/7 use a server or pm2 (Step 8). |
+| pm2 shows the bot as `errored`, and `pm2 logs` shows `SyntaxError: Unexpected token ':'` in `npm.cmd` | It was started with `pm2 start npm …`, which does not work on Windows. Run `pm2 delete ro-nation`, then `pm2 start ecosystem.config.cjs` and `pm2 save` (Step 8). |
+| Slash commands say "The application did not respond" | The bot is not running, or it crashed: look at the terminal where you started it. |
+
+When asking for help, copy the last 20 lines of the terminal output (never the token).
 
 ## Everyday operation
 
