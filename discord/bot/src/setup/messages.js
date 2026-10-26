@@ -51,6 +51,7 @@ export function loadMessages() {
   return readdirSync(messagesDir).filter((f) => f.endsWith('.md') && !f.startsWith('_')).sort().map((file) => {
     const { meta, body } = parseMessageFile(readFileSync(join(messagesDir, file), 'utf8'));
     if (!CHANNEL_BY_KEY[meta.channel]) throw new Error(`${file}: unknown channel key "${meta.channel}"`);
-    return { file, channel: meta.channel, order: Number(meta.order ?? 0), image: meta.image ?? null, parts: splitMessage(body) };
+    // "image:" or "file:" in the front matter attaches a file (picture, PDF, ...) to the first message.
+    return { file, channel: meta.channel, order: Number(meta.order ?? 0), image: meta.file ?? meta.image ?? null, parts: splitMessage(body) };
   }).sort((a, b) => a.channel.localeCompare(b.channel) || a.order - b.order);
 }

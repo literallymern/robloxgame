@@ -96,10 +96,11 @@ Commands were run against fake Discord interactions (no network).
 - A missing Administrator permission is reported before any change; after the setup (nothing to change) the warning no longer appears
 - A server built from the plan is reported as fully correct on the next run (the setup is repeatable)
 
-### 7. Messages and panels (`test/messages.test.js`, 7 tests: all passed)
+### 7. Messages and panels (`test/messages.test.js`, 8 tests: all passed)
 
 - Every message file targets a real channel and fits into Discord's 2,000-character limit after splitting
 - No message pings @everyone or @here
+- Every attached file (flag image, encyclopedia PDF) exists and is smaller than 8 MB
 - Every `#channel` and every `/command` mentioned in a text exists
 - Channel names are turned into links when the IDs are known
 - Long texts are split at paragraph boundaries
@@ -125,7 +126,7 @@ Commands were run against fake Discord interactions (no network).
 | Command | Result |
 |---|---|
 | `npm run deploy-commands -- --dry-run` | Lists the 21 commands |
-| `npm run post-messages` | Lists 24 message files and 8 panels with their target channels |
+| `npm run post-messages` | Lists 23 message files and 8 panels with their target channels |
 | `npm run setup-server` | Stops with "Missing settings in .env …" and changes nothing |
 | `npm start` | Stops with "Missing settings in .env …" |
 | `npm start` with a dummy token | Stops with "Login failed" (no network to Discord), database created cleanly |
