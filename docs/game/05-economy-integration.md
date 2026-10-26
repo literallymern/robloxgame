@@ -1,6 +1,6 @@
 # 05 · Economy Integration: System Boundaries and Bridge Design
 
-Status: updated in Milestone 1, 2026-10-26. Sections 1–3 are the Milestone 0 audit (bot at default-branch commit `b8e905e`). Section 4 now describes what Milestone 1 **built**: the bridge in the bot (bot pull request from branch `claude/project-thread-55jwuj-bridge`, off by default) and the game side in `src/server/Services/`. "Tested" below always says where: the bot's automated tests and a local staging run in the cloud session; **no Roblox Studio test has happened yet** (see section 6 and [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md)).
+Status: updated in Milestone 1, 2026-10-26. Sections 1–3 are the Milestone 0 audit (bot at default-branch commit `b8e905e`). Section 4 now describes what Milestone 1 **built**: the bridge in the bot (bot pull request from branch `claude/project-thread-55jwuj-bridge`, off by default) and the game side in `src/server/Services/`. "Tested" below always says where: the bot's automated tests and a local staging run in the cloud session; and Justin's Roblox Studio test against the staging bridge, **passed on 2026-10-26** (see section 6 and [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md)).
 
 ## 1. Ground rule
 
@@ -135,16 +135,16 @@ Roblox runs no daily simulation. It reads the latest report and market data for 
 
 - **Automated (ran in the cloud session, 89/89 passing):** `test/bridge.test.js`, `test/links.test.js`, `test/limits.test.js` and the `/link` cases in `test/commands.test.js` start the bridge on a local port against an in-memory economy and check authentication, linking, no grant or citizen record from Roblox, exactly once under replays, stored refusals, maintenance, resolve/void, the test-operation switch, validation and paging.
 - **Staging process:** `npm run bridge-staging` in `discord/bot` starts *only* the bridge (no Discord login, so it cannot clash with the live bot's token) on `127.0.0.1:8788` with its own database `data/staging.db` (it refuses the live database path), its own key and the test operation switched on. Its console simulates the Discord side: `confirm ABCD-EFGH` confirms a code for `OWNER_USER_ID` (it opens a staging citizen and pays the staging starting balance once, as Discord does for an eligible member; this only touches `data/staging.db`), `status`, `balance`, `history`, `unlink`, `quit`. A smoke run in the cloud session linked a test user, read the summary, ran one test transfer and got the same transaction back on a replay.
-- **Roblox Studio → staging (not tested yet):** `BridgeConfig.BaseUrl` is `http://localhost:8788` and `StudioOnly = true`, so the game only talks to the bridge inside Studio. Open points that only Justin's Studio test can settle: whether Studio allows `http://localhost` for game scripts, whether the `Authorization` header with a `Secret` is accepted (fallback: `AuthHeader = "X-Api-Key"`), and which domain value the Local Secret needs. Steps: [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md).
+- **Roblox Studio → staging (passed 2026-10-26):** `BridgeConfig.BaseUrl` is `http://localhost:8788` and `StudioOnly = true`, so the game only talks to the bridge inside Studio. Justin's test confirmed that Studio allows `http://localhost` for game scripts, accepts the `Authorization` header built from a `Secret`, and accepts the Local Secret domain `localhost`. Linking, reading the balance, test withdrawal and deposit, and the outage test worked. Steps: [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md).
 - **Production:** later, with a public HTTPS address on the 24/7 host and the secret in the Creator Dashboard. Production data is never used for tests.
 
 ## 7. Acceptance criteria for the integration (from the architecture update)
 
 The economy integration is complete only when all of these have been tested and recorded in the QA report:
 
-- [ ] Discord and Roblox identities can be securely linked (single-use, time-limited, both sides). *Bot side tested automatically; Studio test pending.*
-- [ ] The same KGD balance is shown in Discord and Roblox. *Bridge returns the bot's balance; Studio test pending.*
-- [ ] A Roblox-initiated payment is recorded exactly once, also under retries. *Bot side tested automatically and in the staging smoke run; Studio test pending.*
+- [ ] Discord and Roblox identities can be securely linked (single-use, time-limited, both sides). *Bot side tested automatically; Studio test against staging passed 2026-10-26 (the Discord half was the staging console); live `/link` still to test.*
+- [ ] The same KGD balance is shown in Discord and Roblox. *Studio showed the staging balance from the bot (2026-10-26); to re-test with live Discord.*
+- [ ] A Roblox-initiated payment is recorded exactly once, also under retries. *Bot side tested automatically; Studio test against staging passed 2026-10-26 (one transaction per click, outage request cancelled).*
 - [ ] Starting funds cannot be claimed twice; Roblox never pays them. *Bot side tested automatically.*
 - [ ] One paid shift per day across both platforms. *Bot rule tested (new test); Roblox path comes in Milestone 4.*
 - [ ] At most two owned businesses. *Bot rule tested (new test); Roblox path comes in Milestone 7.*
@@ -152,7 +152,7 @@ The economy integration is complete only when all of these have been tested and 
 - [ ] Restricted actions require valid institutional permissions.
 - [ ] Government spending above 25,000 KGD cannot bypass the second approval.
 - [ ] Financial actions appear in the audit log.
-- [ ] Backend failure creates no money, no duplicate items and no inconsistent transactions.
+- [ ] Backend failure creates no money, no duplicate items and no inconsistent transactions. *Money part passed in the Studio outage test 2026-10-26; items come with Milestone 4/7.*
 - [ ] Daily processing stays with the bot.
 
 ## 8. Bot changes (Milestone 1, separate pull request, not deployed)

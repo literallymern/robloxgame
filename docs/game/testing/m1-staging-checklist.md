@@ -2,7 +2,7 @@
 
 Run by Justin in Roblox Studio on his PC, against the **staging bridge** (`npm run bridge-staging`), never against the live economy. Claude cannot run this test (no Studio access). A German step-by-step version is in the project files (`game/milestone-1/Studio-Test-Meilenstein-1.md`).
 
-Result of the last run: **not run yet**.
+Result of the last run: **passed, 2026-10-26** (Justin, Studio on Windows, staging bridge on the same PC). Justin reported every step as working, including the outage test (steps 16–18). Findings on the way, fixed in the docs: CheckSetup must run in edit mode; Local Secrets is a form (Name, Domain, value); flag and emblem IDs are decal IDs (B5).
 
 ## Before you start
 
