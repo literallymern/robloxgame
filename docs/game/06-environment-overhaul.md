@@ -160,6 +160,14 @@ March–May and September–December wetter. Altitude adds modest haze/rain vari
 or desert weather is introduced. Clients compose weather with time, so an overcast sunset
 does not suddenly become clear. Clouds and terrain grass use Roblox `GlobalWind`.
 
+Animated terrain grass needs **Workspace > Terrain > Decoration** enabled in Studio's
+Properties window, then saved with the place. Roblox marks this property
+[Not Scriptable](https://create.roblox.com/docs/reference/engine/classes/Terrain#Decoration);
+neither the map module nor Rojo live sync can switch it on. Earlier module versions logged
+"Could not switch on animated grass" after attempting that forbidden write. The corrected
+module retains the saved setting and no longer claims to enable grass. This message does
+not indicate a failed map upgrade, and enabling the checkbox needs no terrain rebuild.
+
 The server schedules weather/lightning and publishes timestamped state. Clients render
 lighting, clouds, local rain, optional audio and nearby night lamps. Rain probes remain
 tied to sampled world positions; a large camera move immediately rechecks shelter and a

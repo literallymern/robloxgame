@@ -33,12 +33,8 @@ function Environment.apply(log: (string) -> ())
 	terrain.WaterReflectance = 0.22
 	terrain.WaterWaveSize = 0.08
 	terrain.WaterWaveSpeed = 5
-	local ok = pcall(function()
-		(terrain :: any).Decoration = true
-	end)
-	if not ok then
-		log("Could not switch on animated grass: select Workspace > Terrain and tick Decoration.")
-	end
+	-- Decoration is NotScriptable, including from Rojo's plugin. Keep the saved setting;
+	-- enable it once in Studio's Terrain Properties instead of attempting a forbidden write.
 	local skipped: { string } = {}
 	if Config.Enabled then
 		-- A previously saved place may still contain the original project's strong bloom
@@ -50,7 +46,7 @@ function Environment.apply(log: (string) -> ())
 	else
 		table.insert(skipped, "Lighting disabled by Config.Environment.Enabled")
 	end
-	log("Terrain colours, river water and grass set; natural lighting preset applied where available.")
+	log("Terrain colours and river water set; natural lighting preset applied where available.")
 	if #skipped > 0 then
 		log(`Lighting controls skipped: {table.concat(skipped, ", ")}. See Output warnings for conflicts.`)
 	end

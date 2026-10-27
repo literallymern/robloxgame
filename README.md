@@ -137,6 +137,7 @@ Natürliches Licht mit dezentem Morgendunst, fünf dynamische Wetterlagen, Tag/N
 - **Plugin und Rojo passen nicht zusammen:** Rojo-Plugin in Studio aktualisieren, oder `rojo plugin install` noch einmal ausführen.
 - **Meine Änderung in Studio ist weg:** Skripte nur in den Dateien ändern, nicht in Studio (siehe oben).
 - **`upgradeEnvironment()` oder `refreshEnvironment()` meldet `attempt to call a nil value`:** Zuerst die neuen Dateien in den lokalen Projektordner übernehmen und Rojo neu starten/verbinden. Falls `BuildMap` in Studio bereits geladen wurde, den Place speichern und Studio neu starten, um den `require()`-Cache zu leeren. Diagnose: [Environment overhaul](docs/game/06-environment-overhaul.md#other-entry-points-and-stale-modules).
+- **„Could not switch on animated grass“:** Der bisherige Code versuchte eine von Roblox gesperrte Skript-Zuweisung. In Studio im Explorer **Workspace > Terrain** auswählen, im Fenster **Properties/Eigenschaften** nach **Decoration** suchen, das Häkchen setzen und den Place speichern. Dafür ist kein erneuter Kartenaufbau nötig. Der korrigierte Code lässt diese gespeicherte Einstellung unverändert.
 - **Verbindung wird blockiert:** Manchmal fragt Windows beim ersten Start nach der Firewall. Rojo dann erlauben.
 
 ## Projekt-Dateien
