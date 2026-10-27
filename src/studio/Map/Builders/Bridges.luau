@@ -3,6 +3,7 @@
 -- beams, open steel parapets, abutments and supported spans. Nothing moves a road anchor.
 
 local Heightfield = require(script.Parent.Parent.Heightfield)
+local Hash = require(script.Parent.Parent.Hash)
 local Roads = require(script.Parent.Roads)
 local Util = require(script.Parent.Util)
 
@@ -34,6 +35,74 @@ local function frameAt(road: any, s: number): BridgeFrame
 	return { Position = a:Lerp(b, t), Along = flat, Across = Vector3.new(-flat.Z, 0, flat.X) }
 end
 
+-- Rock protection is tied to the retaining-wall toe, never distributed through the river
+-- or driving surface. The chute is only built when that toe is below the deck drain.
+local function approachDrainage(
+	hf: Heightfield.Heightfield,
+	parent: Instance,
+	frame: BridgeFrame,
+	outward: Vector3,
+	width: number,
+	side: number,
+	seed: number
+): number
+	local across = frame.Across * side
+	local toe = frame.Position + outward * 9 + across * (width / 2 + 5)
+	local count = 0
+	local stone: Util.PartOptions = {
+		Material = Enum.Material.Rock,
+		Color = Color3.fromRGB(112, 109, 100),
+		Decoration = true,
+	}
+	for k = 1, 4 do
+		local along = (k - 2.5) * 1.8
+		local position = toe + outward * along + across * Hash.range(seed, k, 151, 0, 2.5)
+		local ground, _, water = hf.surface(position.X, position.Z)
+		local edge = hf.roads.nearest(position.X, position.Z)
+		-- Do not put bank protection on a different road or in the open water channel.
+		if not edge or edge < 2.5 or (water and water > ground + 0.5) then
+			continue
+		end
+		local size = Hash.range(seed, k, 152, 1.8, 3.2)
+		local centre = Vector3.new(position.X, ground + size * 0.1, position.Z)
+		local block = Util.wedge(
+			parent,
+			"AbutmentRiprap",
+			CFrame.new(centre) * CFrame.Angles(0.18, Hash.range(seed, k, 153, 0, math.pi * 2), -0.16),
+			Vector3.new(size * 1.35, size, size * 1.1),
+			stone
+		)
+		block:SetAttribute("GroundY", ground)
+		count += 1
+	end
+	local exitGround, _, water = hf.surface(toe.X, toe.Z)
+	local start = frame.Position - outward * 2 + across * (width / 2 + 1.8) - UP * 0.65
+	local finish = Vector3.new(toe.X, exitGround + 0.15, toe.Z)
+	local edge = hf.roads.nearest(finish.X, finish.Z)
+	if start.Y - finish.Y >= 1.1 and start.Y - finish.Y <= 8 and edge and edge > 3 and water == nil then
+		local lining: Util.PartOptions = {
+			Material = Enum.Material.Concrete,
+			Color = Color3.fromRGB(121, 119, 110),
+			Decoration = true,
+		}
+		Util.strip(parent, "ApproachDrainInvert", start, finish, 1.05, 0.18, lining)
+		local offset = across * 0.59
+		for _, wallSide in { -1, 1 } do
+			Util.strip(
+				parent,
+				"ApproachDrainEdge",
+				start + offset * wallSide + UP * 0.3,
+				finish + offset * wallSide + UP * 0.3,
+				0.13,
+				0.35,
+				lining
+			)
+		end
+		count += 3
+	end
+	return count
+end
+
 function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 	local folder = Util.folder(parent, "Bridges")
 	local total = 0
@@ -43,12 +112,12 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 	local steel: Util.PartOptions = { Material = Enum.Material.Metal, Color = Color3.fromRGB(133, 138, 139) }
 	local seam: Util.PartOptions =
 		{ Material = Enum.Material.Metal, Color = Color3.fromRGB(57, 58, 57), Decoration = true }
-	for _, bridge in hf.roads.bridges do
+	for bridgeIndex, bridge in hf.roads.bridges do
 		local road = hf.roads.roads[bridge.RoadIndex]
 		local model = Instance.new("Model")
 		model.Name = `Bridge {bridge.Road}`
 		model:SetAttribute("Road", bridge.Road)
-		model:SetAttribute("EnvironmentDetailVersion", 1)
+		model:SetAttribute("EnvironmentDetailVersion", 3)
 		-- The structural slab projects beyond the original carriageway; its top is below
 		-- the wearing course. Asphalt finishes at exactly the existing road elevation.
 		local structure = table.clone(road)
@@ -168,7 +237,7 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 		end
 		-- Abutments terminate below the driving surface. Expansion joints lie below road
 		-- markings and do not collide. Wing walls retain the approach fill outside the lane.
-		for _, endInfo in { { firstS, -1 }, { lastS, 1 } } do
+		for endIndex, endInfo in { { firstS, -1 }, { lastS, 1 } } do
 			local f = frameAt(road, endInfo[1])
 			local p = f.Position
 			local outward = f.Along * endInfo[2]
@@ -205,6 +274,15 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 				local b = p + outward * 9 + f.Across * (road.Width / 2 + 4) * side - UP * 0.45
 				Util.strip(model, "WingWall", a, b, 0.7, 3, concrete)
 				total += 1
+				total += approachDrainage(
+					hf,
+					model,
+					f,
+					outward,
+					road.Width,
+					side,
+					bridgeIndex * 10 + endIndex * 2 + side
+				)
 			end
 		end
 		model.Parent = folder

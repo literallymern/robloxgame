@@ -24,7 +24,16 @@ return {
 	},
 	DryWeights = { 32, 38, 19, 9, 2 },
 	WetWeights = { 12, 28, 27, 26, 7 },
-	Altitude = { Base = 140, Range = 600, ExtraHaze = 0.035, RainScale = 0.15 },
+	Altitude = {
+		Base = 140,
+		Range = 600,
+		ExtraHaze = 0.035,
+		RainScale = 0.15,
+		ResponseSeconds = 2.5,
+		-- A light humid valley veil after dawn; it clears during the morning.
+		MorningMistDensity = 0.025,
+		MorningMistHaze = 0.24,
+	},
 	Effects = {
 		MaxStreaks = 64,
 		Lightning = { Enabled = true },

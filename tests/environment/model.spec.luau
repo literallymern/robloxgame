@@ -44,6 +44,35 @@ check(near(Config.Profiles.Overcast.Cover, 0.91) and cloudyEvening.Haze > noon.H
 local high = Model.lighting(12, rain, 740, Config.Altitude)
 local low = Model.lighting(12, rain, 140, Config.Altitude)
 check(high.Density > low.Density and high.Rain < low.Rain, "altitude changes local mist and precipitation intensity")
+local morning = Model.lighting(7.5, clear, 140, Config.Altitude)
+local afternoon = Model.lighting(16.5, clear, 140, Config.Altitude)
+check(
+	morning.Density > afternoon.Density and morning.Haze > afternoon.Haze,
+	"morning valley mist clears instead of persisting through the afternoon"
+)
+local withoutMist = table.clone(Config.Altitude)
+withoutMist.MorningMistDensity = 0
+withoutMist.MorningMistHaze = 0
+local dryBoost = morning.Density - Model.lighting(7.5, clear, 140, withoutMist).Density
+local wetBoost = Model.lighting(7.5, rain, 140, Config.Altitude).Density
+	- Model.lighting(7.5, rain, 140, withoutMist).Density
+check(wetBoost > dryBoost and dryBoost > 0, "morning mist responds to humidity without replacing weather")
+check(
+	near(night.Density, Model.lighting(0, clear, 140, withoutMist).Density),
+	"morning mist does not brighten or fog the night"
+)
+local function altitudeResponse(steps: number): number
+	local value = 140
+	for _ = 1, steps do
+		value += (740 - value) * Model.responseAlpha(2 / steps, 2.5)
+	end
+	return value
+end
+check(near(altitudeResponse(30), altitudeResponse(120)), "altitude response is independent of rendering frame rate")
+check(
+	Model.responseAlpha(0, 2.5) == 0 and Model.responseAlpha(1 / 60, 2.5) > 0 and Model.responseAlpha(1 / 60, 2.5) < 1,
+	"altitude smoothing starts continuously and remains bounded"
+)
 check(
 	Model.isWetMonth(4, Config.WetMonths) and not Model.isWetMonth(7, Config.WetMonths),
 	"highland rainy seasons use the configured months"

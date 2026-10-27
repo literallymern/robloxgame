@@ -68,14 +68,22 @@ local function quality(): number
 end
 
 function Controller.start()
-	if not Config.Enabled or started then
+	if started then
+		return
+	end
+	local player = Players.LocalPlayer
+	player:SetAttribute("EnvironmentClientReady", false)
+	if not Config.Enabled then
+		player:SetAttribute("EnvironmentClientStatus", "disabled")
 		return
 	end
 	started = true
+	player:SetAttribute("EnvironmentClientStatus", "waiting for server state")
 	-- Wait outside the bootstrap loop so an unavailable weather service never stalls UI startup.
 	task.spawn(function()
 		local state = ReplicatedStorage:WaitForChild(Config.StateName, 20)
 		if not state or not state:IsA("Folder") or state:GetAttribute("ManagedBy") ~= "RoNationEnvironment" then
+			player:SetAttribute("EnvironmentClientStatus", "server state unavailable")
 			warn("[Ro-Nation:Environment] Server state unavailable; keeping the saved lighting preset.")
 			return
 		end
@@ -85,6 +93,10 @@ function Controller.start()
 		end)
 		local handles = Presentation.new()
 		local effects = WeatherEffects.new(Config.Effects)
+		player:SetAttribute(
+			"EnvironmentAudioConfigured",
+			Config.Effects.Audio.Rain ~= "" and Config.Effects.Audio.Thunder ~= ""
+		)
 		local lights: { [Light]: boolean } = {}
 		local lamps: { [BasePart]: boolean } = {}
 		local function discover(instance: Instance)
@@ -106,17 +118,33 @@ function Controller.start()
 		local detail = quality()
 		local elapsed = 1
 		local lampElapsed = 1
+		local visualAltitude = Config.Altitude.Base
+		local altitudeInitialized = false
+		player:SetAttribute("EnvironmentClientReady", true)
+		player:SetAttribute(
+			"EnvironmentClientStatus",
+			if #handles.Skipped > 0 then "ready; custom lighting preserved" else "ready"
+		)
 		RunService.Heartbeat:Connect(function(dt)
 			local now = workspace:GetServerTimeNow()
 			local weather = Model.sample(snapshot.From, snapshot.To, snapshot.Start, snapshot.Duration, now)
 			local camera = workspace.CurrentCamera
 			local position = if camera then camera.CFrame.Position else Vector3.new(0, Config.Altitude.Base, 0)
+			if camera and not altitudeInitialized then
+				visualAltitude = position.Y
+				altitudeInitialized = true
+			else
+				visualAltitude += (position.Y - visualAltitude) * Model.responseAlpha(
+					dt,
+					Config.Altitude.ResponseSeconds
+				)
+			end
 			elapsed += dt
 			lampElapsed += dt
 			if elapsed >= 0.1 then
 				elapsed = 0
 				local clock = Model.clockAt(snapshot.Clock, snapshot.Epoch, now, snapshot.DayLength)
-				visual = Presentation.apply(handles, weather, clock, position.Y)
+				visual = Presentation.apply(handles, weather, clock, visualAltitude)
 			end
 			if lampElapsed >= 0.5 then
 				lampElapsed = 0

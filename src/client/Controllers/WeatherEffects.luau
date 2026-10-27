@@ -4,6 +4,9 @@
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Model = require(ReplicatedStorage.Shared.Environment.Model)
 
 local WeatherEffects = {}
 
@@ -20,6 +23,8 @@ function WeatherEffects.new(config: any): any
 	local lastCamera: Camera? = nil
 	local shelter = false
 	local shelterClock = 1
+	local gridPosition: Vector3? = nil
+	local shelterPosition: Vector3? = nil
 	local previousLightning = 0
 	local thunderAt = math.huge
 	local thunderVolume = 0
@@ -77,6 +82,9 @@ function WeatherEffects.new(config: any): any
 		end
 		lastCamera = camera
 		shelterClock = 1
+		gridPosition = nil
+		shelterPosition = nil
+		table.clear(columns)
 	end
 
 	local function checkShelter(camera: Camera, drawRain: boolean)
@@ -91,10 +99,15 @@ function WeatherEffects.new(config: any): any
 		params.FilterDescendantsInstances = ignore
 		local position = camera.CFrame.Position
 		shelter = workspace:Raycast(position, Vector3.new(0, 256, 0), params) ~= nil
+		shelterPosition = position
 		if not drawRain or shelter then
+			table.clear(columns)
+			gridPosition = nil
 			return
 		end
-		-- Sixteen shared columns cap terrain/roof queries at 85 per second, independent of quality.
+		-- Sixteen shared columns use at most 85 regular queries/second on high quality,
+		-- fewer on lower settings. Camera teleports add one immediate shelter probe.
+		gridPosition = position
 		for i = 1, 16 do
 			local x = ((i - 1) % 4 - 1.5) * 10
 			local z = (math.floor((i - 1) / 4) - 1.5) * 10
@@ -128,12 +141,18 @@ function WeatherEffects.new(config: any): any
 		local intensity = math.clamp(rain, 0, 1)
 		local detail = math.clamp(quality, 0, 1)
 		shelterClock += dt
-		if shelterClock >= 0.2 and intensity > 0.005 then
+		local position = camera.CFrame.Position
+		if intensity > 0.005 and shelterPosition and (position - shelterPosition).Magnitude > 32 then
+			-- Old terrain heights must not be reused around a teleported camera. Hide the
+			-- old pool until the next scheduled grid refresh and check shelter immediately.
+			checkShelter(camera, false)
+		end
+		local interval = if detail <= 0 then 0.6 else 0.2 / math.max(0.5, detail)
+		if shelterClock >= interval and intensity > 0.005 then
 			shelterClock = 0
 			checkShelter(camera, detail > 0)
 		end
-		local active = if shelter then 0 else math.floor(count * intensity * detail)
-		local position = camera.CFrame.Position
+		local active = if shelter or gridPosition == nil then 0 else math.floor(count * intensity * detail)
 		for i, drop in drops do
 			if i > active then
 				drop.part.Transparency = 1
@@ -148,7 +167,10 @@ function WeatherEffects.new(config: any): any
 			if p.Y < limits.low or p.Y > limits.high or (p - position).Magnitude > 46 then
 				local x = ((drop.column - 1) % 4 - 1.5) * 10 + random:NextNumber(-3, 3)
 				local z = (math.floor((drop.column - 1) / 4) - 1.5) * 10 + random:NextNumber(-3, 3)
-				p = Vector3.new(position.X + x, random:NextNumber(limits.low + 1, limits.high), position.Z + z)
+				-- The sampled heights belong to the last probe grid, rather than the moving
+				-- camera. Keeping spawn positions on that grid reduces roof-edge leakage.
+				local origin = gridPosition :: Vector3
+				p = Vector3.new(origin.X + x, random:NextNumber(limits.low + 1, limits.high), origin.Z + z)
 			end
 			drop.position = p
 			drop.part.CFrame = CFrame.new(p) * CFrame.Angles(0.03, 0, -0.1)
@@ -156,7 +178,7 @@ function WeatherEffects.new(config: any): any
 			drop.part.Transparency = 0.5 + 0.2 * (1 - intensity)
 		end
 		local targetVolume = intensity * (if shelter then 0.12 else 0.4)
-		rainSound.Volume += (targetVolume - rainSound.Volume) * math.min(1, dt * 3)
+		rainSound.Volume += (targetVolume - rainSound.Volume) * Model.responseAlpha(dt, 1 / 3)
 		if rainSound.SoundId ~= "" then
 			if rainSound.Volume > 0.005 and not rainSound.IsPlaying then
 				rainSound:Play()

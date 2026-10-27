@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run environment math, service scheduling and presentation migration offline (no Studio)."""
+"""Run environment math, service scheduling, rain behavior and presentation offline (no Studio)."""
 import os
 from pathlib import Path
 import re
@@ -39,6 +39,26 @@ def main():
         bundle = stream.name
     try:
         result = subprocess.run([LUAU, bundle]).returncode
+        if result:
+            return result
+        effect_chunks = [prelude]
+        effect_paths = {
+            "ReplicatedStorage/Shared/Config/Environment": "src/shared/Config/Environment.luau",
+            "ReplicatedStorage/Shared/Environment/Model": "src/shared/Environment/Model.luau",
+            "Client/Controllers/WeatherEffects": "src/client/Controllers/WeatherEffects.luau",
+        }
+        for name, path in effect_paths.items():
+            source = re.sub(r"^export type ", "type ", (ROOT / path).read_text(), flags=re.M)
+            effect_chunks.append(f'__sources["{name}"] = function(script, require)\n{source}\nend\n')
+        effect_chunks.append("do\n" + (ROOT / "tests/map/roblox-mock.luau").read_text() + "\nend\n")
+        effect_chunks.append((ROOT / "tests/environment/effects.spec.luau").read_text())
+        with tempfile.NamedTemporaryFile("w", suffix=".luau", delete=False) as stream:
+            stream.write("\n".join(effect_chunks))
+            effects_bundle = stream.name
+        try:
+            result = subprocess.run([LUAU, effects_bundle]).returncode
+        finally:
+            os.unlink(effects_bundle)
         if result:
             return result
         return subprocess.run([sys.executable, str(ROOT / "tests/map/run.py"), str(ROOT / "tests/environment/presentation.spec.luau")]).returncode

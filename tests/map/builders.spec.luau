@@ -71,6 +71,7 @@ check("template Baseplate removed", mockWorkspace:FindFirstChild("Baseplate") ==
 check("template SpawnLocation removed", mockWorkspace:FindFirstChild("SpawnLocation") == nil)
 
 local hf = Heightfield.new(MapLayout)
+stats.groundSurface = hf.surface -- saved terrain used by geometry-only rebuilds and refresh
 for _, probe in stats.probes do
 	local h, _, water = hf.surface(probe.x, probe.z)
 	local solidTop = probe.solidTop

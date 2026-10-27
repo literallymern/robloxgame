@@ -22,6 +22,18 @@ function Model.clockAt(clock: number, epoch: number, now: number, dayLength: num
 	return (clock + (now - epoch) * 24 / math.max(1, dayLength)) % 24
 end
 
+-- Exponential response has the same result at different frame rates. Used for local camera
+-- altitude and sound fades; a camera cut must not instantly change the atmosphere.
+function Model.responseAlpha(dt: number, responseSeconds: number): number
+	if dt <= 0 then
+		return 0
+	end
+	if responseSeconds <= 0 then
+		return 1
+	end
+	return 1 - math.exp(-dt / responseSeconds)
+end
+
 function Model.blend(from: Weather, to: Weather, alpha: number): Weather
 	local t = Model.smoothstep(alpha)
 	local result: any = {}
@@ -59,12 +71,16 @@ function Model.nextWeather(order: { string }, weights: { number }, current: stri
 end
 
 function Model.lighting(clock: number, weather: Weather, altitude: number, altitudeConfig: any): any
-	local solar = math.sin((clock - 6) * math.pi / 12)
+	local hour = clock % 24
+	local solar = math.sin((hour - 6) * math.pi / 12)
 	local day = Model.smoothstep((solar + 0.1) / 0.38)
 	local horizon = (1 - math.clamp(math.abs(solar) / 0.4, 0, 1)) * day
 	local warm = horizon * (1 - weather.Dim) -- overcast evenings retain a grey cloud layer
 	local height = math.clamp((altitude - altitudeConfig.Base) / altitudeConfig.Range, 0, 1)
 	local dim = weather.Dim
+	local morning = math.exp(-((hour - 7.1) / 1.55) ^ 2) * day
+	local moisture = 0.35 + 0.65 * weather.Haze
+	local valleyMist = morning * moisture * (1 - 0.55 * height)
 	return {
 		Day = day,
 		Brightness = 0.35 + day * (2.05 - 1.25 * dim),
@@ -76,8 +92,11 @@ function Model.lighting(clock: number, weather: Weather, altitude: number, altit
 			0.21 + day * (0.18 - 0.06 * dim),
 		},
 		SunTint = { warm * 0.09, warm * 0.035, 0 },
-		Density = 0.21 + 0.105 * weather.Haze + height * altitudeConfig.ExtraHaze,
-		Haze = 0.65 + weather.Haze * 1.65 + horizon * 0.3,
+		Density = 0.21
+			+ 0.105 * weather.Haze
+			+ height * altitudeConfig.ExtraHaze
+			+ valleyMist * (altitudeConfig.MorningMistDensity or 0.025),
+		Haze = 0.65 + weather.Haze * 1.65 + horizon * 0.3 + valleyMist * (altitudeConfig.MorningMistHaze or 0.24),
 		Glare = (0.08 + horizon * 0.08) * (1 - dim) * day,
 		AtmosphereColor = { 0.72 + day * 0.08 + warm * 0.045, 0.77 + day * 0.06, 0.84 + day * 0.035 - warm * 0.06 },
 		Decay = { 0.38 + warm * 0.08, 0.43, 0.51 - warm * 0.06 },

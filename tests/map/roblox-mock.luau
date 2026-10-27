@@ -88,6 +88,11 @@ Vector3 = {
 		return v3(x or 0, y or 0, z or 0)
 	end,
 }
+RaycastParams = {
+	new = function()
+		return {}
+	end,
+}
 
 -- CFrame (position + rotation columns right, up, back) ---------------------------------------------
 local CF = {}
@@ -106,6 +111,19 @@ CF.__index = function(c, key)
 		return -c.b
 	elseif key == "RightVector" then
 		return c.r
+	elseif key == "Inverse" then
+		return function(value)
+			return cf(
+				v3(-value.r:Dot(value.p), -value.u:Dot(value.p), -value.b:Dot(value.p)),
+				v3(value.r.X, value.u.X, value.b.X),
+				v3(value.r.Y, value.u.Y, value.b.Y),
+				v3(value.r.Z, value.u.Z, value.b.Z)
+			)
+		end
+	elseif key == "ToObjectSpace" then
+		return function(value, other)
+			return value:Inverse() * other
+		end
 	end
 	error(`{key} is not a valid member of CFrame`, 2)
 end
@@ -273,6 +291,9 @@ local ENUMS = {
 	NormalId = { "Front", "Back", "Top", "Bottom", "Left", "Right" },
 	SurfaceGuiSizingMode = { "FixedSize", "PixelsPerStud" },
 	ModelStreamingMode = { "Default", "Atomic", "Persistent", "PersistentPerPlayer" },
+	CollisionFidelity = { "Default", "Hull", "Box", "PreciseConvexDecomposition" },
+	RenderFidelity = { "Automatic", "Precise", "Performance" },
+	RaycastFilterType = { "Include", "Exclude" },
 }
 Enum = {}
 for enumName, items in ENUMS do
@@ -373,6 +394,11 @@ local CLASSES = {
 		isA = { "BillboardGui", "LayerCollector" },
 	},
 	WedgePart = { props = {}, base = BASEPART, isA = { "WedgePart", "BasePart", "PVInstance" } },
+	UnionOperation = {
+		props = { UsePartColor = "boolean", CollisionFidelity = "EnumItem", RenderFidelity = "EnumItem" },
+		base = BASEPART,
+		isA = { "UnionOperation", "PartOperation", "TriangleMeshPart", "BasePart", "PVInstance" },
+	},
 	SpecialMesh = { props = { MeshType = "EnumItem" }, isA = { "SpecialMesh", "DataModelMesh" } },
 	SpotLight = {
 		props = {
@@ -502,6 +528,24 @@ end
 function METHODS.GetAttribute(self, name)
 	return self.__attributes[name]
 end
+function METHODS.Clone(self)
+	local copy = newInstance(self.__class, CLASSES[self.__class] == nil)
+	for key, value in self.__props do
+		copy.__props[key] = value
+	end
+	for key, value in self.__attributes do
+		copy.__attributes[key] = value
+	end
+	if rawget(self, "__extentOffset") then
+		rawset(copy, "__extentOffset", rawget(self, "__extentOffset"))
+		rawset(copy, "__extentSize", rawget(self, "__extentSize"))
+	end
+	for _, child in self.__children do
+		local cloned = METHODS.Clone(child)
+		cloned.Parent = copy
+	end
+	return copy
+end
 function METHODS.GetChildren(self)
 	return table.clone(self.__children)
 end
@@ -570,6 +614,18 @@ Inst.__index = function(self, key)
 		return self.__class
 	elseif key == "Position" and self.__props.CFrame and CLASSES[self.__class] and CLASSES[self.__class].base then
 		return self.__props.CFrame.p
+	elseif key == "ExtentsCFrame" and self.__props.CFrame then
+		local offset, original = rawget(self, "__extentOffset"), rawget(self, "__extentSize")
+		if offset then
+			local size = self.__props.Size
+			return self.__props.CFrame
+				* CFrame.new(
+					offset.X * size.X / original.X,
+					offset.Y * size.Y / original.Y,
+					offset.Z * size.Z / original.Z
+				)
+		end
+		return self.__props.CFrame
 	end
 	local value = self.__props[key]
 	if value ~= nil then
@@ -705,7 +761,28 @@ local terrain = service("Terrain", {
 	end,
 })
 
-workspace = service("Workspace")
+workspace = service("Workspace", {
+	Raycast = function(_, origin, direction, params)
+		local surface = MockStats.groundSurface
+		assert(surface, "Raycast fixture requires a saved terrain surface")
+		local h, _, water = surface(origin.X, origin.Z)
+		local y = if water and not params.IgnoreWater then water else h
+		if y > origin.Y or y < origin.Y + direction.Y then
+			return nil
+		end
+		local normal = Vector3.new(0, 1, 0)
+		if not water or params.IgnoreWater then
+			local east, west = surface(origin.X + 3, origin.Z), surface(origin.X - 3, origin.Z)
+			local south, north = surface(origin.X, origin.Z + 3), surface(origin.X, origin.Z - 3)
+			normal = Vector3.new(-(east - west) / 6, 1, -(south - north) / 6).Unit
+		end
+		return {
+			Position = Vector3.new(origin.X, y, origin.Z),
+			Normal = normal,
+			Material = if water and not params.IgnoreWater then Enum.Material.Water else Enum.Material.Grass,
+		}
+	end,
+})
 rawset(workspace, "__props", { Name = "Workspace" })
 terrain.Parent = workspace
 rawget(terrain, "__props").Name = "Terrain"
@@ -728,6 +805,50 @@ local runService = service("RunService", {
 	end,
 })
 local lighting = service("Lighting")
+local serverStorage = service("ServerStorage")
+local geometry = service("GeometryService", {
+	UnionAsync = function(_, main, parts, options)
+		assert(main:IsA("BasePart") and #parts > 0, "UnionAsync requires multiple primitives")
+		assert(options and options.SplitApart == false, "Canopy unions must remain one reusable part")
+		local low, high = { math.huge, math.huge, math.huge }, { -math.huge, -math.huge, -math.huge }
+		local all = { main }
+		for _, part in parts do
+			table.insert(all, part)
+		end
+		local inverse = main.CFrame:Inverse()
+		for _, part in all do
+			assert(
+				part:IsA("BasePart") and part:FindFirstChildOfClass("SpecialMesh") == nil,
+				"CSG requires actual solid primitives"
+			)
+			local frame, size = part.CFrame, part.Size
+			for x = -1, 1, 2 do
+				for y = -1, 1, 2 do
+					for z = -1, 1, 2 do
+						local corner = inverse * (frame * Vector3.new(x * size.X / 2, y * size.Y / 2, z * size.Z / 2))
+						for i, axis in { "X", "Y", "Z" } do
+							low[i] = math.min(low[i], corner[axis])
+							high[i] = math.max(high[i], corner[axis])
+						end
+					end
+				end
+			end
+		end
+		local result = newInstance("UnionOperation", false)
+		result.CFrame = main.CFrame -- CSG keeps reference space, not the physical centre
+		result.Size = Vector3.new(high[1] - low[1], high[2] - low[2], high[3] - low[3])
+		rawset(
+			result,
+			"__extentOffset",
+			Vector3.new((low[1] + high[1]) / 2, (low[2] + high[2]) / 2, (low[3] + high[3]) / 2)
+		)
+		rawset(result, "__extentSize", result.Size)
+		result.Material, result.Color = main.Material, main.Color
+		result:SetAttribute("MockInputPrimitiveCount", #all)
+		MockStats.unionCalls = (MockStats.unionCalls or 0) + 1
+		return { result }
+	end,
+})
 
 game = {
 	GetService = function(_, name)
@@ -741,6 +862,10 @@ game = {
 			return runService
 		elseif name == "Lighting" then
 			return lighting
+		elseif name == "ServerStorage" then
+			return serverStorage
+		elseif name == "GeometryService" then
+			return geometry
 		end
 		error(`GetService: {name} is not in this mock`)
 	end,

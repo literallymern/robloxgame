@@ -83,6 +83,27 @@ local function rails(details: any, parent: Instance): number
 				count += 1
 			end
 		end
+		-- Rounded end plates close the exposed rail profile without extending a terminal
+		-- towards traffic or placing another colliding obstacle on the verge.
+		local first, last = rail.Pieces[1], rail.Pieces[#rail.Pieces]
+		if first and last then
+			for _, endpoint in { { first, true }, { last, false } } do
+				local piece, atStart = endpoint[1], endpoint[2]
+				local a = Vector3.new(piece[1], piece[2], piece[3])
+				local b = Vector3.new(piece[4], piece[5], piece[6])
+				if (b - a).Magnitude <= 0.2 then
+					continue
+				end
+				local centre = if atStart then a else b
+				local axis = (b - a).Unit * 0.28
+				Util.cylinder(folder, "RailTerminal", centre - axis, centre + axis, 1.1, {
+					Material = Enum.Material.Metal,
+					Color = Color3.fromRGB(150, 153, 151),
+					Decoration = true,
+				})
+				count += 1
+			end
+		end
 		Util.yield()
 	end
 	folder.Parent = parent
@@ -131,6 +152,11 @@ local function powerLines(details: any, parent: Instance): number
 	local folder = Instance.new("Folder")
 	folder.Name = "PowerLines"
 	local wood: Util.PartOptions = { Material = Enum.Material.Wood, Color = Color3.fromRGB(98, 76, 56) }
+	local ceramic: Util.PartOptions = {
+		Material = Enum.Material.Glass,
+		Color = Color3.fromRGB(111, 129, 115),
+		Decoration = true,
+	}
 	local arms: { Part } = {}
 	local count = 0
 	for k, p in details.poles do
@@ -143,14 +169,15 @@ local function powerLines(details: any, parent: Instance): number
 		local arm = Util.part(folder, "CrossArm", CFrame.lookAt(top, top + across), Vector3.new(0.5, 0.5, 7), wood)
 		arms[k] = arm
 		for _, side in { -3, 3 } do
+			local base = arm.CFrame * Vector3.new(0, 0.25, side)
+			Util.cylinder(folder, "LineInsulator", base, base + UP * 0.75, 0.46, ceramic)
 			local attachment = Instance.new("Attachment")
 			attachment.Name = if side < 0 then "WireA" else "WireB"
 			-- The attachment's axis points down, so the wires sag between the poles.
-			attachment.CFrame =
-				CFrame.fromMatrix(Vector3.new(0, 0.3, side), Vector3.new(0, -1, 0), Vector3.new(1, 0, 0))
+			attachment.CFrame = CFrame.fromMatrix(Vector3.new(0, 1, side), Vector3.new(0, -1, 0), Vector3.new(1, 0, 0))
 			attachment.Parent = arm
 		end
-		count += 2
+		count += 4
 		Util.yield()
 	end
 	for _, pair in details.wires do

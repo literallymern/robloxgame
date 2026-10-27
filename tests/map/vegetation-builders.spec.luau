@@ -18,7 +18,7 @@ local function check(name: string, ok: boolean, detail: string?)
 end
 
 local probes = Instance.new("Folder")
-local geometryOk, collisionOk, streamingOk, speciesOk = true, true, true, true
+local geometryOk, collisionOk, streamingOk, speciesOk, crownsOk = true, true, true, true, true
 local signatures = {}
 for speciesIndex, kind in Vegetation.TreeKinds do
 	for sample = 1, 20 do
@@ -34,7 +34,7 @@ for speciesIndex, kind in Vegetation.TreeKinds do
 		})
 		local models = probes:GetChildren()
 		local model = models[#models]
-		local actual, foliage, branches, wedges = 0, 0, 0, 0
+		local actual, foliage, branches = 0, 0, 0
 		local signature = {}
 		for _, item in model:GetDescendants() do
 			if item:IsA("BasePart") then
@@ -60,12 +60,13 @@ for speciesIndex, kind in Vegetation.TreeKinds do
 				end
 				if item.Name == "Foliage" then
 					foliage += 1
+					crownsOk = crownsOk
+						and item:IsA("PartOperation")
+						and item:GetAttribute("SourceBladeCount") >= 42
+						and item:FindFirstChildOfClass("SpecialMesh") == nil
 				end
 				if item.Name == "Branch" then
 					branches += 1
-				end
-				if item:IsA("WedgePart") then
-					wedges += 1
 				end
 			end
 		end
@@ -75,7 +76,7 @@ for speciesIndex, kind in Vegetation.TreeKinds do
 			and model.ModelStreamingMode == Enum.ModelStreamingMode.Atomic
 			and model:GetAttribute("VegetationSpecies") == kind
 		speciesOk = speciesOk
-			and (if kind == "Pine" then wedges == 4 and foliage == 4 else branches == 1 and foliage >= 2)
+			and (if kind == "Pine" then foliage == 3 and branches == 0 else branches == 1 and foliage >= 2)
 		signatures[kind .. ":" .. table.concat(signature, ";")] = true
 	end
 end
@@ -83,6 +84,7 @@ check("trees: every species uses 4–5 anchored parts with valid geometry", geom
 check("trees: foliage and upper branches do not block players, camera or raycasts", collisionOk)
 check("trees: compact atomic models stream complete tree silhouettes", streamingOk)
 check("trees: pines taper and other species have visible forks", speciesOk)
+check("trees: all crowns reuse detailed open CSG sprays instead of sphere meshes", crownsOk)
 local variations = 0
 for _ in signatures do
 	variations += 1

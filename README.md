@@ -70,7 +70,7 @@ Studio neu starten. Oben im Tab **Plugins** sollte jetzt ein **Rojo**-Knopf sein
 
 ## Jeden Tag: Arbeiten mit Rojo
 
-1. **Neueste Änderungen holen:** In GitHub Desktop auf *Fetch origin* und dann *Pull origin* klicken.
+1. **Neueste Änderungen holen:** In GitHub Desktop den Hauptbranch `claude/project-thread-5krwdh` wählen, dann auf *Fetch origin* und *Pull origin* klicken.
 2. **Rojo starten:**
    - VS Code: unten auf *Rojo* klicken und `default.project.json` starten, oder
    - Terminal im Repo-Ordner: `rojo serve`
@@ -102,25 +102,41 @@ Landkarte bauen (Meilenstein 2): Vorher den Place sichern (*File > Save to File 
 require(game.ServerStorage.StudioTools.BuildMap).run()
 ```
 
-Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke, den Spawn und die Landschaft (Bäume, Büsche, Felsen, Felder, Zäune, Markierungen, Schilder, Laternen, Strommasten) neu. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
+Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke, den Spawn und die Landschaft (Bäume, Büsche, Felsen, Felder, Zäune, Markierungen, Schilder, Laternen, Strommasten) neu. Es ist der vollständige Neubau für einen neuen Place. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
+
+## Vorhandene Karte auf highland-3 aktualisieren
+
+Den Hauptbranch `claude/project-thread-5krwdh` aktualisieren und per Rojo mit Studio synchronisieren. Den Place sichern und Play stoppen. Falls du `BuildMap` vorher schon in der Command Bar geladen hast, nach dem Sync speichern, Studio neu starten und Rojo erneut verbinden, damit kein alter Modulstand im Cache bleibt.
+
+Für das Gelände-, Vegetations- und Infrastruktur-Update in die Command Bar:
+
+```lua
+require(game.ServerStorage.StudioTools.BuildMap).upgradeEnvironment()
+```
+
+Das erzeugt wiederverwendbare Blattkronen, aktualisiert erkennbares generiertes Gelände und ersetzt die erzeugten Straßen-, Brücken- und Vegetationsgruppen. Eigene Geländeänderungen und geschützte Bauwerksflächen bleiben bei abweichenden oder unbekannten Geländespalten erhalten. Neue Pflanzen richten sich nach dem tatsächlich gespeicherten Boden. Orte, Grundstücke, Spawn und vorhandene Schilder bleiben erhalten. Den Fortschritt im Output verfolgen und danach speichern. Ein abgebrochener Geländelauf kann bereits einige Abschnitte geändert haben; deshalb vorher eine Place-Sicherung anlegen.
+
+Optional zuerst nur die Geländeänderungen prüfen, ohne etwas zu schreiben:
+
+```lua
+require(game.ServerStorage.StudioTools.BuildMap).upgradeEnvironment({ DryRun = true })
+```
 
 Weitere Varianten für die Command Bar:
 
-- Vorhandene Karte gezielt aufwerten, ohne Gelände, Stadtobjekte oder Schilder zu ersetzen: `require(game.ServerStorage.StudioTools.BuildMap).refreshEnvironment()`
+- Nur erzeugte Umgebungsgeometrie und Licht aktualisieren, ohne Geländespalten zu ändern: `require(game.ServerStorage.StudioTools.BuildMap).refreshEnvironment()`
 - Nur die Teile neu bauen, Gelände bleibt: `require(game.ServerStorage.StudioTools.BuildMap).run({ Terrain = false })`
 - Ohne Bäume, Büsche und Felsen (schneller, zum Testen): `require(game.ServerStorage.StudioTools.BuildMap).run({ Vegetation = false })`
 - Weniger Bäume: in `src/shared/Config/MapLayout.luau` bei `Vegetation` den Wert `Density = 1` kleiner machen (z. B. `0.6`) und neu bauen.
 
-Natürliches Licht, fünf dynamische Wetterlagen, Tag/Nacht und automatische Straßenlaternen
-starten beim Spielen. Anleitung für die gezielte Kartenaktualisierung, Konfiguration, Audio
-und Studio-Prüfungen: [`Environment overhaul`](docs/game/06-environment-overhaul.md).
+Natürliches Licht mit dezentem Morgendunst, fünf dynamische Wetterlagen, Tag/Nacht und automatische Straßenlaternen starten beim Spielen. Regen- und Donner-Audio bleibt stumm, bis die mitgelieferten WAV-Dateien auf Roblox hochgeladen und ihre freigegebenen IDs konfiguriert sind. Anleitung, Geometrievorschau, Testumfang und ausstehende Studio-Prüfungen: [`Environment overhaul`](docs/game/06-environment-overhaul.md).
 
 ## Häufige Probleme
 
 - **"Connect" geht nicht:** Läuft `rojo serve` noch? Das Fenster (Terminal oder VS Code) muss offen bleiben.
 - **Plugin und Rojo passen nicht zusammen:** Rojo-Plugin in Studio aktualisieren, oder `rojo plugin install` noch einmal ausführen.
 - **Meine Änderung in Studio ist weg:** Skripte nur in den Dateien ändern, nicht in Studio (siehe oben).
-- **`refreshEnvironment()` meldet `attempt to call a nil value`:** Zuerst die neuen Dateien in den lokalen Projektordner übernehmen und Rojo neu starten/verbinden. Falls `BuildMap` in Studio bereits geladen wurde, den Place speichern und Studio neu starten, um den `require()`-Cache zu leeren. Diagnose: [Environment overhaul](docs/game/06-environment-overhaul.md#apply-to-an-existing-place).
+- **`upgradeEnvironment()` oder `refreshEnvironment()` meldet `attempt to call a nil value`:** Zuerst die neuen Dateien in den lokalen Projektordner übernehmen und Rojo neu starten/verbinden. Falls `BuildMap` in Studio bereits geladen wurde, den Place speichern und Studio neu starten, um den `require()`-Cache zu leeren. Diagnose: [Environment overhaul](docs/game/06-environment-overhaul.md#other-entry-points-and-stale-modules).
 - **Verbindung wird blockiert:** Manchmal fragt Windows beim ersten Start nach der Firewall. Rojo dann erlauben.
 
 ## Projekt-Dateien

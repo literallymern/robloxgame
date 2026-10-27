@@ -9,8 +9,11 @@ local Fields = require(script.Parent.Fields)
 local Geometry = require(script.Parent.Geometry)
 local Lakes = require(script.Parent.Lakes)
 local Land = require(script.Parent.Land)
+local LandscapeConfig = require(script.Parent.LandscapeConfig)
+local OriginalSurface = require(script.Parent.OriginalSurface)
 local River = require(script.Parent.River)
 local RoadNetwork = require(script.Parent.RoadNetwork)
+local SegmentGrid = require(script.Parent.SegmentGrid)
 
 export type Heightfield = {
 	land: Land.Land,
@@ -25,6 +28,15 @@ export type Heightfield = {
 	-- Material for natural ground, from height, slope (rise per stud), position and the code
 	-- surface() returned there (0 or -1).
 	naturalMaterial: (height: number, slope: number, x: number, z: number, hint: number?) -> number,
+	-- Exact pre-highland-3 surface/material model, retained for conservative saved-voxel upgrades.
+	legacySurface: (x: number, z: number) -> (number, number, number?),
+	legacyNaturalMaterial: (height: number, slope: number, x: number, z: number, hint: number?) -> number,
+	-- The original pre-overhaul generated map (d3edcc7), including its straight banks/soil.
+	originalSurface: (x: number, z: number) -> (number, number, number?),
+	originalNaturalMaterial: (height: number, slope: number, x: number, z: number, hint: number?) -> number,
+	-- Editor diagnostics: spatial weight and proposed relief before the world-floor taper.
+	reliefMask: (x: number, z: number) -> number,
+	relief: (x: number, z: number) -> number,
 }
 
 local Heightfield = {}
@@ -105,7 +117,7 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 	local forestAt = biomes.forest
 	local drynessAt = biomes.dryness
 
-	local function surface(x: number, z: number): (number, number, number?)
+	local function legacySurface(x: number, z: number): (number, number, number?)
 		local h = landHeight(x, z)
 		local material = 0
 		local inPlace = false
@@ -183,7 +195,7 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		return carved, material, water
 	end
 
-	local function naturalMaterial(height: number, slope: number, x: number, z: number, hint: number?): number
+	local function legacyNaturalMaterial(height: number, slope: number, x: number, z: number, hint: number?): number
 		-- Fields: crop rows across the field, a bare yard around the barns.
 		if slope < 0.45 then
 			local field, onRow = cropAt(x, z)
@@ -245,6 +257,191 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		return CODE.Grass
 	end
 
+	-- Protect complete field/settlement blends, not just a few centre points. A spatial grid
+	-- keeps the per-voxel cost independent of the number of fields on the whole map.
+	local config = LandscapeConfig
+	local CELL = 256
+	type ProtectedRect = { Rect: Geometry.Rect, Clear: number, Fade: number }
+	local protected: { [number]: { ProtectedRect } } = {}
+	local function key(cx: number, cz: number): number
+		return (cx + 1024) * 4096 + cz + 1024
+	end
+	local function protect(rect: Geometry.Rect, clear: number, fade: number)
+		local item = { Rect = rect, Clear = clear, Fade = fade }
+		local reach = clear + fade
+		for cx = math.floor((rect.MinX - reach) / CELL), math.floor((rect.MaxX + reach) / CELL) do
+			for cz = math.floor((rect.MinZ - reach) / CELL), math.floor((rect.MaxZ + reach) / CELL) do
+				local cell = key(cx, cz)
+				local list = protected[cell]
+				if not list then
+					list = {}
+					protected[cell] = list
+				end
+				table.insert(list, item)
+			end
+		end
+	end
+	for _, place in places do
+		protect(place.Rect, place.Margin + config.PlaceProtection, config.PlaceFade)
+	end
+	for _, field in fields.list do
+		protect(field, config.FieldProtection, config.FieldFade)
+	end
+	for _, zone in materialZones do
+		protect(zone.rect, config.FieldProtection, config.FieldFade)
+	end
+	-- River.nearest() is intentionally indexed only through its 260-stud carving reach.
+	-- Relief fades farther out, so it needs its own expanded index: using the carving
+	-- index there would make a discontinuity where an adjacent spatial cell has no ids.
+	local riverLine = river.line
+	local riverProtectionGrid = SegmentGrid.new(128)
+	local riverProtectionReach = river.reach + config.RiverProtection + config.RiverFade
+	for i = 1, #riverLine.xs - 1 do
+		SegmentGrid.insert(
+			riverProtectionGrid,
+			i,
+			riverLine.xs[i],
+			riverLine.zs[i],
+			riverLine.xs[i + 1],
+			riverLine.zs[i + 1],
+			riverProtectionReach
+		)
+	end
+	local function riverProtectionDistance(x: number, z: number): number
+		local ids = SegmentGrid.query(riverProtectionGrid, x, z)
+		local best = math.huge
+		if ids then
+			for _, i in ids do
+				local distance = Geometry.segmentDistance(
+					riverLine.xs[i],
+					riverLine.zs[i],
+					riverLine.xs[i + 1],
+					riverLine.zs[i + 1],
+					x,
+					z
+				)
+				best = math.min(best, distance)
+			end
+		end
+		return best
+	end
+	local function lakeProtectionMask(x: number, z: number): number
+		-- Lake.shoreDistance is also reach-limited. Protect each complete existing basin,
+		-- then fade outside its conservative circular bound instead of jumping to infinity
+		-- when the old shoreline query leaves its search radius.
+		local mask = 1
+		for _, lake in lakes.list do
+			local radius = math.max(lake.Reach, math.max(lake.Rx, lake.Rz) + config.LakeProtection)
+			local dx, dz = x - lake.X, z - lake.Z
+			if math.abs(dx) < radius + config.LakeFade and math.abs(dz) < radius + config.LakeFade then
+				local distance = math.sqrt(dx * dx + dz * dz) - radius
+				mask = math.min(mask, Geometry.smoothstep(distance / config.LakeFade))
+			end
+		end
+		return mask
+	end
+
+	local function reliefMask(x: number, z: number): number
+		if not config.Enabled then
+			return 0
+		end
+		local mask = Geometry.smoothstep(
+			(layout.Bounds.Half - math.max(math.abs(x), math.abs(z)) - config.EdgeProtection) / config.EdgeFade
+		)
+		if mask == 0 then
+			return 0
+		end
+		local list = protected[key(math.floor(x / CELL), math.floor(z / CELL))]
+		if list then
+			for _, item in list do
+				local distance = Geometry.rectDistance(item.Rect, x, z)
+				mask = math.min(mask, Geometry.smoothstep((distance - item.Clear) / item.Fade))
+				if mask == 0 then
+					return 0
+				end
+			end
+		end
+		local edge = nearestRoad(x, z)
+		if edge then
+			mask = math.min(mask, Geometry.smoothstep((edge - config.RoadProtection) / config.RoadFade))
+			if mask == 0 then
+				return 0
+			end
+		end
+		local riverDistance = riverProtectionDistance(x, z)
+		mask = math.min(
+			mask,
+			Geometry.smoothstep((riverDistance - river.reach - config.RiverProtection) / config.RiverFade),
+			lakeProtectionMask(x, z)
+		)
+		return mask
+	end
+
+	local function reliefShape(x: number, z: number): number
+		-- Shared domain warping bends continuous ridges and drainage folds. The rotated,
+		-- anisotropic octaves form connected landforms rather than isolated decorative bumps.
+		local wx = x + config.DomainWarp * math.noise(x / 1100 + 0.19, z / 1100 + 0.71, 71.3)
+		local wz = z + config.DomainWarp * math.noise(x / 1100 + 2.17, z / 1100 + 0.23, 72.7)
+		local u, v = 0.82 * wx + 0.57 * wz, -0.57 * wx + 0.82 * wz
+		local broad = math.noise(u / config.RidgeWavelength + 0.43, v / (config.RidgeWavelength * 1.3) + 0.13, 73.1)
+		local fold = 1
+			- math.abs(
+				2 * math.noise(u / config.FoldWavelength + 0.37, v / (config.FoldWavelength * 1.65) + 0.61, 74.9)
+			)
+		local detail = math.noise(wx / config.DetailWavelength + 0.29, wz / config.DetailWavelength + 0.83, 75.7)
+		return math.clamp(1.2 * broad + 0.45 * (fold * fold - 0.45) + 0.16 * detail, -1, 1)
+	end
+
+	local function relief(x: number, z: number): number
+		local mask = reliefMask(x, z)
+		if mask == 0 then
+			return 0
+		end
+		return config.ReliefAmplitude * mask * reliefShape(x, z)
+	end
+
+	local function surface(x: number, z: number): (number, number, number?)
+		local height, material, water = legacySurface(x, z)
+		if water ~= nil then
+			return height, material, water
+		end
+		local floorWeight =
+			Geometry.smoothstep((height - layout.Bounds.FloorY - config.FloorProtection) / config.FloorFade)
+		return height + relief(x, z) * floorWeight, material, nil
+	end
+
+	local function naturalMaterial(height: number, slope: number, x: number, z: number, hint: number?): number
+		local original = legacyNaturalMaterial(height, slope, x, z, hint)
+		local mask = reliefMask(x, z)
+		if mask < 0.08 or original == CODE.Rock or original == CODE.Slate or original == CODE.Basalt then
+			return original
+		end
+		-- Damp folds expose dark lateritic soil; ridges recover grass in connected patches.
+		-- Native terrain blends these material boundaries without extra ground-cover parts.
+		local shape = reliefShape(x, z)
+		local damp = math.noise(x / 160 + 0.53, z / 310 + 0.37, 76.3)
+		if mask > 0.45 and shape < -0.24 and damp > 0.09 and slope < 0.35 then
+			return CODE.Mud
+		end
+		local patches = math.noise(x / 31 + 0.41, z / 31 + 0.73, 77.9)
+			+ 0.45 * math.noise(x / 145 + 0.23, z / 145 + 0.59, 78.7)
+		if patches > 0.38 - 0.22 * mask and forestAt(x, z) < 0.55 then
+			return CODE.Ground
+		end
+		if original == CODE.Grass or original == CODE.LeafyGrass or original == CODE.Ground then
+			return if patches < -0.08 or forestAt(x, z) > 0.3 then CODE.LeafyGrass else CODE.Grass
+		end
+		return original
+	end
+
+	local original = OriginalSurface.new(layout, {
+		land = land,
+		river = river,
+		roads = roads,
+		lakes = lakes,
+		fields = fields,
+		biomes = biomes,
+	}, Heightfield.Materials)
 	return {
 		land = land,
 		river = river,
@@ -254,6 +451,12 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		biomes = biomes,
 		surface = surface,
 		naturalMaterial = naturalMaterial,
+		legacySurface = legacySurface,
+		legacyNaturalMaterial = legacyNaturalMaterial,
+		originalSurface = original.surface,
+		originalNaturalMaterial = original.naturalMaterial,
+		reliefMask = reliefMask,
+		relief = relief,
 	}
 end
 

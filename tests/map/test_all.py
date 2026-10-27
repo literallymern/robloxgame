@@ -72,7 +72,10 @@ def main():
     if result.returncode != 0 or "ALL CHECKS PASSED" not in output:
         failed = True
 
-    for spec in ("river-detail", "roads-realism", "vegetation-builders"):
+    for spec in (
+        "river-detail", "roads-realism", "vegetation-builders", "canopy",
+        "highland-relief", "original-parity", "terrain-upgrade", "infrastructure-v3", "upgrade-entry",
+    ):
         result = subprocess.run(
             [sys.executable, os.path.join(HERE, "run.py"), os.path.join(HERE, spec + ".spec.luau")],
             capture_output=True,

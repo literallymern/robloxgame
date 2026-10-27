@@ -1,9 +1,11 @@
 --!strict
 -- Regional highland vegetation, using native geometry and materials only. Forked, leaning
--- stems carry asymmetric leaf masses; acacias spread horizontally, eucalyptus stays open,
--- broadleaf crowns are irregular, and plantation pines have tapered evergreen whorls.
+-- stems carry reusable native CSG leaf sprays; acacias spread horizontally, eucalyptus stays
+-- open, broadleaf crowns are irregular, and pines have tapered evergreen whorls. The sprays
+-- contain gaps and tapered leaf geometry, replacing the former smooth sphere crowns.
 -- Each tree is 4–5 parts, streamed as one model. Foliage and upper branches never collide.
 
+local CanopyLibrary = require(script.Parent.CanopyLibrary)
 local Hash = require(script.Parent.Parent.Hash)
 local Util = require(script.Parent.Util)
 
@@ -40,21 +42,12 @@ local function pick<T>(list: { T }, t: number): T
 	return list[math.floor(t * #list) % #list + 1]
 end
 
-local function crownOptions(colour: Color3): Util.PartOptions
-	return {
-		Material = Enum.Material.LeafyGrass,
-		Color = colour,
-		CanCollide = false,
-		CanQuery = false,
-	}
-end
-
 local function trunkOptions(colour: Color3): Util.PartOptions
 	return { Material = Enum.Material.Wood, Color = colour }
 end
 
 -- One tree: the same template vocabulary, varied deterministically by position and species.
--- Four parts for an open crown, five for a fuller mature crown (all pines use five).
+-- Four parts for an open crown or pine, five for a fuller mature broadleaf crown.
 function VegetationBuilder.tree(parent: Instance, plant: any): number
 	local h: number = plant.Size
 	local fx, fz = math.floor(plant.X), math.floor(plant.Z)
@@ -84,12 +77,13 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 	end
 	local function leaf(dx: number, dy: number, dz: number, w: number, height: number, depth: number, salt: number)
 		local tilt = CFrame.Angles((r(salt) - 0.5) * 0.3, r(salt + 1) * 0.9, (r(salt + 2) - 0.5) * 0.3)
-		Util.ellipsoid(
-			model,
-			"Foliage",
+		CanopyLibrary.crown(
+			plant.Kind,
+			1 + math.floor(r(salt + 4) * CanopyLibrary.Variants),
 			at(dx, dy, dz) * tilt,
 			Vector3.new(w * h, height * h, depth * h),
-			crownOptions(vary(crownColour, r(salt + 3)))
+			vary(crownColour, r(salt + 3)),
+			model
 		)
 		count += 1
 	end
@@ -100,29 +94,11 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 	-- Independent offsets can leave a floating branch beside a leaning trunk.
 
 	if plant.Kind == "Pine" then
-		-- Two tapered whorls with perpendicular ridges break up the former pill-shaped crown.
-		-- Back-to-back wedges form a triangular cross-section; their bottom sits in the whorl
-		-- below, so there is no rectangular underside visible from the road.
-		stem(point(0, -sink, 0), point(leanX * 0.5, 0.78, leanZ * 0.5), math.max(0.8, 0.038 * h), false)
-		for level = 1, 2 do
-			local width = (if level == 1 then 0.48 else 0.29) * (0.9 + r(6 + level) * 0.2)
-			local height = if level == 1 then 0.55 else 0.4
-			local centre = if level == 1 then 0.48 else 0.79
-			local frame = at(leanX * centre, centre, leanZ * centre)
-				* CFrame.Angles(0, if level == 1 then 0 else math.pi / 2, 0)
-			for side = -1, 1, 2 do
-				Util.wedge(
-					model,
-					"Foliage",
-					frame
-						* CFrame.new(0, 0, side * width * h / 4)
-						* CFrame.Angles(0, if side > 0 then math.pi else 0, 0),
-					Vector3.new(width * h, height * h, width * h / 2),
-					crownOptions(vary(crownColour, r(8 + level)))
-				)
-				count += 1
-			end
-		end
+		-- Three overlapping open whorl meshes make a tapered tree without a solid pyramid.
+		stem(point(0, -sink, 0), point(leanX * 0.5, 0.86, leanZ * 0.5), math.max(0.8, 0.038 * h), false)
+		leaf(leanX * 0.4, 0.42, leanZ * 0.4, 0.5, 0.43, 0.47, 20)
+		leaf(leanX * 0.65, 0.66, leanZ * 0.65, 0.37, 0.38, 0.35, 26)
+		leaf(leanX * 0.85, 0.85, leanZ * 0.85, 0.23, 0.31, 0.22, 32)
 	elseif plant.Kind == "Acacia" then
 		local foot, top = point(0, -sink, 0), point(leanX - 0.16, 0.7, leanZ - 0.04)
 		stem(foot, top, math.max(0.75, 0.043 * h), false)
@@ -131,7 +107,7 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 		leaf(leanX - 0.18, 0.75, leanZ - 0.05, 0.76, 0.2 + r(9) * 0.06, 0.58, 20)
 		leaf(leanX + 0.25, 0.79, leanZ + 0.08, 0.65, 0.18, 0.53, 26)
 		if fuller then
-			leaf(leanX + 0.03, 0.84, leanZ - 0.18, 0.5, 0.17, 0.44, 32)
+			leaf(leanX + 0.03, 0.82, leanZ - 0.18, 0.5, 0.17, 0.44, 32)
 		end
 	elseif plant.Kind == "Eucalyptus" then
 		local foot, top = point(0, -sink, 0), point(leanX, 0.9, leanZ)
@@ -152,7 +128,7 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 		leaf(leanX - 0.11, 0.74, leanZ - 0.06, 0.5 * spread, 0.4, 0.38, 20)
 		leaf(leanX + 0.2, 0.69, leanZ + 0.09, 0.46, 0.32 + r(9) * 0.09, 0.36 * spread, 26)
 		if fuller then
-			leaf(leanX + 0.02, 0.87, leanZ - 0.04, 0.36, 0.28, 0.32, 32)
+			leaf(leanX + 0.02, 0.81, leanZ - 0.04, 0.36, 0.28, 0.32, 32)
 		end
 	end
 	model.Parent = parent
@@ -163,26 +139,30 @@ function VegetationBuilder.bush(parent: Instance, plant: any): number
 	local w: number = plant.Size
 	local fx, fz = math.floor(plant.X), math.floor(plant.Z)
 	local colour = vary(pick(CROWNS.Bush, plant.Seed), Hash.unit(fx, fz, 111))
-	local options = crownOptions(colour)
 	local base = CFrame.new(plant.X, plant.Y, plant.Z) * CFrame.Angles(0, plant.Yaw, 0)
 	local habit = Hash.unit(fx, fz, 112)
 	local height = w * (0.3 + 0.45 * habit)
 	local tilt = CFrame.Angles((habit - 0.5) * 0.18, 0, (plant.Seed - 0.5) * 0.22)
-	Util.ellipsoid(
-		parent,
+	local variant = 1 + math.floor(Hash.unit(fx, fz, 114) * CanopyLibrary.Variants)
+	local bush = CanopyLibrary.crown(
 		"Bush",
+		variant,
 		base * CFrame.new(0, height * 0.32, 0) * tilt,
 		Vector3.new(w, height, w * (0.55 + 0.3 * plant.Seed)),
-		options
+		colour,
+		parent
 	)
+	bush.Name = "Bush"
 	if Hash.unit(fx, fz, 113) < 0.3 then
-		Util.ellipsoid(
-			parent,
+		local second = CanopyLibrary.crown(
 			"Bush",
+			variant % CanopyLibrary.Variants + 1,
 			base * CFrame.new(w * 0.4, height * 0.2, w * 0.1),
 			Vector3.new(w * 0.65, height * 0.7, w * 0.6),
-			options
+			vary(colour, plant.Seed),
+			parent
 		)
+		second.Name = "Bush"
 		return 2
 	end
 	return 1

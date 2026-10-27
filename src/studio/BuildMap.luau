@@ -4,13 +4,16 @@
 --
 -- Run it in Studio in EDIT mode (not while Play is running), from the command bar
 -- (View > Command Bar):
+-- Upgrade an existing saved map, preserving custom terrain and construction:
+--     require(game.ServerStorage.StudioTools.BuildMap).upgradeEnvironment()
+-- Initial full build (replaces terrain):
 --     require(game.ServerStorage.StudioTools.BuildMap).run()
 -- Only the parts, keeping the terrain as it is:
 --     require(game.ServerStorage.StudioTools.BuildMap).run({ Terrain = false })
 -- Without trees, bushes and rocks (faster, for quick checks):
 --     require(game.ServerStorage.StudioTools.BuildMap).run({ Vegetation = false })
 --
--- It REPLACES all terrain and everything it generated earlier (marked with the attribute
+-- run() REPLACES all terrain and everything it generated earlier (marked with the attribute
 -- GeneratedBy = "BuildMap"). Parts you built yourself are left alone, but hand edits to the
 -- terrain are lost when the terrain is rebuilt. Save a backup of the place first.
 
@@ -22,6 +25,7 @@ local Builders = Map:WaitForChild("Builders")
 local Heightfield = require(Map.Heightfield)
 local RoadDetails = require(Map.RoadDetails)
 local Vegetation = require(Map.Vegetation)
+local ExistingTerrain = require(Map.ExistingTerrain)
 local Airport = require(Builders.Airport)
 local Boundary = require(Builders.Boundary)
 local Bridges = require(Builders.Bridges)
@@ -34,6 +38,8 @@ local RoadDetailsBuilder = require(Builders.RoadDetails)
 local Roads = require(Builders.Roads)
 local Spawn = require(Builders.Spawn)
 local TerrainBuilder = require(Builders.Terrain)
+local TerrainUpgrade = require(Builders.TerrainUpgrade)
+local CanopyLibrary = require(Builders.CanopyLibrary)
 local Util = require(Builders.Util)
 local VegetationBuilder = require(Builders.Vegetation)
 
@@ -50,16 +56,21 @@ export type RefreshOptions = {
 }
 
 local BuildMap = {}
-BuildMap.EnvironmentRevision = "highland-2"
+BuildMap.EnvironmentRevision = "highland-3"
 
 local function log(text: string)
 	print(`[Ro-Nation:BuildMap] {text}`)
 end
 
+local function savedGroundSampler()
+	local protected = ExistingTerrain.protection()
+	return ExistingTerrain.groundSampler(protected)
+end
+
 -- Upgrade an already-built map without clearing terrain, places, properties or spawns.
 -- Build replacements off-world first: a builder error leaves the current map intact.
 -- Generated folders are disposable; keep custom work outside those folders.
-function BuildMap.refreshEnvironment(options: RefreshOptions?)
+local function refreshEnvironment(options: RefreshOptions?, context: any?)
 	if RunService:IsRunning() then
 		warn("[Ro-Nation:BuildMap] Stop Play first: refresh the environment in edit mode.")
 		return
@@ -72,7 +83,7 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 	local opts: RefreshOptions = options or {}
 	local report = {
 		Revision = BuildMap.EnvironmentRevision,
-		TerrainRebuilt = false,
+		TerrainRebuilt = context ~= nil and context.TerrainUpdated == true,
 		RoadParts = 0,
 		BridgeParts = 0,
 		Trees = 0,
@@ -97,7 +108,7 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 		end
 	end
 	local ok, err = pcall(function()
-		local hf = Heightfield.new(layout, Util.yield)
+		local hf = if context then context.Heightfield else Heightfield.new(layout, Util.yield)
 		if selected.Roads then
 			report.RoadParts = Roads.build(hf, layout, staging)
 			report.BridgeParts = Bridges.build(hf, staging)
@@ -108,7 +119,8 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 				RoadDetailsBuilder.build(details, staging)
 			end
 			if selected.Vegetation then
-				local plants = Vegetation.new(layout, hf, details, Util.yield)
+				local sampler = if context then context.GroundSampler else savedGroundSampler()
+				local plants = Vegetation.new(layout, hf, details, Util.yield, sampler)
 				report.VegetationParts = VegetationBuilder.build(plants, staging)
 				report.Trees, report.Bushes, report.Rocks = #plants.trees, #plants.bushes, #plants.rocks
 			end
@@ -139,15 +151,99 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 	staging:Destroy()
 	local skipped = Environment.apply(log)
 	map:SetAttribute("EnvironmentGeometryRevision", BuildMap.EnvironmentRevision)
-	map:SetAttribute("LastEnvironmentRefreshRebuiltTerrain", false)
+	map:SetAttribute("LastEnvironmentRefreshRebuiltTerrain", report.TerrainRebuilt)
 	map:SetAttribute("EnvironmentSkippedLighting", table.concat(skipped, ", "))
 	log(
 		`Refresh {report.Revision}: built {report.RoadParts} road parts, {report.BridgeParts} bridge parts, `
 			.. `{report.Trees} trees, {report.Bushes} bushes and {report.Rocks} rocks ({report.VegetationParts} vegetation parts).`
 	)
-	log("Terrain shape was not rebuilt. Weather and the day/night cycle run during Play.")
-	log("Environment refreshed. Terrain, places, signs, property plots and spawns retained. Save the place.")
+	log(
+		if report.TerrainRebuilt
+			then "Matching saved terrain was patched before geometry placement."
+			else "Terrain shape was not rebuilt. Use upgradeEnvironment() to patch saved generated terrain."
+	)
+	log("Weather and the day/night cycle run during Play.")
+	log(
+		if report.TerrainRebuilt
+			then "Environment refreshed; matching terrain patched. Places, signs, property plots and spawns retained. Save the place."
+			else "Environment refreshed. Terrain, places, signs, property plots and spawns retained. Save the place."
+	)
 	return report
+end
+
+function BuildMap.refreshEnvironment(options: RefreshOptions?)
+	return refreshEnvironment(options, nil)
+end
+
+-- Full saved-map upgrade: compile reusable foliage first, conservatively patch matching
+-- generated terrain, then replace environment geometry while retaining places and signs.
+-- Terrain writes are incremental; Output reports any interrupted patch and supports a rerun.
+function BuildMap.upgradeEnvironment(options: { DryRun: boolean? }?)
+	assert(not RunService:IsRunning(), "Stop Play before upgrading the saved environment")
+	local map = workspace:FindFirstChild("Map")
+	assert(map, "No existing Map; use BuildMap.run() for the initial build")
+	for _, name in { "Roads", "Bridges", "RoadDetails", "Vegetation" } do
+		local existing = map:FindFirstChild(name)
+		assert(
+			not existing or Util.isGenerated(existing),
+			`Map.{name} is custom content; upgrade stopped before terrain changes`
+		)
+	end
+	local opts = options or {}
+	local layout = require(ReplicatedStorage.Shared.Config.MapLayout) :: any
+	local hf = Heightfield.new(layout, Util.yield)
+	local protected, customParts = ExistingTerrain.protection()
+	log(`Upgrade {BuildMap.EnvironmentRevision}: preserving footprints of {customParts} custom construction parts.`)
+	if opts.DryRun then
+		return TerrainUpgrade.apply(hf, layout, log, { DryRun = true, Protected = protected })
+	end
+	-- A failure to compile CSG leaves the saved terrain and map untouched.
+	CanopyLibrary.prepare(log)
+	local history: any = nil
+	local recording: string? = nil
+	pcall(function()
+		history = game:GetService("ChangeHistoryService")
+		recording = history:TryBeginRecording("RoNationEnvironmentUpgrade", "Ro-Nation environment upgrade")
+	end)
+	if not recording then
+		log("Studio undo recording unavailable. Keep a saved place backup before editing terrain.")
+	end
+	local ok, result = pcall(function()
+		local terrain = TerrainUpgrade.apply(hf, layout, log, { Protected = protected })
+		assert(
+			terrain.Complete,
+			`Terrain upgrade interrupted: {tostring(terrain.Error)}. Earlier terrain chunks may have changed; rerun to resume.`
+		)
+		local report = refreshEnvironment(
+			nil,
+			{ Heightfield = hf, GroundSampler = ExistingTerrain.groundSampler(protected), TerrainUpdated = true }
+		)
+		assert(report, "Environment geometry was not replaced; terrain patch report is in Output")
+		if terrain.ChangedColumns > 0 or terrain.AlreadyCurrentColumns > 0 then
+			map:SetAttribute("EnvironmentTerrainRevision", BuildMap.EnvironmentRevision)
+		else
+			log(
+				"No saved terrain columns could be upgraded. Inspect the preserved/unknown counters; geometry and lighting still update."
+			)
+		end
+		map:SetAttribute("LastEnvironmentRefreshRebuiltTerrain", true)
+		map:SetAttribute("EnvironmentTerrainChangedColumns", terrain.ChangedColumns)
+		map:SetAttribute("EnvironmentTerrainPreservedColumns", terrain.PreservedColumns)
+		report.TerrainRebuilt = true
+		log(
+			`Full upgrade complete: {terrain.ChangedColumns} terrain columns changed; {terrain.PreservedColumns} custom/unknown columns preserved. Save the place.`
+		)
+		return { Geometry = report, Terrain = terrain }
+	end)
+	if recording then
+		pcall(function()
+			history:FinishRecording(recording, Enum.FinishRecordingOperation.Commit)
+		end)
+	end
+	if not ok then
+		error(`[Ro-Nation:BuildMap] Upgrade stopped: {tostring(result)}`)
+	end
+	return result
 end
 
 function BuildMap.run(options: Options?)
@@ -158,6 +254,9 @@ function BuildMap.run(options: Options?)
 	local opts: Options = options or {}
 	local MapLayout = require(ReplicatedStorage.Shared.Config.MapLayout) :: any
 	local started = os.clock()
+	if opts.Parts ~= false and opts.Vegetation ~= false then
+		CanopyLibrary.prepare(log)
+	end
 
 	log(`Map layout version {MapLayout.Version}. Calculating the landscape...`)
 	local hf = Heightfield.new(MapLayout, Util.yield)
@@ -209,7 +308,8 @@ function BuildMap.run(options: Options?)
 
 		if opts.Vegetation ~= false then
 			log("Placing trees, bushes and rocks...")
-			local plants = Vegetation.new(MapLayout, hf, details, Util.yield)
+			local sampler = if opts.Terrain == false then savedGroundSampler() else nil
+			local plants = Vegetation.new(MapLayout, hf, details, Util.yield, sampler)
 			local parts = VegetationBuilder.build(plants, map)
 			log(`Vegetation: {#plants.trees} trees, {#plants.bushes} bushes, {#plants.rocks} rocks ({parts} parts).`)
 		end

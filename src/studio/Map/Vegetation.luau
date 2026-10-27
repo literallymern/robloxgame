@@ -51,7 +51,13 @@ local Vegetation = {}
 Vegetation.TreeKinds = table.freeze({ "Acacia", "Broadleaf", "Eucalyptus", "Pine" })
 
 -- `details` (from RoadDetails, optional): power lines get a corridor free of trees.
-function Vegetation.new(layout: any, hf: any, details: any?, yieldEvery: (() -> ())?): Vegetation
+function Vegetation.new(
+	layout: any,
+	hf: any,
+	details: any?,
+	yieldEvery: (() -> ())?,
+	groundSampler: ((number, number, boolean?) -> (number?, number))?
+): Vegetation
 	local config = layout.Vegetation
 	local half: number = layout.Bounds.Half
 	local treeLine: number = config.TreeLine
@@ -81,9 +87,12 @@ function Vegetation.new(layout: any, hf: any, details: any?, yieldEvery: (() -> 
 	end
 
 	-- Ground height and slope at a point, or nil where nothing may grow (water).
-	local function ground(x: number, z: number): (number?, number)
+	local function ground(x: number, z: number, allowWater: boolean?): (number?, number)
+		if groundSampler then
+			return groundSampler(x, z, allowWater)
+		end
 		local h, _, water = surface(x, z)
-		if water then
+		if water and not allowWater then
 			return nil, 0
 		end
 		local e = surface(x + 3, z)
@@ -399,7 +408,7 @@ function Vegetation.new(layout: any, hf: any, details: any?, yieldEvery: (() -> 
 			if not clearOfWorks(x, z, 4) or waterEdge(x, z) < 2 then
 				continue
 			end
-			local y, slope = ground(x, z)
+			local y, slope = ground(x, z, true)
 			if y == nil then
 				continue
 			end
@@ -440,8 +449,10 @@ function Vegetation.new(layout: any, hf: any, details: any?, yieldEvery: (() -> 
 			if e and e < 6 then
 				continue
 			end
-			local y = surface(x, z)
-			addRock(x, z, y, 0.5, 4 + 5 * seed, seed)
+			local y, slope = ground(x, z, true)
+			if y then
+				addRock(x, z, y, slope, 4 + 5 * seed, seed)
+			end
 		end
 	end
 
