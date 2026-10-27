@@ -89,12 +89,13 @@ local function rails(details: any, parent: Instance): number
 		if first and last then
 			for _, endpoint in { { first, true }, { last, false } } do
 				local piece, atStart = endpoint[1], endpoint[2]
-				local a = Vector3.new(piece[1], piece[2], piece[3])
-				local b = Vector3.new(piece[4], piece[5], piece[6])
+				local a = Vector3.new(piece[1], piece[2] + 0.5, piece[3])
+				local b = Vector3.new(piece[4], piece[5] + 0.5, piece[6])
 				if (b - a).Magnitude <= 0.2 then
 					continue
 				end
-				local centre = if atStart then a else b
+				-- Util.strip places its centre half a thickness below the top endpoints.
+				local centre = (if atStart then a else b) - CFrame.lookAt(a, b).UpVector * 0.5
 				local axis = (b - a).Unit * 0.28
 				Util.cylinder(folder, "RailTerminal", centre - axis, centre + axis, 1.1, {
 					Material = Enum.Material.Metal,

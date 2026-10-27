@@ -359,6 +359,85 @@ check(
 	"an incomplete original baseline fails preflight without reading or writing terrain",
 	not originalPreflight and missingBackend.Reads == 0 and missingBackend.Writes == 0
 )
+-- A saved highland-3 column may match neither the original nor v2 surface. Its
+-- independent fourth baseline must migrate and still retain manual edits.
+local fourth = table.clone(fixture)
+fourth.previousSurface = fixture.legacySurface
+fourth.previousNaturalMaterial = fixture.legacyNaturalMaterial
+fourth.legacySurface = fixture.surface
+fourth.legacyNaturalMaterial = fixture.naturalMaterial
+fourth.originalSurface = function(x, z)
+	local h, _, water = fixture.legacySurface(x, z)
+	return h, 8, water
+end
+fourth.originalNaturalMaterial = function()
+	return 8
+end
+local fourthApi = backend()
+local fourthDry = Upgrade.apply(fourth, layout, log, options(fourthApi, true))
+check(
+	"highland-3 baseline dry run identifies eligible columns without writes",
+	fourthDry.Complete and fourthDry.EligibleColumns == 253 and fourthDry.PreviousColumns == 0 and fourthApi.Writes == 0
+)
+local fourthReport = Upgrade.apply(fourth, layout, log, options(fourthApi))
+check(
+	"saved highland-3 migrates alongside retained original and v2 recognizers",
+	fourthReport.Complete and fourthReport.PreviousColumns == 253 and fourthReport.ChangedColumns == 253
+)
+check(
+	"highland-3 migration preserves unknown paint, sculpting and water",
+	fourthReport.PreservedColumns == 3
+		and fourthApi.Data[key(2, 9, 0)][1] == Enum.Material.Slate
+		and fourthApi.Data[key(1, 9, 0)][2] == 0.4
+		and fourthApi.Data[key(14, 6, 14)][2] == 0.6
+)
+local fourthAgain = Upgrade.apply(fourth, layout, log, options(fourthApi))
+check(
+	"highland-3 migration is idempotent",
+	fourthAgain.Complete and fourthAgain.ChangedColumns == 0 and fourthApi.Writes == 1
+)
+local invalidPrevious = table.clone(fixture)
+invalidPrevious.previousSurface = fixture.surface
+local incompletePreviousApi = backend()
+local previousOkay = pcall(Upgrade.apply, invalidPrevious, layout, log, options(incompletePreviousApi))
+check(
+	"incomplete highland-3 matching fails before any terrain IO",
+	not previousOkay and incompletePreviousApi.Reads == 0 and incompletePreviousApi.Writes == 0
+)
+
+-- Current and previous share the same surface function but differ in soil selection.
+-- This exercises the shared height-strip optimization used by the production v4 model.
+local soilOnly = table.clone(fixture)
+soilOnly.surface = function(x, z)
+	local h, _, water = fixture.legacySurface(x, z)
+	return h, if water then 5 else 0, water
+end
+soilOnly.previousSurface = soilOnly.surface
+soilOnly.previousNaturalMaterial = function()
+	return 1
+end
+soilOnly.legacySurface = function(x, z)
+	local h, _, water = soilOnly.surface(x, z)
+	return h, 8, water
+end
+soilOnly.legacyNaturalMaterial = function()
+	return 8
+end
+soilOnly.naturalMaterial = function()
+	return 2
+end
+local soilApi = backend()
+local soilReport = Upgrade.apply(soilOnly, layout, log, options(soilApi))
+check(
+	"material-only upgrade shares v3 heights and preserves occupancy",
+	soilReport.Complete
+		and soilReport.PreviousColumns == 190
+		and soilReport.ChangedColumns == 190
+		and soilApi.Data[key(0, 9, 0)][1] == Enum.Material.LeafyGrass
+		and soilApi.Data[key(0, 9, 0)][2] == 1
+		and soilApi.Data[key(0, 10, 0)][2] == 0
+)
+
 print(
 	`INFO {checks} terrain-upgrade checks; {applied.ChangedColumns} changed and {applied.PreservedColumns} custom columns preserved in the fixture`
 )

@@ -68,7 +68,11 @@ local LIGHT_SPACING = 45
 
 local RoadDetails = {}
 
-function RoadDetails.new(layout: any, hf: any): RoadDetails
+function RoadDetails.new(
+	layout: any,
+	hf: any,
+	groundSampler: ((number, number, boolean?) -> (number?, number))?
+): RoadDetails
 	local roads = hf.roads
 	local surface = hf.surface
 	local river = hf.river
@@ -98,6 +102,12 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 	end
 	local function groundY(x: number, z: number): number
 		return (surface(x, z))
+	end
+	-- Keep authored signs and markings anchored to their original layout. Furniture feet
+	-- follow the saved terrain during an upgrade; unknown/protected ground is never guessed.
+	local function supportY(x: number, z: number): number?
+		local y = if groundSampler then groundSampler(x, z, false) else groundY(x, z)
+		return if y and y == y and math.abs(y) < math.huge then y else nil
 	end
 
 	-- Per road: sample positions along the line ---------------------------------------------
@@ -419,7 +429,10 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 					if not road.onBridge[f.i] then
 						local lx, lz, lhx, lhz = signSpot(road, along, out, road.Width / 2 + 3)
 						if roads.otherDistance(lx, lz, r) > 8 and waterEdge(lx, lz) > 4 then
-							table.insert(lights, { X = lx, Y = groundY(lx, lz), Z = lz, ArmX = lhz, ArmZ = -lhx })
+							local y = supportY(lx, lz)
+							if y then
+								table.insert(lights, { X = lx, Y = y, Z = lz, ArmX = lhz, ArmZ = -lhx })
+							end
 						end
 					end
 					s += LIGHT_SPACING
@@ -439,7 +452,10 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 		local rx, rz = -m.dz * sign, m.dx * sign
 		local lx, lz = m.x + rx * (major.Width / 2 + 3), m.z + rz * (major.Width / 2 + 3)
 		if roads.otherDistance(lx, lz, j.Major) > 6 and waterEdge(lx, lz) > 4 then
-			table.insert(lights, { X = lx, Y = groundY(lx, lz), Z = lz, ArmX = -rx, ArmZ = -rz })
+			local y = supportY(lx, lz)
+			if y then
+				table.insert(lights, { X = lx, Y = y, Z = lz, ArmX = -rx, ArmZ = -rz })
+			end
 		end
 	end
 
@@ -463,6 +479,7 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 		local railSides: { { boolean } } = {}
 		for side = -1, 1, 2 do
 			local flags: { boolean } = table.create(count, false)
+			local supported: { boolean } = table.create(count, false)
 			for i = 1, count do
 				if road.onBridge[i] then
 					continue
@@ -474,7 +491,13 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 					continue
 				end
 				local ox, oz = f.x + rx * (halfWidth + 9), f.z + rz * (halfWidth + 9)
-				local drop = road.profile[i] - groundY(ox, oz)
+				local footY = supportY(px, pz)
+				if footY == nil or (groundSampler and footY > road.profile[i] + 2.3) then
+					continue
+				end
+				supported[i] = true
+				local outside = supportY(ox, oz)
+				local drop = if outside then road.profile[i] - outside else 0
 				flags[i] = nearBridge[i] or drop > 3.5 or waterEdge(ox, oz) < 10
 			end
 			-- Close short gaps, then drop short pieces.
@@ -487,7 +510,7 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 					end
 					if i > 1 and j <= count and j - i <= 3 then
 						for k = i, j - 1 do
-							flags[k] = not road.onBridge[k]
+							flags[k] = not road.onBridge[k] and (not groundSampler or supported[k])
 						end
 					end
 					i = j
@@ -539,7 +562,10 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 					table.insert(rail.Pieces, { xs[a], ys[a], zs[a], xs[b], ys[b], zs[b] })
 				end
 				for k = 1, #xs, 2 do
-					table.insert(rail.Posts, { xs[k], groundY(xs[k], zs[k]), zs[k], ys[k] + 0.5 })
+					local y = supportY(xs[k], zs[k])
+					if y then
+						table.insert(rail.Posts, { xs[k], y, zs[k], ys[k] + 0.5 })
+					end
 				end
 				if #rail.Pieces > 0 then
 					table.insert(rails, rail)
@@ -562,7 +588,10 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 					if placeAt(px, pz, 5) or roads.otherDistance(px, pz, r) < 8 or waterEdge(px, pz) < 3 then
 						continue
 					end
-					table.insert(delineators, { X = px, Y = groundY(px, pz), Z = pz, DirX = f.dx, DirZ = f.dz })
+					local y = supportY(px, pz)
+					if y then
+						table.insert(delineators, { X = px, Y = y, Z = pz, DirX = f.dx, DirZ = f.dz })
+					end
 				end
 			end
 			s += DELINEATOR_SPACING
@@ -672,9 +701,17 @@ function RoadDetails.new(layout: any, hf: any): RoadDetails
 				and waterEdge(px, pz) > 8
 			if ok then
 				index += 1
+				local y = supportY(px, pz)
+				if y == nil then
+					-- Advance using the same authored spacing even when a saved-ground sample
+					-- is missing, and never wire across the missing support.
+					previous = nil
+					s += POLE_SPACING + Hash.range(lineId, index, 41, -10, 10)
+					continue
+				end
 				table.insert(poles, {
 					X = px,
-					Y = groundY(px, pz),
+					Y = y,
 					Z = pz,
 					DirX = f.dx,
 					DirZ = f.dz,

@@ -21,6 +21,7 @@ MODULES = {
     "ReplicatedStorage/Shared/Config/Assets": "src/shared/Config/Assets.luau",
     "ReplicatedStorage/Shared/Config/Environment": "src/shared/Config/Environment.luau",
     "StudioTools/BuildMap": "src/studio/BuildMap.luau",
+    "StudioTools/CheckEnvironment": "src/studio/CheckEnvironment.luau",
 }
 for folder, prefix in (
     ("src/studio/Map", "StudioTools/Map"),

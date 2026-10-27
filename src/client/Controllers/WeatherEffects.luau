@@ -10,7 +10,7 @@ local Model = require(ReplicatedStorage.Shared.Environment.Model)
 
 local WeatherEffects = {}
 
-type Drop = { part: Part, position: Vector3, column: number, speed: number }
+type Drop = { part: Part, position: Vector3, column: number, speed: number, transparency: number }
 type Limits = { low: number, high: number }
 
 function WeatherEffects.new(config: any): any
@@ -29,6 +29,8 @@ function WeatherEffects.new(config: any): any
 	local thunderAt = math.huge
 	local thunderVolume = 0
 	local stopped = false
+	local visibleCount = 0
+	local wasDrawingRain = false
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.IgnoreWater = false
@@ -51,10 +53,30 @@ function WeatherEffects.new(config: any): any
 	thunder.Volume = 0
 	thunder.Parent = SoundService
 
-	local function createPool(camera: Camera)
+	local function destroyPool()
 		if folder then
 			folder:Destroy()
+			folder = nil
 		end
+		table.clear(drops)
+		visibleCount = 0
+	end
+
+	local function hidePool()
+		if visibleCount == 0 then
+			return
+		end
+		for _, drop in drops do
+			if drop.transparency < 1 then
+				drop.part.Transparency = 1
+				drop.transparency = 1
+			end
+		end
+		visibleCount = 0
+	end
+
+	local function createPool(camera: Camera)
+		destroyPool()
 		local container = Instance.new("Folder")
 		container.Name = "RoNationLocalRain"
 		container.Parent = camera
@@ -78,13 +100,9 @@ function WeatherEffects.new(config: any): any
 				position = camera.CFrame.Position + Vector3.new(0, 100, 0),
 				column = ((i - 1) * 5) % 16 + 1,
 				speed = random:NextNumber(58, 82),
+				transparency = 1,
 			})
 		end
-		lastCamera = camera
-		shelterClock = 1
-		gridPosition = nil
-		shelterPosition = nil
-		table.clear(columns)
 	end
 
 	local function checkShelter(camera: Camera, drawRain: boolean)
@@ -132,14 +150,34 @@ function WeatherEffects.new(config: any): any
 			return
 		end
 		local camera = workspace.CurrentCamera
-		if not camera then
-			return
-		end
 		if camera ~= lastCamera then
-			createPool(camera)
+			destroyPool()
+			lastCamera = camera
+			shelterClock = 1
+			gridPosition = nil
+			shelterPosition = nil
+			wasDrawingRain = false
+			table.clear(columns)
+		end
+		if not camera then
+			-- Camera removal must not leave frozen streaks or a lightning flash behind.
+			flash.Enabled = false
+			flash.Brightness = 0
+			rainSound.Volume = 0
+			if rainSound.IsPlaying then
+				rainSound:Stop()
+			end
+			thunderAt = math.huge
+			return
 		end
 		local intensity = math.clamp(rain, 0, 1)
 		local detail = math.clamp(quality, 0, 1)
+		local drawRain = intensity > 0.005 and math.floor(count * intensity * detail) > 0
+		if drawRain and not wasDrawingRain then
+			-- Recheck a roof immediately after resuming quality/rain; old probes are stale.
+			shelterClock = 1
+		end
+		wasDrawingRain = drawRain
 		shelterClock += dt
 		local position = camera.CFrame.Position
 		if intensity > 0.005 and shelterPosition and (position - shelterPosition).Magnitude > 32 then
@@ -150,32 +188,56 @@ function WeatherEffects.new(config: any): any
 		local interval = if detail <= 0 then 0.6 else 0.2 / math.max(0.5, detail)
 		if shelterClock >= interval and intensity > 0.005 then
 			shelterClock = 0
-			checkShelter(camera, detail > 0)
+			checkShelter(camera, drawRain)
 		end
-		local active = if shelter or gridPosition == nil then 0 else math.floor(count * intensity * detail)
-		for i, drop in drops do
-			if i > active then
-				drop.part.Transparency = 1
-				continue
+		local active = if not drawRain
+				or shelter
+				or gridPosition == nil
+			then 0
+			else math.floor(count * intensity * detail)
+		if active == 0 then
+			hidePool()
+		else
+			-- Clear weather, minimum quality and shelter allocate no visual rain parts.
+			if not folder or folder.Parent ~= camera then
+				createPool(camera)
 			end
-			local limits = columns[drop.column]
-			if not limits or limits.high - limits.low < 2 then
-				drop.part.Transparency = 1
-				continue
+			visibleCount = 0
+			for i, drop in drops do
+				if i > active then
+					if drop.transparency < 1 then
+						drop.part.Transparency = 1
+						drop.transparency = 1
+					end
+					continue
+				end
+				local limits = columns[drop.column]
+				if not limits or limits.high - limits.low < 2 then
+					if drop.transparency < 1 then
+						drop.part.Transparency = 1
+						drop.transparency = 1
+					end
+					continue
+				end
+				local p = drop.position + Vector3.new(-8, -drop.speed, 2) * math.min(dt, 0.1)
+				if p.Y < limits.low or p.Y > limits.high or (p - position).Magnitude > 46 then
+					local x = ((drop.column - 1) % 4 - 1.5) * 10 + random:NextNumber(-3, 3)
+					local z = (math.floor((drop.column - 1) / 4) - 1.5) * 10 + random:NextNumber(-3, 3)
+					-- The sampled heights belong to the last probe grid, rather than the moving
+					-- camera. Keeping spawn positions on that grid reduces roof-edge leakage.
+					local origin = gridPosition :: Vector3
+					p = Vector3.new(origin.X + x, random:NextNumber(limits.low + 1, limits.high), origin.Z + z)
+				end
+				drop.position = p
+				drop.part.CFrame = CFrame.new(p) * CFrame.Angles(0.03, 0, -0.1)
+				drop.part.Size = Vector3.new(0.045, 1.7 + 1.6 * intensity, 0.045)
+				local transparency = 0.5 + 0.2 * (1 - intensity)
+				if drop.transparency ~= transparency then
+					drop.part.Transparency = transparency
+					drop.transparency = transparency
+				end
+				visibleCount += 1
 			end
-			local p = drop.position + Vector3.new(-8, -drop.speed, 2) * math.min(dt, 0.1)
-			if p.Y < limits.low or p.Y > limits.high or (p - position).Magnitude > 46 then
-				local x = ((drop.column - 1) % 4 - 1.5) * 10 + random:NextNumber(-3, 3)
-				local z = (math.floor((drop.column - 1) / 4) - 1.5) * 10 + random:NextNumber(-3, 3)
-				-- The sampled heights belong to the last probe grid, rather than the moving
-				-- camera. Keeping spawn positions on that grid reduces roof-edge leakage.
-				local origin = gridPosition :: Vector3
-				p = Vector3.new(origin.X + x, random:NextNumber(limits.low + 1, limits.high), origin.Z + z)
-			end
-			drop.position = p
-			drop.part.CFrame = CFrame.new(p) * CFrame.Angles(0.03, 0, -0.1)
-			drop.part.Size = Vector3.new(0.045, 1.7 + 1.6 * intensity, 0.045)
-			drop.part.Transparency = 0.5 + 0.2 * (1 - intensity)
 		end
 		local targetVolume = intensity * (if shelter then 0.12 else 0.4)
 		rainSound.Volume += (targetVolume - rainSound.Volume) * Model.responseAlpha(dt, 1 / 3)
@@ -216,9 +278,7 @@ function WeatherEffects.new(config: any): any
 
 	function effects:destroy()
 		stopped = true
-		if folder then
-			folder:Destroy()
-		end
+		destroyPool()
 		rainSound:Destroy()
 		thunder:Destroy()
 		flash:Destroy()

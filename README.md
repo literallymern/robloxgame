@@ -83,10 +83,10 @@ Nach dem Verbinden auf **Play** drücken und das **Output**-Fenster öffnen (*Vi
 
 ```
 [Ro-Nation:Server] Ro-Nation 0.1.0 (Milestone 1) server started (5/5 services).
-[Ro-Nation:Client] Ro-Nation 0.1.0 (Milestone 1) client started for DeinName (4/4 controllers).
+[Ro-Nation:Client] Ro-Nation 0.1.0 (Milestone 1) client started for DeinName (5/5 controllers).
 ```
 
-Dann ist alles richtig eingerichtet. Oben links erscheint außerdem der Knopf **Account**.
+Damit sind die Dienste und Controller gestartet. Oben links erscheinen **Account** und **Wetter**; unter Wetter lässt sich die Darstellung für diese Sitzung einstellen.
 
 Einstellungen prüfen: Im Studio-Menü *View > Command Bar* öffnen und eingeben:
 
@@ -104,7 +104,9 @@ require(game.ServerStorage.StudioTools.BuildMap).run()
 
 Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke, den Spawn und die Landschaft (Bäume, Büsche, Felsen, Felder, Zäune, Markierungen, Schilder, Laternen, Strommasten) neu. Es ist der vollständige Neubau für einen neuen Place. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
 
-## Vorhandene Karte auf highland-3 aktualisieren
+## Vorhandene Karte auf highland-4 aktualisieren
+
+Die vier Referenzbilder sind in dieses Update eingeflossen: weniger kahle Flecken auf sanften Hängen, größere Laub- und Eukalyptuskronen sowie Fundamente, Laternen und Strommasten, die dem gespeicherten Boden folgen. Das vorhandene natürliche Licht bleibt erhalten.
 
 Den Hauptbranch `claude/project-thread-5krwdh` aktualisieren und per Rojo mit Studio synchronisieren. Den Place sichern und Play stoppen. Falls du `BuildMap` vorher schon in der Command Bar geladen hast, nach dem Sync speichern, Studio neu starten und Rojo erneut verbinden, damit kein alter Modulstand im Cache bleibt.
 
@@ -114,7 +116,15 @@ Für das Gelände-, Vegetations- und Infrastruktur-Update in die Command Bar:
 require(game.ServerStorage.StudioTools.BuildMap).upgradeEnvironment()
 ```
 
-Das erzeugt wiederverwendbare Blattkronen, aktualisiert erkennbares generiertes Gelände und ersetzt die erzeugten Straßen-, Brücken- und Vegetationsgruppen. Eigene Geländeänderungen und geschützte Bauwerksflächen bleiben bei abweichenden oder unbekannten Geländespalten erhalten. Neue Pflanzen richten sich nach dem tatsächlich gespeicherten Boden. Orte, Grundstücke, Spawn und vorhandene Schilder bleiben erhalten. Den Fortschritt im Output verfolgen und danach speichern. Ein abgebrochener Geländelauf kann bereits einige Abschnitte geändert haben; deshalb vorher eine Place-Sicherung anlegen.
+Das erzeugt wiederverwendbare Blattkronen, aktualisiert erkennbares generiertes Gelände einschließlich highland-3 und ersetzt die erzeugten Straßen-, Brücken- und Vegetationsgruppen. Eigene Geländeänderungen und geschützte Bauwerksflächen bleiben bei abweichenden oder unbekannten Geländespalten erhalten. Pflanzen, Brückenfundamente und Straßenobjekte richten sich nach dem tatsächlich gespeicherten Boden. Orte, Grundstücke, Spawn und vorhandene Schilder bleiben erhalten. Den Fortschritt im Output verfolgen und danach speichern. Ein abgebrochener Geländelauf kann bereits einige Abschnitte geändert haben; deshalb vorher eine Place-Sicherung anlegen.
+
+Anschließend den gespeicherten Stand prüfen:
+
+```lua
+require(game.ServerStorage.StudioTools.CheckEnvironment)()
+```
+
+Die Prüfung zeigt Versionsstände, vorhandene Geometrie, Lichtkonflikte und fehlende Audio-IDs an, ohne etwas zu verändern. Sie ersetzt keine Sicht- oder Leistungskontrolle in Play.
 
 Optional zuerst nur die Geländeänderungen prüfen, ohne etwas zu schreiben:
 

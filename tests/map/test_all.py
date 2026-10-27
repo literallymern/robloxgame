@@ -74,7 +74,8 @@ def main():
 
     for spec in (
         "river-detail", "roads-realism", "vegetation-builders", "canopy",
-        "highland-relief", "original-parity", "terrain-upgrade", "infrastructure-v3", "upgrade-entry",
+        "highland-relief", "soil-refinement", "original-parity", "terrain-upgrade", "infrastructure-v3",
+        "bridge-ground", "road-ground", "upgrade-entry", "environment-inspection",
     ):
         result = subprocess.run(
             [sys.executable, os.path.join(HERE, "run.py"), os.path.join(HERE, spec + ".spec.luau")],

@@ -18,6 +18,7 @@ local ORDER = {
 	"NotificationController",
 	"UIController",
 	"AccountController",
+	"EnvironmentQualityController",
 }
 
 local controllers = script.Parent:WaitForChild("Controllers")

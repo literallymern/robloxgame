@@ -1,9 +1,16 @@
 # Highland environment overhaul
 
-## What highland-3 changes
+## What highland-4 changes
 
-The environment update now includes a saved-terrain upgrade, new reusable foliage geometry,
-more roadside and bridge detail, and refinements to the existing lighting/weather system.
+The environment update includes a saved-terrain upgrade, reusable foliage geometry,
+roadside and bridge detail, and refinements to the existing lighting/weather system.
+This iteration uses the four supplied `Ro-Nation_Referenz_01`–`04` screenshots: broad brown
+patches interrupt the green hills, some crowns look small on long bare stems, and bridge
+banks need close support-to-ground contact. Highland-4 reduces soil exposure on gentle
+natural terrain, enlarges broadleaf/eucalyptus crowns without adding tree parts, and grounds
+bridge foundations and roadside furniture on the actual saved terrain. It adds an in-game
+weather quality menu and a read-only saved-map diagnostic. The existing natural lighting,
+river channel/bank profiles and town layout remain in use.
 The implementation covers the original prompt's terrain, vegetation, infrastructure,
 lighting, weather, day/night and performance areas. Its final rendered appearance and
 20–25-player performance still need Roblox Studio and device acceptance; offline tests
@@ -18,12 +25,14 @@ cannot establish those results.
 | Lighting | Existing natural lighting retained; humidity-sensitive dawn valley haze and smooth altitude changes added | Clear/overcast comparisons at morning, midday, sunset and night |
 | Weather and day/night | Five gradual states, seasonal weighting, local rain, lightning, synchronized visual clock and marked night lamps; better shelter handling after camera changes/teleports | Two-client synchronization, indoor rain, streaming and device behavior |
 | Audio | Original rain/thunder WAV sources and playback hooks exist | Owner must upload the sounds and grant experience permissions; blank IDs remain silent |
-| Performance | Cached foliage templates, small streamed models, bounded local rain, quality scaling and distance-limited streetlights | Lower-end hardware and an actual 20–25-player session |
+| Performance | Cached foliage templates, small streamed models, lazy bounded local rain, a five-choice weather quality menu and distance-limited streetlights | Lower-end hardware and an actual 20–25-player session |
 
 City positions, the road network, place heights, fields, property definitions, spawn and
 German-influenced signs remain anchored to `MapLayout`. Existing sign instances are retained
 by the upgrade, including manual text and position edits. The available project lore is
 `Lore` and the Discord Kagundi Encyclopedia; seasonal tuning adds no new canon.
+The town massing blocks and development labels visible in the references are still existing
+map content. This environment update does not turn those placeholders into finished buildings.
 
 ## Apply to an existing place
 
@@ -57,13 +66,28 @@ print(report)
 The report distinguishes eligible, changed, already-current, unchanged and preserved
 columns, plus water mismatches. A dry run reports candidates without committing changes.
 After an actual run, `OriginalColumns` counts written columns recognized only as the
-pre-overhaul generator. Output and `Workspace.Map` attributes expose the `highland-3`
+pre-overhaul generator; `PreviousColumns` counts written columns recognized only as
+highland-3. Output and `Workspace.Map` attributes expose the `highland-4`
 revision, changed/preserved terrain counts and skipped lighting components.
+
+Inspect the saved result in edit mode:
+
+```lua
+require(game.ServerStorage.StudioTools.CheckEnvironment)()
+```
+
+This reports current versus saved geometry/terrain revisions, generated groups, five bridge
+models, retained signs, actual canopy parts and the 20 templates, streaming, weather config,
+missing audio IDs and competing lighting. It writes no properties and creates no instances.
+`FIX` audio results are expected until the supplied WAVs are uploaded and authorized.
+Configured IDs remain informational until playback is verified; an all-green structural
+report cannot establish rendered quality or performance. Partial geometry refreshes no
+longer claim to have applied the complete geometry revision.
 
 ### What the updater preserves
 
-The terrain patch reads 4-stud voxels in 64-stud chunks. A candidate column must match either
-the original pre-overhaul terrain model or the previous environment model before it is
+The terrain patch reads 4-stud voxels in 64-stud chunks. A candidate column must match
+the original pre-overhaul terrain model, highland-2 or highland-3 before it is
 changed. It also recognizes already-updated columns, so a later run can resume. Sculpting,
 material paint, changed water, missing/extra ground and unknown terrain are conservatively
 preserved when the column differs from these known baselines. Occupancy comparison allows
@@ -73,7 +97,12 @@ Anchored, collidable custom construction outside generated folders protects its 
 footprint plus a margin from terrain changes and vegetation placement. The replacement
 vegetation samples the actual saved terrain, including columns the patch preserved, rather
 than assuming all new terrain heights were applied. Missing ground and open water are
-skipped for trees/shrubs; river rocks may sample the underwater bed.
+skipped for trees/shrubs; river rocks may sample the underwater bed. Bridge foundations sample
+the bed at the centre and corners of their footprint; wing walls extend to the saved bank.
+Missing/protected structural ground aborts geometry staging and retains the previous map
+groups. Dry riprap/drains, lamps, poles and markers skip unavailable ground. Missing utility
+supports break their wire runs; guardrails do not bridge unsupported samples. Road driving
+heights, authored signs and markings stay anchored to the original road profile.
 
 The updater does not call `Terrain:Clear()`. Places, properties, countryside, spawn and custom
 objects outside replaced generated folders are retained. The selected generated folders are
@@ -95,7 +124,7 @@ For a geometry/lighting refresh that leaves terrain voxels untouched:
 require(game.ServerStorage.StudioTools.BuildMap).refreshEnvironment()
 ```
 
-It samples the saved ground for vegetation. Its optional `Roads`, `RoadDetails` and
+It samples saved ground for vegetation, bridge foundations and roadside furniture. Its optional `Roads`, `RoadDetails` and
 `Vegetation` flags select generated groups; it does not apply the terrain upgrade.
 
 `BuildMap.run()` remains the initial full-map builder. By default it **clears all terrain**
@@ -123,6 +152,13 @@ river/lake basins, the map edge and low terrain. Existing `Land`/`RoadNetwork` a
 unchanged. `Heightfield` retains the previous generator functions, while `OriginalSurface`
 is an immutable migration baseline for the original map; changing that baseline would
 prevent reliable recognition of older saved terrain.
+
+Highland-4 retains highland-3 elevation and water. `SoilSlopeStart` and `SoilPatchScale`
+control broad exposed soil on eroding slopes; gentle ground keeps grass/leafy grass with
+occasional damp hollows. On a 24,649-point map grid, 6,864 eligible gentle natural points
+contained 2,398 bare soil/mud samples before and 165 after. Another 518 steeper samples
+retain exposed soil. These are deterministic material samples, not percentages measured
+from the screenshots. Protected towns, fields, banks and mountain rock retain their materials.
 
 `CanopyLibrary` compiles **20 native CSG templates**: four variants each of broadleaf,
 acacia, eucalyptus, pine and bush. Connected twigs and tapered leaf sprays replace the old
@@ -181,14 +217,20 @@ environment.setWeather("Thunderstorm") -- Clear, PartlyCloudy, Overcast, Rain, T
 environment.setClockTime(18.5) -- cycle continues from this hour
 ```
 
-Use the **client** command bar to set effect quality (0 minimal, 1 low, 2 medium, 3 high):
+During Play, use the **Wetter** menu button to select **Automatisch**, **Minimal**, **Niedrig**,
+**Mittel** or **Hoch**. It applies immediately for the current session; automatic follows
+Roblox's saved graphics quality. The panel fits small screens with scrolling choices.
+For scripting tests the **client** command bar still accepts 0 minimal, 1 low, 2 medium, 3 high:
 
 ```lua
 game.Players.LocalPlayer:SetAttribute("EnvironmentQuality", 1)
 ```
 
 Remove that attribute to follow Roblox's saved graphics quality. Low quality reduces rain
-amount/probe frequency. Rain is capped at 64 reused non-colliding parts; streetlight range
+amount/probe frequency. Clear weather, minimal quality and sheltered startup allocate no
+rain geometry. After rain, the existing pool is hidden once and reused; dry frames stop
+writing its parts. Camera removal destroys the pool. Minimal quality retains configured
+audio and lightning. Rain is capped at 64 reused non-colliding parts; streetlight range
 is capped at 260 studs. There is no runtime terrain/foliage rebuild or per-frame server
 landscape work. Client attributes `EnvironmentClientReady`, `EnvironmentClientStatus` and
 `EnvironmentAudioConfigured` help diagnose whether the runtime is initialized.
@@ -227,17 +269,18 @@ Executed for this iteration:
 
 | Check | Result |
 | --- | --- |
-| Full map suite | 1,405 Luau checks passed; all 16 economy property definitions match |
-| Historical terrain baseline | Exact independent comparison at 80,731 surface points and 565,117 material decisions; regression samples retained in the suite |
-| Environment suite | 62 checks passed: 21 model, 12 service, 9 local effects and 20 presentation |
+| Full map suite | 1,449 Luau checks passed; all 16 economy property definitions match |
+| Terrain migration | Original/v2/v3 baselines, preserved custom columns, dry run, interrupted writes and idempotence passed; 24,649-point soil/height comparison and independently captured historical regression samples passed |
+| Environment suite | 84 checks passed: 21 model, 12 service, 19 local effects, 12 quality UI and 20 presentation |
 | Existing economy/Discord suite | 90 tests passed |
-| Source/package checks | All 60 Luau source files compiled; StyLua, whitespace and Rojo build passed |
+| Source/package checks | All 62 Luau source files compiled; StyLua, whitespace and Rojo build passed |
 | Mock-generated geometry | 38,520 parts under `Workspace.Map`, below the 45,000-part budget; vegetation uses 30,529 parts for 5,214 trees, 4,119 shrubs and 2,696 rocks |
 
 The geometry counts come from the offline builder and its CSG stand-in. They measure saved
 instance budgets, not engine triangle cost, frame rate or CSG visual quality.
 
-Roblox Studio, a saved current place and the prompt's reference screenshots were unavailable
+The four user-supplied reference screenshots were unpacked and reviewed; they are not
+post-update validation. Roblox Studio and an editable current saved place are unavailable
 in this environment. Selene could not obtain its Roblox API standard library. Full Roblox
 API/type analysis, native CSG execution, rendered comparisons, physics, actual audio,
 streaming under movement and device/player-load profiling remain unverified.
@@ -258,17 +301,19 @@ Before release:
 
 ## Changed files
 
-These are the principal files for the highland-3 iteration; the existing environment runtime,
-natural preset, river details and audio sources from the earlier update remain in use.
+Files changed in highland-4 are listed below. The existing climate/day-night runtime,
+natural lighting preset, river detail profiles, canopy library and audio sources from the
+earlier overhaul remain in use. The reference ZIP and its pictures are review inputs,
+not new runtime assets or files published to the repository.
 
 | Area | Files |
 | --- | --- |
-| Saved-map entry points and protection | `src/studio/BuildMap.luau`, `src/studio/Map/ExistingTerrain.luau`, `src/studio/Map/Builders/TerrainUpgrade.luau` |
-| Terrain relief and migration baseline | `src/studio/Map/Heightfield.luau`, `src/studio/Map/LandscapeConfig.luau`, `src/studio/Map/OriginalSurface.luau` |
-| Reusable foliage and placement | `src/studio/Map/Builders/CanopyLibrary.luau`, `src/studio/Map/Builders/Vegetation.luau`, `src/studio/Map/Vegetation.luau` |
-| Bridge and roadside details | `src/studio/Map/Builders/Bridges.luau`, `src/studio/Map/Builders/RoadDetails.luau` |
-| Lighting/weather refinements | `src/shared/Config/Environment.luau`, `src/shared/Environment/Model.luau`, `src/client/Controllers/EnvironmentController.luau`, `src/client/Controllers/WeatherEffects.luau` |
-| Map regressions | `tests/map/roblox-mock.luau`, `tests/map/test_all.py`, `tests/map/builders.spec.luau`, `tests/map/vegetation-builders.spec.luau`, `tests/map/canopy.spec.luau`, `tests/map/highland-relief.spec.luau`, `tests/map/original-parity.spec.luau`, `tests/map/terrain-upgrade.spec.luau`, `tests/map/infrastructure-v3.spec.luau`, `tests/map/upgrade-entry.spec.luau` |
-| Weather regressions | `tests/environment/run.py`, `tests/environment/model.spec.luau`, `tests/environment/effects.spec.luau` |
-| Source-geometry preview | `tests/map/preview-canopies.luau`, `tools/preview-canopies.py`, `docs/game/canopy-geometry-preview.png` |
+| Saved-map entry points and inspection | `src/studio/BuildMap.luau`, `src/studio/CheckEnvironment.luau` |
+| Soil and conservative migration | `src/studio/Map/Heightfield.luau`, `src/studio/Map/LandscapeConfig.luau`, `src/studio/Map/Builders/TerrainUpgrade.luau` |
+| Fuller tree crowns | `src/studio/Map/Builders/Vegetation.luau` |
+| Bridge and roadside ground contact | `src/studio/Map/Builders/Bridges.luau`, `src/studio/Map/RoadDetails.luau`, `src/studio/Map/Builders/RoadDetails.luau` |
+| Weather controls and lazy rain | `src/client/Main.client.luau`, `src/client/Controllers/EnvironmentQualityController.luau`, `src/client/Controllers/WeatherEffects.luau` |
+| Map regressions | `tests/map/run.py`, `tests/map/test_all.py`, `tests/map/soil-refinement.spec.luau`, `tests/map/terrain-upgrade.spec.luau`, `tests/map/bridge-ground.spec.luau`, `tests/map/road-ground.spec.luau`, `tests/map/upgrade-entry.spec.luau`, `tests/map/environment-inspection.spec.luau` |
+| Weather regressions | `tests/environment/run.py`, `tests/environment/effects.spec.luau`, `tests/environment/quality.spec.luau` |
+| Regenerated source-geometry preview | `docs/game/canopy-geometry-preview.png` |
 | Instructions | `README.md`, this document |

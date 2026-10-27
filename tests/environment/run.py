@@ -61,6 +61,26 @@ def main():
             os.unlink(effects_bundle)
         if result:
             return result
+        quality_chunks = [prelude]
+        quality_paths = {
+            "ReplicatedStorage/Shared/Config/Environment": "src/shared/Config/Environment.luau",
+            "Client/Util/Ui": "src/client/Util/Ui.luau",
+            "Client/Controllers/UIController": "src/client/Controllers/UIController.luau",
+            "Client/Controllers/EnvironmentQualityController": "src/client/Controllers/EnvironmentQualityController.luau",
+        }
+        for name, path in quality_paths.items():
+            source = re.sub(r"^export type ", "type ", (ROOT / path).read_text(), flags=re.M)
+            quality_chunks.append(f'__sources["{name}"] = function(script, require)\n{source}\nend\n')
+        quality_chunks.append((ROOT / "tests/environment/quality.spec.luau").read_text())
+        with tempfile.NamedTemporaryFile("w", suffix=".luau", delete=False) as stream:
+            stream.write("\n".join(quality_chunks))
+            quality_bundle = stream.name
+        try:
+            result = subprocess.run([LUAU, quality_bundle]).returncode
+        finally:
+            os.unlink(quality_bundle)
+        if result:
+            return result
         return subprocess.run([sys.executable, str(ROOT / "tests/map/run.py"), str(ROOT / "tests/environment/presentation.spec.luau")]).returncode
     finally:
         os.unlink(bundle)

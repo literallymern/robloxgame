@@ -3,7 +3,9 @@
 -- The authored Land/RoadNetwork anchors stay unchanged; this detail is blended around them.
 return table.freeze({
 	Enabled = true,
-	Revision = "highland-3",
+	Revision = "highland-4",
+	SoilSlopeStart = 0.28, -- bare soil follows eroding slopes rather than flat grassland
+	SoilPatchScale = 145, -- broad connected exposure; no small camouflage speckles
 	ReliefAmplitude = 16, -- hard cap, before the protection masks below
 	RidgeWavelength = 580,
 	FoldWavelength = 230,

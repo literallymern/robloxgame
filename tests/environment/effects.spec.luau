@@ -5,6 +5,24 @@
 local oldInstance = Instance
 local oldGame = game
 local sounds = {}
+local dropWrites = 0
+local probe = oldInstance.new("Part")
+local instanceApi = getmetatable(probe)
+local originalWrite = instanceApi.__newindex
+local originalRead = instanceApi.__index
+instanceApi.__index = function(self, key)
+	if self == workspace and key == "CurrentCamera" then
+		return rawget(self, "__props").CurrentCamera
+	end
+	return originalRead(self, key)
+end
+instanceApi.__newindex = function(self, key, value)
+	if rawget(self, "__props").Name == "RainStreak" then
+		dropWrites += 1
+	end
+	originalWrite(self, key, value)
+end
+probe:Destroy()
 Instance = {
 	new = function(class)
 		if class ~= "Sound" then
@@ -75,6 +93,9 @@ local function pool()
 end
 local function visible()
 	local count = 0
+	if not pool() then
+		return count
+	end
 	for _, drop in pool():GetChildren() do
 		if drop.Transparency < 1 then
 			count += 1
@@ -83,7 +104,23 @@ local function visible()
 	return count
 end
 local effects = Effects.new({ MaxStreaks = 64, Audio = { Rain = "", Thunder = "" } })
+local allocated = MockStats.parts
+for n = 1, 60 do
+	effects:update(1 / 60, 0, 0, 1, 998 + n / 60, 0, 0)
+end
+check(
+	pool() == nil and MockStats.parts == allocated and queries == 0,
+	"clear weather creates no rain parts and makes no shelter probes"
+)
+effects:update(1 / 60, 1, 0, 0, 999.1, 0, 0)
+check(pool() == nil and MockStats.parts == allocated, "minimal quality from startup allocates no visual rain pool")
+roof = true
+effects:update(1 / 60, 1, 0, 1, 999.2, 0, 0)
+check(pool() == nil and MockStats.parts == allocated, "sheltered rain from startup allocates no visual rain pool")
+roof = false
+camera.CFrame = CFrame.new(40, 12, 0)
 effects:update(1 / 60, 1, 0, 1, 1000, 0, 0)
+effects:update(0.4, 1, 0, 1, 1000.4, 0, 0)
 check(#pool():GetChildren() == 64 and visible() == 64, "rain uses one fixed 64-part pool")
 local clearances = true
 for _, drop in pool():GetChildren() do
@@ -106,6 +143,18 @@ for n = 1, 60 do
 end
 local lowQueries = queries - before
 check(lowQueries < highQueries and visible() <= 22, "low graphics reduces both rain geometry and terrain probing")
+local oldPool = pool()
+effects:update(1 / 60, 0, 0, 1, 1002.1, 0, 0)
+local writesWhenHidden = dropWrites
+for n = 1, 60 do
+	effects:update(1 / 60, 0, 0, 1, 1002.1 + n / 60, 0, 0)
+end
+check(
+	visible() == 0 and dropWrites == writesWhenHidden,
+	"dry weather hides existing rain once and stops writing rain parts"
+)
+effects:update(1 / 60, 1, 0, 1, 1003, 0, 0)
+check(pool() == oldPool and visible() == 64, "rain resumption reuses its pool after checking current shelter")
 roof = true
 camera.CFrame = CFrame.new(100, 12, 0)
 before = queries
@@ -122,13 +171,31 @@ for n = 1, 60 do
 	effects:update(1 / 60, 1, 0, 0, 1004 + n / 60, 0, 0)
 end
 check(visible() == 0 and queries - before <= 3, "minimal quality disables rain rendering and shared ground probes")
+local minimalWrites = dropWrites
+effects:update(1 / 60, 1, 0, 0, 1005.1, 0, 0)
+check(dropWrites == minimalWrites, "minimal quality does not repeatedly write hidden rain parts")
 local secondCamera = { CFrame = CFrame.new(0, 12, 0), __children = {} }
 rawget(workspace, "__props").CurrentCamera = secondCamera
 effects:update(1 / 60, 1, 0, 1, 1006, 0, 0)
 check(#camera.__children == 0 and #secondCamera.__children == 1, "camera replacement removes the old rain pool")
+rawget(workspace, "__props").CurrentCamera = nil
+effects:update(1 / 60, 1, 0, 1, 1006.1, 0, 0)
+check(#secondCamera.__children == 0, "camera removal cleans up frozen rain geometry")
 effects:destroy()
 check(
 	#secondCamera.__children == 0 and sounds[1].destroyed and sounds[2].destroyed,
 	"effect cleanup removes local geometry and sound instances"
 )
+rawget(workspace, "__props").CurrentCamera = secondCamera
+local audible = Effects.new({ MaxStreaks = 64, Audio = { Rain = "test-rain", Thunder = "test-thunder" } })
+audible:update(1 / 60, 1, 1, 0, 2000, 2000, 0)
+check(
+	#secondCamera.__children == 0 and sounds[3].IsPlaying and sounds[3].Volume > 0,
+	"minimal rendering quality still plays configured rain audio without allocating geometry"
+)
+local flash = oldGame:GetService("Lighting"):FindFirstChild("RoNationLightning")
+check(flash.Enabled, "minimal rendering quality retains storm lightning")
+audible:update(0.6, 1, 1, 0, 2001.6, 2000, 0)
+check(sounds[4].IsPlaying and sounds[4].Volume > 0, "minimal rendering quality retains delayed thunder audio")
+audible:destroy()
 print(`ALL CHECKS PASSED ({passed} weather effects checks)`)

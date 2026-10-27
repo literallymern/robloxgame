@@ -16,6 +16,7 @@ local MAX_SPAN = 64
 local POST_SPACING = 10
 
 type BridgeFrame = { Position: Vector3, Along: Vector3, Across: Vector3 }
+export type GroundSampler = (x: number, z: number, allowWater: boolean?) -> (number?, number)
 
 local function frameAt(road: any, s: number): BridgeFrame
 	local line = road.line
@@ -44,7 +45,8 @@ local function approachDrainage(
 	outward: Vector3,
 	width: number,
 	side: number,
-	seed: number
+	seed: number,
+	groundSampler: GroundSampler?
 ): number
 	local across = frame.Across * side
 	local toe = frame.Position + outward * 9 + across * (width / 2 + 5)
@@ -58,6 +60,13 @@ local function approachDrainage(
 		local along = (k - 2.5) * 1.8
 		local position = toe + outward * along + across * Hash.range(seed, k, 151, 0, 2.5)
 		local ground, _, water = hf.surface(position.X, position.Z)
+		if groundSampler then
+			local saved = groundSampler(position.X, position.Z, false)
+			if saved == nil then
+				continue
+			end
+			ground, water = saved, nil
+		end
 		local edge = hf.roads.nearest(position.X, position.Z)
 		-- Do not put bank protection on a different road or in the open water channel.
 		if not edge or edge < 2.5 or (water and water > ground + 0.5) then
@@ -76,6 +85,13 @@ local function approachDrainage(
 		count += 1
 	end
 	local exitGround, _, water = hf.surface(toe.X, toe.Z)
+	if groundSampler then
+		local saved = groundSampler(toe.X, toe.Z, false)
+		if saved == nil then
+			return count
+		end
+		exitGround, water = saved, nil
+	end
 	local start = frame.Position - outward * 2 + across * (width / 2 + 1.8) - UP * 0.65
 	local finish = Vector3.new(toe.X, exitGround + 0.15, toe.Z)
 	local edge = hf.roads.nearest(finish.X, finish.Z)
@@ -103,7 +119,7 @@ local function approachDrainage(
 	return count
 end
 
-function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
+function Bridges.build(hf: Heightfield.Heightfield, parent: Instance, groundSampler: GroundSampler?): number
 	local folder = Util.folder(parent, "Bridges")
 	local total = 0
 	local concrete: Util.PartOptions = { Material = Enum.Material.Concrete, Color = Color3.fromRGB(143, 141, 132) }
@@ -116,8 +132,33 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 		local road = hf.roads.roads[bridge.RoadIndex]
 		local model = Instance.new("Model")
 		model.Name = `Bridge {bridge.Road}`
+		model.Parent = folder -- keep partial construction inside the disposable staging tree
 		model:SetAttribute("Road", bridge.Road)
 		model:SetAttribute("EnvironmentDetailVersion", 3)
+		model:SetAttribute("FoundationGroundSource", if groundSampler then "SavedTerrain" else "Heightfield")
+		local function structuralGround(p: Vector3): number
+			local height = if groundSampler then groundSampler(p.X, p.Z, true) else hf.surface(p.X, p.Z)
+			assert(
+				height ~= nil and height == height and math.abs(height) < math.huge,
+				`Bridge {bridge.Road}: no usable saved ground at ({math.floor(p.X)}, {math.floor(p.Z)}). Check custom construction or missing terrain before refreshing.`
+			)
+			return height
+		end
+		-- A flat foundation must reach below the lowest sampled part of its footprint.
+		-- The generated-map path keeps its original geometry; saved terrain may have erosion
+		-- or sculpting that is absent from the mathematical landscape model.
+		local function foundationGround(f: BridgeFrame, width: number, depth: number): number
+			local ground = structuralGround(f.Position)
+			if groundSampler then
+				for _, along in { -1, 1 } do
+					for _, across in { -1, 1 } do
+						local p = f.Position + f.Along * depth / 2 * along + f.Across * width / 2 * across
+						ground = math.min(ground, structuralGround(p))
+					end
+				end
+			end
+			return ground
+		end
 		-- The structural slab projects beyond the original carriageway; its top is below
 		-- the wearing course. Asphalt finishes at exactly the existing road elevation.
 		local structure = table.clone(road)
@@ -199,8 +240,8 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 		for k = 1, spans - 1 do
 			local f = frameAt(road, firstS + length * k / spans)
 			local p = f.Position
-			local bedY = hf.surface(p.X, p.Z) - 2
 			local deckBottom = p.Y - DECK_THICKNESS
+			local bedY = foundationGround(f, road.Width - 3, 7) - 2
 			local capHeight = 1.2
 			local columnTop = deckBottom - capHeight
 			local foundationTop = math.min(bedY + 1.2, columnTop - 1)
@@ -241,8 +282,8 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 			local f = frameAt(road, endInfo[1])
 			local p = f.Position
 			local outward = f.Along * endInfo[2]
-			local ground = hf.surface(p.X, p.Z)
 			local top = p.Y - DECK_THICKNESS
+			local ground = foundationGround(f, road.Width + 4, 6)
 			local bottom = math.min(ground - 2, top - 2)
 			local centre = Vector3.new(p.X, (top + bottom) / 2, p.Z)
 			Util.part(
@@ -272,7 +313,23 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 			for side = -1, 1, 2 do
 				local a = p + f.Across * (road.Width / 2 + 1) * side - UP * 0.05
 				local b = p + outward * 9 + f.Across * (road.Width / 2 + 4) * side - UP * 0.45
-				Util.strip(model, "WingWall", a, b, 0.7, 3, concrete)
+				local wallDepth = 3
+				if groundSampler then
+					local vertical = CFrame.lookAt(a, b).UpVector.Y
+					for _, t in { 0, 0.5, 1 } do
+						local position = a:Lerp(b, t)
+						-- Wing walls are outside the driving surface and may meet a higher bank.
+						local saved = groundSampler(position.X, position.Z, true)
+						assert(
+							saved ~= nil and saved == saved and math.abs(saved) < math.huge,
+							`Bridge {bridge.Road}: no saved ground below the wing wall at ({math.floor(position.X)}, {math.floor(
+								position.Z
+							)}).`
+						)
+						wallDepth = math.max(wallDepth, (position.Y - saved + 1) / vertical)
+					end
+				end
+				Util.strip(model, "WingWall", a, b, 0.7, wallDepth, concrete)
 				total += 1
 				total += approachDrainage(
 					hf,
@@ -281,11 +338,11 @@ function Bridges.build(hf: Heightfield.Heightfield, parent: Instance): number
 					outward,
 					road.Width,
 					side,
-					bridgeIndex * 10 + endIndex * 2 + side
+					bridgeIndex * 10 + endIndex * 2 + side,
+					groundSampler
 				)
 			end
 		end
-		model.Parent = folder
 		Util.yield()
 	end
 	return total

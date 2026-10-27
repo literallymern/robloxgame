@@ -59,7 +59,8 @@ underWater = false
 check("saved-terrain sampler uses real height and excludes water for plants", dryY == 37 and wetY == nil and bedY == 12)
 
 local order = {}
-local failCanopy, failTerrain, actualSampled = false, false, false
+local failCanopy, failTerrain, failBridge, actualSampled = false, false, false, false
+local bridgeSampled, roadsideSampled = false, false
 Heightfield.new = function()
 	return {}
 end
@@ -85,8 +86,10 @@ load("StudioTools/Map/Builders/Roads").build = function(_, _, parent)
 	Util.folder(parent, "Roads")
 	return 9
 end
-load("StudioTools/Map/Builders/Bridges").build = function(_, parent)
+load("StudioTools/Map/Builders/Bridges").build = function(_, parent, sample)
 	Util.folder(parent, "Bridges")
+	bridgeSampled = sample(220, 220, true) == 12 and sample(120, 120, true) == nil
+	assert(not failBridge, "Simulated missing bridge foundation")
 	return 8
 end
 load("StudioTools/Map/Builders/RoadDetails").build = function(_, parent)
@@ -95,7 +98,8 @@ load("StudioTools/Map/Builders/RoadDetails").build = function(_, parent)
 	signs.Name, signs.Parent = "Signs", root
 	return {}
 end
-load("StudioTools/Map/RoadDetails").new = function()
+load("StudioTools/Map/RoadDetails").new = function(_, _, sample)
+	roadsideSampled = sample(220, 220) == 37 and sample(120, 120) == nil
 	return {}
 end
 load("StudioTools/Map/Vegetation").new = function(_, _, _, _, sample)
@@ -125,19 +129,39 @@ check(
 )
 check("full upgrade grounds vegetation on patched saved terrain", actualSampled)
 check(
+	"full upgrade grounds bridge foundations and roadside furniture on saved terrain",
+	bridgeSampled and roadsideSampled
+)
+check(
 	"full upgrade preserves signs and custom construction",
 	map.RoadDetails.Signs == oldSigns and custom.Parent == map
 )
 check(
 	"full upgrade reports applied revision and actual terrain counters",
-	report.Geometry.Revision == "highland-3"
+	report.Geometry.Revision == "highland-4"
 		and report.Geometry.TerrainRebuilt
 		and report.Terrain.ChangedColumns == 7
 		and map:GetAttribute("EnvironmentTerrainChangedColumns") == 7
 )
-actualSampled = false
+actualSampled, bridgeSampled, roadsideSampled = false, false, false
 BuildMap.refreshEnvironment()
 check("geometry-only refresh also samples saved ground and avoids custom buildings", actualSampled)
+check("geometry-only refresh also grounds bridges and roadside furniture", bridgeSampled and roadsideSampled)
+map:SetAttribute("EnvironmentGeometryRevision", "old")
+BuildMap.refreshEnvironment({ Roads = false, Vegetation = false })
+check(
+	"partial refresh cannot advertise the complete geometry upgrade",
+	map:GetAttribute("EnvironmentGeometryRevision") == "old"
+)
+
+beforeRoads = map.Roads
+failBridge = true
+local bridgeOkay = pcall(BuildMap.refreshEnvironment)
+check(
+	"missing structural ground leaves saved geometry and signs intact",
+	not bridgeOkay and map.Roads == beforeRoads and map.RoadDetails.Signs == oldSigns
+)
+failBridge = false
 
 beforeRoads = map.Roads
 table.clear(order)

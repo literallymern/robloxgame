@@ -114,21 +114,23 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 		stem(foot, top, math.max(0.9, 0.035 * h), false)
 		local fork = foot:Lerp(top, (0.52 + sink) / (0.9 + sink))
 		stem(fork, point(leanX + 0.13, 0.75, leanZ + 0.06), math.max(0.4, 0.018 * h), true)
-		leaf(leanX - 0.035, 0.87, leanZ - 0.025, 0.27, 0.27, 0.2, 20)
-		leaf(leanX + 0.14, 0.75, leanZ + 0.065, 0.26, 0.24, 0.19, 26)
+		leaf(leanX - 0.035, 0.82, leanZ - 0.025, 0.42, 0.5, 0.35, 20)
+		leaf(leanX + 0.14, 0.65, leanZ + 0.065, 0.38, 0.4, 0.32, 26)
 		if fuller then
-			leaf(leanX - 0.1, 0.65, leanZ + 0.06, 0.22, 0.2, 0.18, 32)
+			leaf(leanX - 0.1, 0.5, leanZ + 0.06, 0.32, 0.32, 0.28, 32)
 		end
 	else
-		local foot, top = point(0, -sink, 0), point(leanX - 0.09, 0.68, leanZ - 0.04)
+		-- A leafy highland tree carries foliage through its upper half. Small caps above
+		-- long bare stems made whole hills read as sparse pole plantations in Studio.
+		local foot, top = point(0, -sink, 0), point(leanX - 0.09, 0.6, leanZ - 0.04)
 		stem(foot, top, math.max(0.85, 0.05 * h), false)
-		local fork = foot:Lerp(top, (0.36 + sink) / (0.68 + sink))
-		stem(fork, point(leanX + 0.2, 0.65, leanZ + 0.09), math.max(0.5, 0.028 * h), true)
+		local fork = foot:Lerp(top, (0.3 + sink) / (0.6 + sink))
+		stem(fork, point(leanX + 0.2, 0.58, leanZ + 0.09), math.max(0.5, 0.028 * h), true)
 		local spread = 0.92 + r(6) * 0.2
-		leaf(leanX - 0.11, 0.74, leanZ - 0.06, 0.5 * spread, 0.4, 0.38, 20)
-		leaf(leanX + 0.2, 0.69, leanZ + 0.09, 0.46, 0.32 + r(9) * 0.09, 0.36 * spread, 26)
+		leaf(leanX - 0.11, 0.66, leanZ - 0.06, 0.66 * spread, 0.62, 0.58, 20)
+		leaf(leanX + 0.2, 0.67, leanZ + 0.09, 0.62, 0.52 + r(9) * 0.13, 0.56 * spread, 26)
 		if fuller then
-			leaf(leanX + 0.02, 0.81, leanZ - 0.04, 0.36, 0.28, 0.32, 32)
+			leaf(leanX + 0.02, 0.81, leanZ - 0.04, 0.5, 0.4, 0.48, 32)
 		end
 	end
 	model.Parent = parent

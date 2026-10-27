@@ -27,6 +27,8 @@ export type Heightfield = {
 	surface: (x: number, z: number) -> (number, number, number?),
 	-- Material for natural ground, from height, slope (rise per stud), position and the code
 	-- surface() returned there (0 or -1).
+	previousSurface: (x: number, z: number) -> (number, number, number?),
+	previousNaturalMaterial: (height: number, slope: number, x: number, z: number, hint: number?) -> number,
 	naturalMaterial: (height: number, slope: number, x: number, z: number, hint: number?) -> number,
 	-- Exact pre-highland-3 surface/material model, retained for conservative saved-voxel upgrades.
 	legacySurface: (x: number, z: number) -> (number, number, number?),
@@ -410,7 +412,7 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		return height + relief(x, z) * floorWeight, material, nil
 	end
 
-	local function naturalMaterial(height: number, slope: number, x: number, z: number, hint: number?): number
+	local function previousNaturalMaterial(height: number, slope: number, x: number, z: number, hint: number?): number
 		local original = legacyNaturalMaterial(height, slope, x, z, hint)
 		local mask = reliefMask(x, z)
 		if mask < 0.08 or original == CODE.Rock or original == CODE.Slate or original == CODE.Basalt then
@@ -434,6 +436,37 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		return original
 	end
 
+	local function naturalMaterial(height: number, slope: number, x: number, z: number, hint: number?): number
+		local previous = previousNaturalMaterial(height, slope, x, z, hint)
+		local mask = reliefMask(x, z)
+		-- Settlements, authored fields, banks and mountain rock keep their existing materials.
+		-- The old lowland model added small bare patches even on gentle, wet grassland; at
+		-- map scale these read as camouflage. Soil exposure now follows connected dry,
+		-- eroding slopes, while gentle highland ground maintains a continuous green cover.
+		if
+			mask < 0.08
+			or height > 520
+			or hint == Heightfield.WATERSIDE
+			or previous == CODE.Rock
+			or previous == CODE.Slate
+			or previous == CODE.Basalt
+		then
+			return previous
+		end
+		local forest, dry = forestAt(x, z), drynessAt(x, z)
+		local drainage = math.noise(x / 160 + 0.53, z / 310 + 0.37, 76.3)
+		local shape = reliefShape(x, z)
+		if mask > 0.8 and slope < 0.14 and shape < -0.35 and drainage > 0.25 then
+			return CODE.Mud
+		end
+		local erosion = math.clamp((slope - config.SoilSlopeStart) / 0.4, 0, 1)
+		local exposure = math.noise(x / config.SoilPatchScale + 0.23, z / (config.SoilPatchScale * 1.6) + 0.59, 78.7)
+		if slope > config.SoilSlopeStart and exposure > 0.26 - 0.14 * dry - 0.2 * erosion + (1 - mask) * 0.2 then
+			return CODE.Ground
+		end
+		return if forest > 0.3 or drainage < -0.1 then CODE.LeafyGrass else CODE.Grass
+	end
+
 	local original = OriginalSurface.new(layout, {
 		land = land,
 		river = river,
@@ -451,6 +484,8 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		biomes = biomes,
 		surface = surface,
 		naturalMaterial = naturalMaterial,
+		previousSurface = surface,
+		previousNaturalMaterial = previousNaturalMaterial,
 		legacySurface = legacySurface,
 		legacyNaturalMaterial = legacyNaturalMaterial,
 		originalSurface = original.surface,

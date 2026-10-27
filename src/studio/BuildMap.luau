@@ -56,7 +56,7 @@ export type RefreshOptions = {
 }
 
 local BuildMap = {}
-BuildMap.EnvironmentRevision = "highland-3"
+BuildMap.EnvironmentRevision = "highland-4"
 
 local function log(text: string)
 	print(`[Ro-Nation:BuildMap] {text}`)
@@ -109,17 +109,17 @@ local function refreshEnvironment(options: RefreshOptions?, context: any?)
 	end
 	local ok, err = pcall(function()
 		local hf = if context then context.Heightfield else Heightfield.new(layout, Util.yield)
+		local sampler = if context then context.GroundSampler else savedGroundSampler()
 		if selected.Roads then
 			report.RoadParts = Roads.build(hf, layout, staging)
-			report.BridgeParts = Bridges.build(hf, staging)
+			report.BridgeParts = Bridges.build(hf, staging, sampler)
 		end
 		if selected.RoadDetails or selected.Vegetation then
-			local details = RoadDetails.new(layout, hf)
+			local details = RoadDetails.new(layout, hf, sampler)
 			if selected.RoadDetails then
 				RoadDetailsBuilder.build(details, staging)
 			end
 			if selected.Vegetation then
-				local sampler = if context then context.GroundSampler else savedGroundSampler()
 				local plants = Vegetation.new(layout, hf, details, Util.yield, sampler)
 				report.VegetationParts = VegetationBuilder.build(plants, staging)
 				report.Trees, report.Bushes, report.Rocks = #plants.trees, #plants.bushes, #plants.rocks
@@ -150,7 +150,9 @@ local function refreshEnvironment(options: RefreshOptions?, context: any?)
 	end
 	staging:Destroy()
 	local skipped = Environment.apply(log)
-	map:SetAttribute("EnvironmentGeometryRevision", BuildMap.EnvironmentRevision)
+	if selected.Roads and selected.RoadDetails and selected.Vegetation then
+		map:SetAttribute("EnvironmentGeometryRevision", BuildMap.EnvironmentRevision)
+	end
 	map:SetAttribute("LastEnvironmentRefreshRebuiltTerrain", report.TerrainRebuilt)
 	map:SetAttribute("EnvironmentSkippedLighting", table.concat(skipped, ", "))
 	log(
@@ -276,12 +278,13 @@ function BuildMap.run(options: Options?)
 		Spawn.removeTemplateObjects(log)
 		local map = Util.container(workspace, "Map")
 		local removed = Util.clearGenerated(map)
+		local sampler = if opts.Terrain == false then savedGroundSampler() else nil
 		if removed > 0 then
 			log(`Removed {removed} generated folders from the last run.`)
 		end
 		local counts: { [string]: number } = {
 			Roads = Roads.build(hf, MapLayout, map),
-			Bridges = Bridges.build(hf, map),
+			Bridges = Bridges.build(hf, map, sampler),
 			Places = Places.build(hf, MapLayout, map),
 			Airport = Airport.build(hf, MapLayout, map),
 			Crossings = Crossings.build(hf, MapLayout, map),
@@ -297,7 +300,7 @@ function BuildMap.run(options: Options?)
 		log(`Parts built: {table.concat(summary, ", ")}. Spawn at the Gundiville bus terminal.`)
 
 		log("Placing markings, signs, rails, lights and power lines...")
-		local details = RoadDetails.new(MapLayout, hf)
+		local details = RoadDetails.new(MapLayout, hf, sampler)
 		local along = RoadDetailsBuilder.build(details, map)
 		local farm = Countryside.build(hf, map)
 		log(
@@ -308,10 +311,13 @@ function BuildMap.run(options: Options?)
 
 		if opts.Vegetation ~= false then
 			log("Placing trees, bushes and rocks...")
-			local sampler = if opts.Terrain == false then savedGroundSampler() else nil
 			local plants = Vegetation.new(MapLayout, hf, details, Util.yield, sampler)
 			local parts = VegetationBuilder.build(plants, map)
 			log(`Vegetation: {#plants.trees} trees, {#plants.bushes} bushes, {#plants.rocks} rocks ({parts} parts).`)
+			map:SetAttribute("EnvironmentGeometryRevision", BuildMap.EnvironmentRevision)
+		end
+		if opts.Terrain ~= false then
+			map:SetAttribute("EnvironmentTerrainRevision", BuildMap.EnvironmentRevision)
 		end
 	end
 
