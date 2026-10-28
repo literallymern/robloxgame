@@ -1,7 +1,7 @@
 # Kagundali R3/N5: first visual benchmark area
 
-> **Current state: junction-3.** Three new screenshots from Justin confirmed that junction-1
-> was applied, but showed a fault in the leaf geometry. Diagnosis, fixes and the update
+> **Current code: junction-4.** Justin's corrected `ok.zip` archive shows the previous
+> update and imported assets in Studio. Remaining issues, fixes and the update
 > command: [Studio screenshot fixes](08-kagundali-screenshot-fixes.md). The numbers and
 > implementation notes below document the first state.
 

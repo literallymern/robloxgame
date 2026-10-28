@@ -274,6 +274,21 @@ function Assets.place(
 	local library = Assets.get()
 	local folder = if library then library:FindFirstChild(kind) else nil
 	local choices: { Instance } = if folder then folder:GetChildren() else {}
+	if kind == "Lamp" then
+		-- The city pack also contains short decorative fixtures. Prefer its road light
+		-- over alphabetically earlier lamp posts when replacing a carriageway light.
+		local preferred: { Instance } = {}
+		for _, template in choices do
+			local source = template:GetAttribute("SourceName")
+			local name = string.lower(if type(source) == "string" then source else template.Name):gsub("[^%a]", "")
+			if name:find("streetlight") and not name:find("bollard") then
+				table.insert(preferred, template)
+			end
+		end
+		if #preferred > 0 then
+			choices = preferred
+		end
+	end
 	if #choices == 0 then
 		return nil
 	end

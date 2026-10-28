@@ -104,38 +104,37 @@ require(game.ServerStorage.StudioTools.BuildMap).run()
 
 Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke, den Spawn und die Landschaft (Bäume, Büsche, Felsen, Felder, Zäune, Markierungen, Schilder, Laternen, Strommasten) neu. Es ist der vollständige Neubau für einen neuen Place. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
 
-## Aktuelles Update: Kagundali-Kreuzung R3/N5
+## Current update: Kagundali junction R3/N5
 
-Neue Baumvorlagen, dichterer Unterwuchs, lokale Geländeformen, Kiesbankette,
-Entwässerung, überarbeitete Schildkonstruktionen und eine Transportwerkstatt bilden
-den ersten zusammenhängend überarbeiteten Bereich. Die Beleuchtung wird sowohl im
-gespeicherten Preset als auch im laufenden Wettersystem neutraler eingestellt.
+Current code: **`kagundali-junction-4`**. The corrected `ok.zip` screenshots show imported
+vegetation, an imported lamp, visible road markings and a continuous workshop driveway.
+This follow-up clears native grass along the concrete channels, probes their floors across
+the ground, prefers road-light templates and handles duplicate generated junction folders.
+The remaining spherical tree shapes still need a Studio inspection; the output now counts
+actual imported and native tree models.
 
-Den Hauptbranch **`claude/project-thread-5krwdh`** holen und über Rojo synchronisieren.
-Den Place sichern, Play stoppen, nach dem Sync speichern und Studio neu starten;
-anschließend Rojo wieder verbinden. In **View > Command Bar**:
+Pull the default branch **`claude/project-thread-5krwdh`**, back up the place and stop Play.
+Sync Rojo, save, restart Studio, then reconnect Rojo. In **View > Command Bar**:
+
+```lua
+require(game.ServerStorage.StudioTools.UpgradeKagundali)()
+```
+
+The command reuses the saved Creator Store library and focuses the camera on the junction.
+Save the place afterwards. Its terrain patch is restricted to Kagundali; the Gundiville
+government district is outside the patch and `BuildGundiville` is not invoked.
+
+For a place without the imported library, install Roblox's **Forest Pack** and
+**City Props Pack** and apply the regional update with:
 
 ```lua
 require(game.ServerStorage.StudioTools.UseCreatorStoreAssets)()
 ```
 
-Das lädt die offiziellen Roblox-Pakete **Forest Pack** und **City Props Pack**, übernimmt
-geeignete Mesh-Modelle ohne Demo-Skripte und aktualisiert den vorhandenen Bereich.
-Importierte Bäume, Unterwuchs und Felsen ersetzen dort die bisherigen Vorlagen;
-an vorhandenen Laternenstandorten werden passende importierte Modelle eingesetzt.
-Die Kamera richtet sich anschließend auf die Kreuzung.
-Anschließend speichern und in Play prüfen. Ein vollständiger Kartenneubau ist dafür
-nicht erforderlich. **Die visuelle Studio-Abnahme ist noch offen.** Anleitung,
-Ursachendiagnose, Testgrenzen und Quellgeometrievorschau:
-[`Kagundali R3/N5`](docs/game/07-kagundali-junction.md).
-
-**Aktueller Stand: `kagundali-junction-3`.** Gültige Markierungsabschnitte werden auch bei
-einzelnen fehlgeschlagenen Bodenproben gesetzt. Die Kieszufahrt folgt dem Boden in kürzeren
-Abschnitten, und die gelben Richtungstafeln werden größer, wobei ihre Texte erhalten bleiben.
-Nach einem erfolgreichen Import verwendet auch `UpgradeKagundali()` die gespeicherte
-Assetbibliothek ohne erneuten Download. Ohne diese Bibliothek bleiben die eigenen
-Baumvorlagen der Ersatz. Details: [Screenshot-Korrekturen](docs/game/08-kagundali-screenshot-fixes.md)
-und [Creator-Store-Import mit Quellen und Prüfgrenzen](docs/game/09-creator-store-assets.md).
+Demo scripts are removed; suitable mesh templates supply trees, undergrowth, rocks and
+lamps. Missing optional categories use the existing original templates. The latest fixes
+still need visual verification in Studio. Details: [screenshot fixes](docs/game/08-kagundali-screenshot-fixes.md)
+and [Creator Store integration](docs/game/09-creator-store-assets.md).
 
 ## Globale Grundlage highland-4
 

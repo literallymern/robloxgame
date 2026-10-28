@@ -115,4 +115,11 @@ exercise(
 	3,
 	20
 )
+exercise(
+	load("StudioTools/Map/JunctionLandscape").decorateV2(hf, Layout),
+	{ MinX = 320, MaxX = 384, MinZ = 3264, MaxZ = 3328 },
+	6,
+	15,
+	10
+)
 print(`ALL CHECKS PASSED ({passed} Kagundali terrain checks)`)

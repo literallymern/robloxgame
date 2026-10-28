@@ -46,6 +46,7 @@ local function city()
 	mesh(lamp, "Pole", Vector3.new(50, 10, 80), Vector3.new(0.7, 20, 0.7))
 	mesh(lamp, "Head", Vector3.new(55, 19, 80), Vector3.new(2, 1, 1))
 	Instance.new("Script").Parent = lamp
+	mesh(model(root, "DecorativeLamp"), "Body", Vector3.new(0, 3, 0), Vector3.new(2, 6, 2))
 	return root
 end
 local requests = {}
@@ -62,7 +63,7 @@ check(
 	"only the two configured official model packs are requested"
 )
 check(
-	#library.Tree:GetChildren() == 2 and #library.Lamp:GetChildren() == 1,
+	#library.Tree:GetChildren() == 2 and #library.Lamp:GetChildren() == 2,
 	"collection wrappers and nested components do not duplicate complete models"
 )
 check(
@@ -84,7 +85,7 @@ for _, node in library:GetDescendants() do
 	end
 end
 check(
-	clean and pbr == 2 and sided == 9,
+	clean and pbr == 2 and sided == 10,
 	"script-free library preserves mesh IDs, PBR textures and double-sided foliage"
 )
 local before = MockStats.unionCalls or 0
@@ -106,6 +107,11 @@ check(
 )
 local lamp = Assets.place("Lamp", 1, parent, Vector3.new(10, 20, 30), 17, math.pi / 2)
 local light = lamp.LightEmitter:FindFirstChildOfClass("SpotLight")
+check(
+	lamp:GetAttribute("SourceName") == "StreetLight"
+		and Assets.place("Lamp", 2, parent, Vector3.new(), 17, 0):GetAttribute("SourceName") == "StreetLight",
+	"road lights take priority over alphabetically earlier decorative lamp posts"
+)
 check(
 	light
 		and light:GetAttribute("RoNationStreetLight")
@@ -150,7 +156,15 @@ for _, source in details.lights do
 end
 local custom = U.part(lamps, "CustomFixture", CFrame.new(400, 50, 3300), Vector3.new(1, 10, 1))
 local Update = load("StudioTools/Map/KagundaliUpdate")
+local oldArea = U.folder(map, "KagundaliJunction")
+local duplicate = U.folder(map, "KagundaliJunction")
+local legacyTree = model(duplicate, "LegacyTree")
+U.part(legacyTree, "TrunkCollision", CFrame.new(200, 50, 3200), Vector3.new(1, 20, 1))
 local report = Update.apply(hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
+check(
+	oldArea.Parent == nil and duplicate.Parent == nil and report.ReplacedRegions == 2,
+	"all duplicate generated regional folders are replaced together"
+)
 local importedTrees, importedLamps = 0, 0
 for _, child in map.KagundaliJunction:GetDescendants() do
 	if child:IsA("Model") and child:GetAttribute("AssetVersion") == Assets.Version then
@@ -169,6 +183,10 @@ check(
 		and importedLamps == report.ImportedLamps
 		and report.Parts <= Junction.MaxParts,
 	"real regional updater places imported trees and lamps within the part budget"
+)
+check(
+	report.ImportedTrees == 64 and report.NativeTrees == 0,
+	"update report counts actual imported and native tree models"
 )
 local replaced, kept = 0, 0
 for _, p in poles do
@@ -193,6 +211,14 @@ check(
 	second.Parts == report.Parts and second.ImportedLamps == report.ImportedLamps,
 	"repeat update reuses imports without stacking models"
 )
+local customRegion = Instance.new("Folder")
+customRegion.Name, customRegion.Parent = "KagundaliJunction", map
+ok = pcall(Update.apply, hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
+check(
+	not ok and customRegion.Parent == map and map.KagundaliJunction ~= customRegion,
+	"a custom duplicate blocks replacement even if a generated folder comes first"
+)
+customRegion:Destroy()
 local refreshed = Assets.install(loader, metadata)
 check(library.Parent == nil and Assets.get() == refreshed, "successful reinstall replaces only the managed library")
 refreshed:Destroy()

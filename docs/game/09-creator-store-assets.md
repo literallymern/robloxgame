@@ -14,8 +14,7 @@ The source and asset ID are stored as attributes on imported templates and place
 The repository contains the import code and the IDs; the imported models are saved in the
 place.
 
-The asset IDs could not be checked from the cloud sessions (Roblox websites are blocked
-there). The import checks them itself in Studio before loading anything: if the creator is
+The import checks the listed IDs in Studio before loading anything: if the creator is
 not Roblox (ID 1) or the asset is not a model, it stops without changing the place.
 
 ## One command for import and update
@@ -34,8 +33,9 @@ The camera moves to the R3/N5 area. Save the place afterwards.
 
 [InsertService](https://create.roblox.com/docs/reference/engine/classes/InsertService)
 supports Roblox's own assets, so the import does not need a general permission for any
-third-party asset. Whether the packs actually load for this place has to be confirmed at
-the first load in Studio.
+third-party asset. Justin's corrected `ok.zip` images now show imported trees and a lamp
+alongside the updated markings and driveway. These images do not expose the pack hierarchy
+or establish that every selected template is suitable.
 
 For later geometry updates `UpgradeKagundali()` is enough; it uses the saved library
 without downloading again. The existing BuildMap paths use it for the junction area too.
@@ -58,6 +58,9 @@ keep their project-specific text and are improved by the sign builder.
   distance cut-off. Original textures are kept. Old generated lamps disappear only at
   positions that were replaced successfully; your own differently named objects and
   removed lamps stay.
+- Since junction-4, `StreetLight` templates take priority over decorative lamp posts when
+  both are present in the saved library. Existing imports can be reused with
+  `UpgradeKagundali()`; another download is unnecessary.
 
 The import needs at least one complete tree and one lamp template. Missing optional bush,
 fern or rock categories use the existing original templates. Output names the templates
@@ -74,8 +77,10 @@ import that succeeded before stays saved. The terrain updater can already have w
 terrain columns before a later geometry error. A place backup is therefore still sensible.
 
 The direct asset download was blocked in the cloud by the network connection (proxy tunnel
-HTTP 403). No Roblox Studio is available there. **The real pack hierarchies and their
-visible result could therefore not be run or accepted yet.** The 16 import regressions use
+HTTP 403). No Roblox Studio is available there. **The real pack hierarchies could not be
+inspected locally.** The corrected user images provide visual evidence of imported models,
+but the latest lamp-selection and duplicate-folder corrections still await a Studio view.
+The 20 import regressions use
 artificial models and check selection, script removal, texture retention, failure cases,
 ground placement, night-light attributes and the connection to the real map updater. They
 are not proof of a successful live download or of how the original packs look.
@@ -85,6 +90,6 @@ shape and textures, a continuous driveway, visible lines, readable direction sig
 lamps by day and night. The 1,600-part limit is not a triangle or frame-rate measurement;
 both still have to be checked with the real models.
 
-Local checks completed (by Codex): full map suite including the map build, 16 import
-regressions, 12 marking regressions and 86 environment checks. All 70 Luau source files
-compile; StyLua, the Git whitespace check and the Rojo build pass.
+The latest checks include 20 import regressions and 86 environment checks. All 82 Luau
+source files compile; strict luau-lsp analysis, StyLua and the Rojo build pass. The map
+suite excludes the government-district test so `BuildGundiville` is never executed.

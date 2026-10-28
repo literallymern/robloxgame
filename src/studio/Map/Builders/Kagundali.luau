@@ -158,7 +158,7 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 	local label = Instance.new("TextLabel")
 	label.Size, label.BackgroundTransparency, label.TextScaled = UDim2.fromScale(1, 1), 1, true
 	label.Font, label.TextColor3, label.Text =
-		Enum.Font.GothamBold, rgb(226, 220, 198), "KAGUNDALI · WERKSTATT / TRANSPORT"
+		Enum.Font.GothamBold, rgb(226, 220, 198), "KAGUNDALI · WORKSHOP / TRANSPORT"
 	label.Parent = gui
 	local lamp = part(
 		"WorkshopLamp",
@@ -334,32 +334,48 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 					math.max(0.45, pa.Y - ga + 0.2, pb.Y - gb + 0.2),
 					{ Material = Enum.Material.Pebble, Color = rgb(125, 115, 95), Decoration = true }
 				)
-				local da, db = a + across * (road.Width / 2 + 12) * side, b + across * (road.Width / 2 + 12) * side
-				local ya, yb = sample(da.X, da.Z), sample(db.X, db.Z)
-				if
-					ya
-					and yb
-					and math.abs(ya - yb) < 5
-					and hf.roads.otherDistance(da.X, da.Z, roadIndex) > 10
-					and hf.roads.otherDistance(db.X, db.Z, roadIndex) > 10
-				then
-					da, db = Vector3.new(da.X, ya + 0.08, da.Z), Vector3.new(db.X, yb + 0.08, db.Z)
-					local concrete =
-						{ Material = Enum.Material.Concrete, Color = rgb(124, 121, 108), Decoration = true }
-					Util.strip(infrastructure, "DrainInvert", da, db, 2.4, 0.2, concrete)
-					for _, bank in { -1, 1 } do
-						Util.strip(
-							infrastructure,
-							"DrainWall",
-							da + across * bank * 1.3 + UP * 0.5,
-							db + across * bank * 1.3 + UP * 0.5,
-							0.22,
-							0.7,
-							concrete
-						)
-					end
-				end
 			end
+		end
+	end
+	for _, path in Junction.drains(hf) do
+		local a, b, across = path.A, path.B, path.Across
+		local ya, yb = sample(a.X, a.Z), sample(b.X, b.Z)
+		if not ya or not yb or math.abs(ya - yb) >= 5 then
+			continue
+		end
+		local clear, lift = true, 0.12
+		local probes = math.max(1, math.ceil((b - a).Magnitude / 4))
+		for i = 0, probes do
+			local t = i / probes
+			local p = a:Lerp(b, t)
+			for _, side in { -1, 0, 1 } do
+				local ground = sample(p.X + across.X * side * 1.4, p.Z + across.Z * side * 1.4)
+				if not ground then
+					clear = false
+					break
+				end
+				lift = math.max(lift, ground + 0.12 - (ya + (yb - ya) * t))
+			end
+			if not clear then
+				break
+			end
+		end
+		if not clear or lift > 1.2 then
+			continue -- Preserve protected footprints and avoid suspended channels over sharp dips.
+		end
+		local da, db = Vector3.new(a.X, ya + lift, a.Z), Vector3.new(b.X, yb + lift, b.Z)
+		local concrete = { Material = Enum.Material.Concrete, Color = rgb(124, 121, 108), Decoration = true }
+		Util.strip(infrastructure, "DrainInvert", da, db, 2.4, math.max(0.2, lift + 0.1), concrete)
+		for _, bank in { -1, 1 } do
+			Util.strip(
+				infrastructure,
+				"DrainWall",
+				da + across * bank * 1.3 + UP * 0.5,
+				db + across * bank * 1.3 + UP * 0.5,
+				0.22,
+				0.7,
+				concrete
+			)
 		end
 	end
 	for i = 1, 28 do

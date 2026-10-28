@@ -65,6 +65,46 @@ for i = 1, 10 do
 	end
 end
 check(cleared >= 5, "v2 driveway replaces the former grass material under its gravel surface")
+local previousGround = Junction.decorateV2(hf, Layout)
+local clearedDrains = 0
+-- Native grass is rooted at voxel centres, including cells beside the channel axis.
+for z = Junction.Bounds.MinZ + 2, Junction.Bounds.MaxZ - 2, 4 do
+	for x = Junction.Bounds.MinX + 2, Junction.Bounds.MaxX - 2, 4 do
+		local y, code, water = feature.surface(x, z)
+		local dx = (feature.surface(x + 4, z) - feature.surface(x - 4, z)) / 8
+		local dz = (feature.surface(x, z + 4) - feature.surface(x, z - 4)) / 8
+		local slope = math.sqrt(dx * dx + dz * dz)
+		local before, after =
+			previousGround.naturalMaterial(y, slope, x, z, code), feature.naturalMaterial(y, slope, x, z, code)
+		if before ~= after then
+			assert(before == 1 and after == 4 and code <= 0)
+			clearedDrains += 1
+		end
+		local oldY, _, oldWater = previousGround.surface(x, z)
+		assert(oldY == y and oldWater == water)
+	end
+end
+check(clearedDrains > 100, "channel beds clear native grass at voxel centres without changing ground or water heights")
+for _, block in Layout.GundivillePlaceholders do
+	if table.find({ "Congress", "Hausali", "CentralBank", "Residence" }, block.Id) then
+		local r = block.Rect
+		assert(
+			Junction.Bounds.MinZ > r.MaxZ
+				or Junction.Bounds.MaxZ < r.MinZ
+				or Junction.Bounds.MinX > r.MaxX
+				or Junction.Bounds.MaxX < r.MinX
+		)
+		for _, x in { r.MinX, (r.MinX + r.MaxX) / 2, r.MaxX } do
+			for _, z in { r.MinZ, (r.MinZ + r.MaxZ) / 2, r.MaxZ } do
+				local y, code, water = hf.surface(x, z)
+				local fy, fc, fw = feature.surface(x, z)
+				assert(y == fy and code == fc and water == fw)
+				assert(hf.naturalMaterial(y, 0.1, x, z, code) == feature.naturalMaterial(y, 0.1, x, z, code))
+			end
+		end
+	end
+end
+check(true, "bounded patch excludes all four government buildings and preserves their terrain")
 local smallLeaves, branchCount, shapes = true, 0, 0
 for _, kind in Trees.Kinds do
 	for variant = 1, Trees.Variants do
@@ -193,6 +233,20 @@ check(
 	"three distinct trees use streamed CSG with separate narrow trunk collisions"
 )
 check(driveConnected, "workshop apron has a gravel connection to the existing R3")
+local drainCount = 0
+for _, part in area.Roadside:GetChildren() do
+	if part:IsA("BasePart") and part.Name == "DrainInvert" then
+		drainCount += 1
+		for i = 0, 12 do
+			for _, side in { -1, 0, 1 } do
+				local p = part.CFrame
+					* Vector3.new(side * part.Size.X / 2, part.Size.Y / 2, part.Size.Z * (i / 12 - 0.5))
+				assert(p.Y >= feature.surface(p.X, p.Z) + 0.06, "channel floor is buried between sampled endpoints")
+			end
+		end
+	end
+end
+check(drainCount > 0, "channel floors clear the ground across their full width and length")
 local arrowCount, safeMarking = 0, true
 for _, part in area.Roadside:GetChildren() do
 	if part.Name == "ApproachTurnArrow" then

@@ -3,6 +3,7 @@
 -- or rebuild cities to apply the first visual benchmark. A revision is not visual acceptance.
 local Junction = require(script.Parent.JunctionLandscape)
 local Trees = require(script.Parent.Builders.JunctionTrees)
+local CreatorAssets = require(script.Parent.CreatorAssets)
 local Builder = require(script.Parent.Builders.Kagundali)
 local Markings = require(script.Parent.Builders.JunctionMarkings)
 local Upgrade = require(script.Parent.Builders.TerrainUpgrade)
@@ -20,8 +21,13 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 		"A cached lighting module is still loaded. Save, restart Studio and reconnect Rojo before applying Kagundali."
 	)
 	local opts = options or {}
-	local old = map:FindFirstChild("KagundaliJunction")
-	assert(not old or Util.isGenerated(old), "KagundaliJunction contains custom content; update stopped")
+	local previous: { Instance } = {}
+	for _, child in map:GetChildren() do
+		if child.Name == "KagundaliJunction" then
+			assert(Util.isGenerated(child), "KagundaliJunction contains custom content; update stopped")
+			table.insert(previous, child)
+		end
+	end
 	local protected = Existing.protection()
 	local feature = Junction.decorate(hf, layout)
 	local log = function(message: string)
@@ -73,11 +79,25 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 				return if protected(p.X, p.Z) then nil else paintSample(p)
 			end
 		)
-		built.RetainedMarkings = Markings.retainPrevious(
-			if old then old:FindFirstChild("Markings") else nil,
-			junction:FindFirstChild("Markings") :: Folder,
-			built.PaintCoverage
-		)
+		built.RetainedMarkings = 0
+		for _, old in previous do
+			built.RetainedMarkings += Markings.retainPrevious(
+				old:FindFirstChild("Markings"),
+				junction:FindFirstChild("Markings") :: Folder,
+				built.PaintCoverage
+			)
+		end
+		built.ImportedTrees, built.NativeTrees = 0, 0
+		local planting = junction:FindFirstChild("Planting") :: Folder
+		for _, plant in planting:GetChildren() do
+			if plant:IsA("Model") and plant:FindFirstChild("TrunkCollision") then
+				if plant:GetAttribute("SourceAssetId") == CreatorAssets.Packs[1].Id then
+					built.ImportedTrees += 1
+				else
+					built.NativeTrees += 1
+				end
+			end
+		end
 		built.Markings = built.RestoredMarkings + built.RetainedMarkings
 		built.Parts += built.Markings
 		assert(built.Parts <= Junction.MaxParts, "Junction markings exceeded the regional part budget")
@@ -102,9 +122,10 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	if report.ImportedLamps > 0 then
 		Builder.removeOldLamps(map, report.ReplacedLampPositions)
 	end
-	if old then
+	for _, old in previous do
 		old:Destroy()
 	end
+	report.ReplacedRegions = #previous
 	replacement.Parent = map
 	staging:Destroy()
 	report.RefinedSigns = Builder.refineSigns(map)
@@ -138,6 +159,9 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	)
 	log(
 		`Removed {report.RemovedOldPlants} old plants; refined {report.RefinedSigns} signs; restored {report.RestoredMarkings} marking parts, retained {report.RetainedMarkings}, skipped {report.SkippedMarkings}. Save the place. Visual acceptance remains a Studio comparison at R3/N5.`
+	)
+	log(
+		`Actual tree models: {report.ImportedTrees} from Creator Store, {report.NativeTrees} native; replaced {report.ReplacedRegions} generated region folder(s).`
 	)
 	return report
 end
