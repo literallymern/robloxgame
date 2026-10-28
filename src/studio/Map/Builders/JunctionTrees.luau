@@ -164,9 +164,9 @@ function Trees.prepare(): Folder
 	local imported = CreatorAssets.get()
 	if
 		imported
-		and #imported.Tree:GetChildren() > 0
-		and #imported.Shrub:GetChildren() > 0
-		and #imported.Fern:GetChildren() > 0
+		and CreatorAssets.count(imported, "Tree") > 0
+		and CreatorAssets.count(imported, "Shrub") > 0
+		and CreatorAssets.count(imported, "Fern") > 0
 	then
 		return imported
 	end

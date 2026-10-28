@@ -2,18 +2,21 @@
 
 Every file and folder of the project, what it is for and which milestone owns it. Updated at the end of every milestone.
 
-Last update: 2026-10-26 (Milestone 2).
+Last update: 2026-10-28 (Milestone 2, revisions 3 and 4 by Codex, clean-up).
 
 ## Repository root
 
 | Path | Purpose | Owner milestone | Status |
 |---|---|---|---|
 | `README.md` | German guide for Justin: Rojo, GitHub Desktop, daily workflow | Setup | Keep; links to `docs/game/` |
-| `default.project.json` | Rojo tree (files → Studio): project name *Ro-Nation*, `src/studio` → `ServerStorage.StudioTools`, streaming (on, target radius 1,024, minimum 256, pause outside loaded area), `Lighting` (afternoon sun, atmosphere, bloom, sun rays, colour correction) | 1, 2 | Updated in Milestone 2 (rev. 2: lighting) |
+| `default.project.json` | Rojo tree (files → Studio): project name *Ro-Nation*, `src/studio` → `ServerStorage.StudioTools`, streaming (on, target radius 1,024, minimum 256, pause outside loaded area), `Lighting` (neutral highland preset; effects `RoNationAtmosphere`, `RoNationBloom`, `RoNationSunRays`, `RoNationColorCorrection`) | 1, 2 | Updated in Milestone 2 (rev. 2 lighting; rev. 3/4 renamed effects and the neutral preset shared with the weather model) |
 | `rokit.toml` | Pinned tools: Rojo 7.7.1, selene 0.28.0, StyLua 2.6.0 | 1 | Updated in Milestone 1 |
 | `selene.toml` | selene settings (`std = "roblox"`) | 1 | New in Milestone 1 |
 | `stylua.toml` | StyLua settings (Luau, tabs, 120 columns) | 1 | New in Milestone 1 |
 | `.gitignore` | Ignores place files and system files | — | Keep |
+| `assets/audio/` | Original rain loop and thunder WAVs (CC0) with an upload guide; not synced by Rojo | 2 (rev. 3) | New; silent in game until uploaded (B7) |
+| `tools/generate-weather-audio.py` | Generates the weather WAVs (needs numpy) | 2 (rev. 3) | New |
+| `tools/preview-canopies.py`, `tools/preview-junction-trees.py` | Software previews of the tree source geometry (not Roblox renders) | 2 (rev. 3/4) | New |
 
 ## Game code (`src/`, synced by Rojo)
 
@@ -29,18 +32,25 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/shared/Util/Log.luau` | `…Shared.Util.Log` | Tagged logger `[Ro-Nation:Tag]` | 1 |
 | `src/shared/Util/Signal.luau` | `…Shared.Util.Signal` | Small event helper | 1 |
 | `src/shared/Util/Format.luau` | `…Shared.Util.Format` | KGD amounts and local times for display | 1 |
-| `src/server/Main.server.luau` | `ServerScriptService.Server.Main` | Server entry point; loads services in a fixed order | 1 |
+| `src/server/Main.server.luau` | `ServerScriptService.Server.Main` | Server entry point; loads services in a fixed order (5 since rev. 3) | 1 |
 | `src/server/Config/BridgeConfig.luau` | `…Server.Config.BridgeConfig` | Bridge address, secret name, timeouts, retries (server only, no secret values) | 1 |
 | `src/server/Services/PermissionService.luau` | `…Server.Services.PermissionService` | Owner and staff from the group rank | 1 |
 | `src/server/Services/RemoteService.luau` | `…Server.Services.RemoteService` | Creates remotes, rate limits, safe replies, notifications | 1 |
 | `src/server/Services/EconomyGateway.luau` | `…Server.Services.EconomyGateway` | Only connection to the economy bridge: secret header, retries, operation IDs, pending store, health | 1 |
 | `src/server/Services/AccountLinkService.luau` | `…Server.Services.AccountLinkService` | Account view, link code, transactions, staff test transfer | 1 |
-| `src/client/Main.client.luau` | `StarterPlayer.StarterPlayerScripts.Client.Main` | Client entry point; loads controllers | 1 |
+| `src/client/Main.client.luau` | `StarterPlayer.StarterPlayerScripts.Client.Main` | Client entry point; loads controllers (5 since rev. 3) | 1 |
 | `src/client/Util/Ui.luau` | `…Client.Util.Ui` | UI building helpers and colours | 1 |
 | `src/client/Controllers/NotificationController.luau` | `…Client.Controllers.NotificationController` | Toast notifications | 1 |
 | `src/client/Controllers/UIController.luau` | `…Client.Controllers.UIController` | Screen GUI and menu | 1 |
 | `src/client/Controllers/AccountController.luau` | `…Client.Controllers.AccountController` | "Kagundi Bank Account" window | 1 |
 | `src/studio/CheckSetup.luau` | `ServerStorage.StudioTools.CheckSetup` | Read-only setup report for the Studio command bar | 1 |
+| `src/shared/Config/Environment.luau` | `…Shared.Config.Environment` | Weather and day/night settings: 60-minute day, five weather profiles, transitions, quality, optional audio IDs | 2 (rev. 3) |
+| `src/shared/Environment/Model.luau` | `…Shared.Environment.Model` | Deterministic lighting and weather maths shared by server and client | 2 (rev. 3) |
+| `src/shared/Environment/Presentation.luau` | `…Shared.Environment.Presentation` | Owned Lighting effects, legacy migration, respects custom effects | 2 (rev. 3) |
+| `src/server/Services/EnvironmentService.luau` | `…Server.Services.EnvironmentService` | One weather schedule per server; replicates small state attributes (no remotes) | 2 (rev. 3) |
+| `src/client/Controllers/EnvironmentController.luau` | `…Client.Controllers.EnvironmentController` | Smooth sky and clock, street lights near the camera | 2 (rev. 3) |
+| `src/client/Controllers/WeatherEffects.luau` | `…Client.Controllers.WeatherEffects` | Camera-local rain, lightning and optional sounds | 2 (rev. 3) |
+| `src/client/Controllers/EnvironmentQualityController.luau` | `…Client.Controllers.EnvironmentQualityController` | Weather menu: effect quality for the session | 2 (rev. 3) |
 | `src/shared/Config/MapLayout.luau` | `ReplicatedStorage.Shared.Config.MapLayout` | Every map coordinate: bounds, height anchors, hills, mountains and passes, places, zones, farming, road classes and roads, river, lakes, vegetation regions, road furniture, airport, crossings, property plots, Gundiville placeholders, spawn (single source) | 2 |
 | `src/studio/BuildMap.luau` | `ServerStorage.StudioTools.BuildMap` | Entry point: `require(…BuildMap).run()` in the command bar (edit mode) builds terrain and parts | 2 |
 | `src/studio/Map/Geometry.luau` | `…StudioTools.Map.Geometry` | 2D helpers: rectangle and segment distances, intersections, rounded corners, resampling (pure) | 2 |
@@ -70,6 +80,20 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/Map/Builders/Signs.luau` | `…Map.Builders.Signs` | Sign models: town, facility, speed, stop, direction, chevron, welcome | 2 (rev. 2) |
 | `src/studio/Map/Builders/Countryside.luau` | `…Map.Builders.Countryside` | Pasture fences and tobacco barns | 2 (rev. 2) |
 | `src/studio/Map/Builders/Vegetation.luau` | `…Map.Builders.Vegetation` | Tree, bush and rock parts in 1,024-stud area folders | 2 (rev. 2) |
+| `src/studio/CheckEnvironment.luau` | `ServerStorage.StudioTools.CheckEnvironment` | Read-only report of the saved environment, junction and lighting revisions | 2 (rev. 3) |
+| `src/studio/Map/LandscapeConfig.luau` | `…StudioTools.Map.LandscapeConfig` | Artist controls for the highland relief and soil detail | 2 (rev. 3) |
+| `src/studio/Map/OriginalSurface.luau` | `…StudioTools.Map.OriginalSurface` | Frozen copy of the earlier terrain formulas, so saved columns can be recognised | 2 (rev. 3) |
+| `src/studio/Map/ExistingTerrain.luau` | `…StudioTools.Map.ExistingTerrain` | Protects hand-built parts and places plants on the saved terrain | 2 (rev. 3) |
+| `src/studio/Map/Builders/TerrainUpgrade.luau` | `…Map.Builders.TerrainUpgrade` | Patches only saved terrain columns that match the earlier generator | 2 (rev. 3) |
+| `src/studio/Map/Builders/CanopyLibrary.luau` | `…Map.Builders.CanopyLibrary` | Native CSG tree crowns, compiled once and kept in ServerStorage | 2 (rev. 3) |
+| `src/studio/UpgradeKagundali.luau` | `ServerStorage.StudioTools.UpgradeKagundali` | Command: apply the R3/N5 junction benchmark to a saved place | 2 (rev. 4) |
+| `src/studio/UseCreatorStoreAssets.luau` | `ServerStorage.StudioTools.UseCreatorStoreAssets` | Command: import the Roblox packs, then run `UpgradeKagundali` | 2 (rev. 4) |
+| `src/studio/Map/JunctionLandscape.luau` | `…StudioTools.Map.JunctionLandscape` | Bounds, ground shapes and revisions of the junction area | 2 (rev. 4) |
+| `src/studio/Map/KagundaliUpdate.luau` | `…StudioTools.Map.KagundaliUpdate` | Staged, repeatable junction update shared by the commands and `BuildMap` | 2 (rev. 4) |
+| `src/studio/Map/CreatorAssets.luau` | `…StudioTools.Map.CreatorAssets` | Imports Forest Pack and City Props Pack (creator check, visual parts only, no scripts) | 2 (rev. 4) |
+| `src/studio/Map/Builders/Kagundali.luau` | `…Map.Builders.Kagundali` | Junction plants, shoulders, drainage, sign construction, workshop | 2 (rev. 4) |
+| `src/studio/Map/Builders/JunctionTrees.luau` | `…Map.Builders.JunctionTrees` | Original tree, bush and fern templates for the junction (fallback without the packs) | 2 (rev. 4) |
+| `src/studio/Map/Builders/JunctionMarkings.luau` | `…Map.Builders.JunctionMarkings` | Restores road markings on the saved road surface at the junction | 2 (rev. 4) |
 
 Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src/client/UI` (Milestone 4/8). See [01-architecture.md](01-architecture.md), section 3.
 
@@ -84,6 +108,9 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `tests/map/builders.spec.luau` | Runs the real `BuildMap` against the Roblox stand-in and checks the result | 2 |
 | `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use | 2 |
 | `tests/map/preview.luau`, `tests/map/preview.py` | Renders the map preview image (needs Pillow and numpy) | 2 |
+| `tests/map/*.spec.luau` (17 more: river detail, roads realism, vegetation builders, canopy, highland relief, soil, original parity, terrain upgrade, infrastructure, bridge and road ground, Kagundali, Kagundali terrain, junction markings, creator assets, upgrade entry, environment inspection) | Checks of the environment overhaul and the junction benchmark; all run by `test_all.py` | 2 (rev. 3/4) |
+| `tests/map/preview-canopies.luau`, `tests/map/preview-junction.luau` | Geometry data for the tree previews in `tools/` | 2 (rev. 3/4) |
+| `tests/environment/run.py` and `*.spec.luau` | Weather model, service, effects, quality menu and lighting presentation checks | 2 (rev. 3) |
 
 ## Game documentation (`docs/game/`)
 
@@ -94,6 +121,11 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `testing/m1-staging-checklist.md` | Milestone 1 Studio test against the staging bridge |
 | `testing/m2-map-checklist.md` | Milestone 2 Studio map build and walk-through |
 | `map-blockout-preview.png` | Preview of the generated map (from `tests/map/preview.py`) |
+| `06-environment-overhaul.md` | Weather, day/night, lighting and the `highland-4` saved-terrain upgrade |
+| `07-kagundali-junction.md` | R3/N5 junction benchmark: what it builds and how to apply it |
+| `08-kagundali-screenshot-fixes.md` | Fixes after Justin's Studio screenshots of 28 October |
+| `09-creator-store-assets.md` | Import of Roblox's Forest Pack and City Props Pack |
+| `canopy-geometry-preview.png`, `kagundali-tree-sources.png` | Software previews of the tree geometry (not Roblox renders) |
 | `01-architecture.md` | Architecture, hierarchy, services, security, sources of truth, persistence, streaming, testing |
 | `02-map-plan.md` | Map size, coordinates, footprints, roads, Gundiville district |
 | `03-dependencies-and-setup.md` | Manual steps for Justin, tools, engine features, third-party code, external systems |
@@ -122,12 +154,12 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 
 The Milestone 1 bot pull request (branch `claude/project-thread-55jwuj-bridge`, decision D4) adds, once merged: `discord/bot/src/bridge/server.js` and `operations.js` (Roblox bridge, off by default), `src/economy/links.js` (account links), `src/discord/commands/link.js` (`/link`), `scripts/bridge-staging.js` (staging bridge), and the tests `limits.test.js`, `links.test.js`, `bridge.test.js`; it changes `src/db/database.js` (migration 2), `src/config.js`, `src/index.js`, `src/economy/payments.js`, `src/discord/commands/admin.js` and `index.js`, `.env.example`, `package.json`, and the docs `05-bots-and-integrations.md`, `10-summary.md` and the command reference. Details: [05-economy-integration.md](05-economy-integration.md), section 8.
 
-## Not on the default branch yet
+## Lore (`lore/`, from PR #1, merged 2026-10-26)
 
-| Path | Where | Purpose |
-|---|---|---|
-| `lore/Kagundi-Lore-Bible.md` | PR #1 | Lore Bible (Revision 2) |
-| `lore/images/kagundi-flag.png`, `lore/images/kagundi-emblem.png` | PR #1 | Flag and emblem |
+| Path | Purpose |
+|---|---|
+| `lore/Kagundi-Lore-Bible.md` | Lore Bible (Revision 2) |
+| `lore/images/kagundi-flag.png`, `lore/images/kagundi-emblem.png` | Flag and emblem |
 
 ## Shared project files (outside Git)
 
@@ -147,7 +179,7 @@ The Milestone 1 bot pull request (branch `claude/project-thread-55jwuj-bridge`, 
 
 | Item | Where | Status |
 |---|---|---|
-| Place file (terrain, buildings, statue) | Roblox, edited in Studio | Fresh Baseplate (confirmed) |
+| Place file (terrain, buildings, statue) | Roblox, edited in Studio | Map built with `BuildMap.run()` (2026-10-26); junction benchmark applied (junction-2, 2026-10-28) |
 | Experience | Universe ID 10773079581, group 60169080 | Published 2026-10-26 (D2) |
 | Local Secret `RoNationBridgeKey` | Studio, Experience Settings → Security → Local Secrets | Set by Justin during the Milestone 1 Studio test (staging key only) |
 | Flag and emblem images | Roblox asset library (group) | Image IDs: flag `74627674981379`, emblem `124794973631384` (decals `88703156887446` and `104179974183727`) |

@@ -178,13 +178,13 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 	return true
 end
 
-function Builder.build(hf: any, layout: any, parent: Instance, sample: any, library: Folder, details: any): any
+function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, library: Folder, details: any): any
 	local root = Util.folder(parent, "KagundaliJunction")
 	root:SetAttribute("Revision", Junction.Revision)
 	local plants = Util.folder(root, "Planting")
 	local infrastructure = Util.folder(root, "Roadside")
 	local report = { Trees = 0, Shrubs = 0, Ferns = 0, Rocks = 0, Parts = 0, Workshop = false }
-	local centres =
+	local centres: { { any } } =
 		{ { 220, 3090, "Broadleaf" }, { 670, 3100, "Eucalyptus" }, { 710, 3480, "Broadleaf" }, { 190, 3570, "Acacia" } }
 	local occupied: { Vector3 } = {}
 	local function suitable(x: number, z: number, tree: boolean): (number?, number)
@@ -419,7 +419,8 @@ function Builder.refineSigns(map: Instance): number
 	local details = map:FindFirstChild("RoadDetails")
 	local signs = if details then details:FindFirstChild("Signs") else nil
 	local count = 0
-	for _, model in if signs then signs:GetChildren() else {} do
+	local models: { Instance } = if signs then signs:GetChildren() else {}
+	for _, model in models do
 		local construction = model:GetAttribute("JunctionConstruction")
 		if not model:IsA("Model") or construction == "junction-signs-2" then
 			continue
@@ -523,7 +524,8 @@ end
 function Builder.removeOldLamps(map: Instance, replaced: { Vector3 })
 	local details = map:FindFirstChild("RoadDetails")
 	local lamps = if details and Util.isGenerated(details) then details:FindFirstChild("StreetLights") else nil
-	for _, part in if lamps then lamps:GetChildren() else {} do
+	local parts: { Instance } = if lamps then lamps:GetChildren() else {}
+	for _, part in parts do
 		if part:IsA("BasePart") and table.find({ "Pole", "Arm", "Lamp" }, part.Name) then
 			for _, position in replaced do
 				-- Original arms reach 5.5 studs from their pole. Leave unreplaced sites alone.

@@ -141,13 +141,13 @@ local choices = find(function(item)
 	return item.Name == "QualityChoices"
 end)
 local status = find(function(item)
-	return item.ClassName == "TextLabel" and string.find(item.Text, "Ausgewählt:", 1, true) ~= nil
+	return item.ClassName == "TextLabel" and string.find(item.Text, "Selected:", 1, true) ~= nil
 end)
 local menu = find(function(item)
-	return item.ClassName == "TextButton" and item.Text == "Wetter"
+	return item.ClassName == "TextButton" and item.Text == "Weather"
 end)
 local close = find(function(item)
-	return item.ClassName == "TextButton" and item.Text == "Schließen"
+	return item.ClassName == "TextButton" and item.Text == "Close"
 end)
 local buttons = {}
 for _, item in instances do
@@ -158,7 +158,7 @@ end
 table.sort(buttons, function(a, b)
 	return a.LayoutOrder < b.LayoutOrder
 end)
-check(#buttons == 5 and buttons[1].Text == "Automatisch", "five accessible weather choices include automatic mode")
+check(#buttons == 5 and buttons[1].Text == "Automatic", "five accessible weather choices include automatic mode")
 check(
 	window.Parent == UIController.getScreen() and not window.Visible and attributes[Config.QualityAttribute] == nil,
 	"quality window starts closed without overriding Roblox graphics preferences"
@@ -188,7 +188,7 @@ check(
 )
 player:SetAttribute(Config.QualityAttribute, 1)
 check(
-	buttons[3].BackgroundColor3 == Ui.Colors.Accent and string.find(status.Text, "Niedrig", 1, true) ~= nil,
+	buttons[3].BackgroundColor3 == Ui.Colors.Accent and string.find(status.Text, "Low", 1, true) ~= nil,
 	"external quality changes update the visible selection"
 )
 local bounds = find(function(item)

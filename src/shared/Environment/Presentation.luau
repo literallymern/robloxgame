@@ -14,7 +14,8 @@ end
 
 -- Exact pre-overhaul default.project.json values. Matching only a name is insufficient:
 -- edited user effects must never be mistaken for the old project baseline.
-local LEGACY = {
+type LegacyEffect = { Name: string, Class: string, Target: string, Properties: { [string]: any } }
+local LEGACY: { LegacyEffect } = {
 	{
 		Name = "Atmosphere",
 		Class = "Atmosphere",

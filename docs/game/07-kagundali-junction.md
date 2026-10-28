@@ -1,198 +1,192 @@
-# Kagundali R3/N5: erster visueller Referenzbereich
+# Kagundali R3/N5: first visual benchmark area
 
-> **Aktueller Stand: junction-2.** Drei neue Nutzerbilder bestätigen die Anwendung
-> von junction-1, zeigen aber einen Fehler in der Blattgeometrie. Diagnose, Korrekturen
-> und Update-Aufruf: [Studio-Screenshot-Korrekturen](08-kagundali-screenshot-fixes.md).
-> Die Zahlen und Umsetzungsbeschreibung unten dokumentieren den ersten Stand.
+> **Current state: junction-3.** Three new screenshots from Justin confirmed that junction-1
+> was applied, but showed a fault in the leaf geometry. Diagnosis, fixes and the update
+> command: [Studio screenshot fixes](08-kagundali-screenshot-fixes.md). The numbers and
+> implementation notes below document the first state.
 
-**Stand: `kagundali-junction-1`, Licht `neutral-highland-1`.** Der Code und der
-Offline-Testaufbau sind umgesetzt. Die visuelle Abnahme in Roblox Studio ist offen:
-in der Ausführungsumgebung stehen weder Studio noch ein Renderer für den Place zur
-Verfügung. Ein erfolgreiches Testergebnis bestätigt keinen sichtbaren Umbau in deinem
-gespeicherten Place. Die übrige Karte bleibt auf der Grundlage `highland-4`.
+**State: `kagundali-junction-1`, lighting `neutral-highland-1`.** The code and the offline
+test setup are in place. The visual acceptance in Roblox Studio is open: the build
+environment has neither Studio nor a renderer for the place. A passing test result does not
+confirm a visible rebuild in your saved place. The rest of the map stays on the
+`highland-4` baseline.
 
-## Warum die vorherigen Änderungen nicht ausreichten
+## Why the earlier changes were not enough
 
-- **Die bisherige Baumgeometrie war selbst das Problem.** Die fünf aktuellen Bilder
-  zeigen große, flache Blattplatten auf einfachen Stämmen. Die bisherige Bibliothek
-  erzeugt solche Platten tatsächlich; größere Kronen und mehr Exemplare ändern diese
-  Bauweise kaum. Der neue Bereich verwendet eine eigene Bibliothek mit verzweigtem Holz,
-  kleinen gewölbten Blättern und überlappenden, räumlichen Kronengruppen.
-- **Rojo überträgt Code, baut aber die gespeicherte Welt nicht um.**
-  `default.project.json` enthält kein erzeugtes `Workspace.Map` und führt keinen Builder
-  aus. Die Studio-Werkzeuge müssen im Bearbeitungsmodus ausgeführt und der Place danach
-  gespeichert werden. Ein separates Produktions-/Entwicklungskartensystem gibt es in
-  diesem Repository nicht. Welchen lokalen Checkout dein Studio geladen hatte, lässt
-  sich aus dieser Umgebung nicht feststellen; ein Synchronisationsfehler ist deshalb
-  keine nachgewiesene Erklärung für deine Bilder.
-- **`refreshEnvironment()` hatte bewusst begrenzten Umfang.** Es ersetzt erzeugte
-  Umgebungsgeometrie, bewahrt aber Terrain, Schilder und Stadtplatzhalter. Der vollständige
-  Geländepatch schützt Straßen, Orte und unbekannte/manuell veränderte Geländespalten.
-  Deshalb ist die Meldung „Environment refreshed“ kein Beleg für neue Bodenformen.
-- **Licht wird während Play erneut berechnet.** Der Client wendet `Environment.Model`
-  laufend an. Änderungen allein an gespeicherten Lighting-Eigenschaften reichen nicht.
-  Jetzt verwenden das Rojo-Preset und das Wettermodell denselben neutraleren Ausgangsstand.
-- **Der Modulcache kann veraltete Funktionen liefern.** Der neue direkte Einstieg
-  `UpgradeKagundali` vermeidet die fehlende Methode einer bereits geladenen `BuildMap`-Tabelle.
-  Bereits geladene gemeinsame Module benötigen weiterhin einen Studio-Neustart; ein
-  Versionsvergleich stoppt das Update bei einem erkennbar alten Lichtmodell.
+- **The old tree geometry itself was the problem.** The five screenshots at the time showed
+  large, flat leaf plates on simple trunks. The earlier library really does produce such
+  plates; bigger crowns and more trees barely change that construction. The new area uses
+  its own library with branching wood, small curved leaves and overlapping,
+  three-dimensional crown clusters.
+- **Rojo transfers code but does not rebuild the saved world.** `default.project.json`
+  contains no generated `Workspace.Map` and runs no builder. The Studio tools have to be
+  run in edit mode and the place saved afterwards. This repository has no separate
+  production/development map system. Which local checkout your Studio had loaded cannot be
+  determined from here, so a sync error is not a proven explanation for your screenshots.
+- **`refreshEnvironment()` had a deliberately limited scope.** It replaces generated
+  environment geometry but keeps terrain, signs and town placeholders. The full terrain
+  patch protects roads, places and unknown or hand-edited terrain columns. So the message
+  "Environment refreshed" is not proof of new ground shapes.
+- **Lighting is recalculated during Play.** The client applies `Environment.Model`
+  continuously. Changing only the saved Lighting properties is not enough. The Rojo preset
+  and the weather model now share the same, more neutral starting point.
+- **The module cache can return outdated functions.** The new direct entry point
+  `UpgradeKagundali` avoids the missing method of a `BuildMap` table that was already
+  loaded. Shared modules that were already loaded still need a Studio restart; a version
+  check stops the update when it detects an old lighting model.
 
-## Was der Bereich jetzt erzeugt
+## What the area now builds
 
-Die vorhandene R3 trifft bei **X 453, Y 56, Z 3299** auf die N5. Der bearbeitete
-Ausschnitt liegt bei X 64–832 und Z 2944–3648. Straßenachsen, Fahrbahnhöhen,
-Wasser, Stadtpositionen und Grundstücksdefinitionen bleiben erhalten.
+The existing R3 meets the N5 at **X 453, Y 56, Z 3299**. The edited window covers
+X 64–832 and Z 2944–3648. Road axes, road heights, water, town positions and property
+definitions are kept.
 
-| Bestandteil | Umsetzung |
+| Part | Implementation |
 | --- | --- |
-| Bäume | Drei Arten: Laubbaum, Akazie, Eukalyptus; jeweils drei Varianten, unterschiedliche Größen und Drehungen; gebogene, verjüngte Stämme mit verbundenen Ästen |
-| Unterwuchs | Eigene Busch- und Farnvorlagen, Waldgruppen, freie Sicht an der Kreuzung und Abstand zu Stromleitungen; teilweise eingegrabene Felsen |
-| Terrain | Begrenzte, weich auslaufende Bodenfalten, Mulden und Böschungen; zusammenhängende Grasflächen, Schlamm entlang der Entwässerung und Fels an steilen Schnitten; befestigter Werkstatthof |
-| Straße | Zusätzliche Kiesbankette, sichtbare U-Entwässerung, Abbiegepfeil auf der R3-Zufahrt und eine Kieszufahrt zum Werkstatthof; vorhandene Asphaltvariation, Markierungen und Leitplanken bleiben bestehen |
-| Schilder | Vorhandene gelbe Wegweiser behalten Text, Pfeile und Boardpositionen; Pfosten rücken hinter die lesbare Fläche, mit Betonfüßen und rückseitigen Verstärkungen |
-| Bebauung | Kleine Transportwerkstatt mit Servicebucht, Bürofront, geneigtem Metalldach, Dachnähten, Regenwassertank, Transportkisten, physischem Schild und Nachtlampe; der schwebende Kagundali-Entwicklungsname wird ausgeblendet |
-| Licht | Weniger blauer Dunst, neutralere Streuung, geringeres Tages-Ambientlicht und definiertere Schatten; gemeinsames Preset für Bearbeitungsmodus und Laufzeit |
-| Wetter | Bestehende Übergänge, Wolken, Regenstärken, Gewitter, Tag/Nacht und qualitätsabhängige Effekte bleiben an das aktualisierte Lichtmodell angeschlossen |
+| Trees | Three kinds: broadleaf, acacia, eucalyptus; three variants each, different sizes and rotations; curved, tapering trunks with connected branches |
+| Undergrowth | Own bush and fern templates, forest clusters, a clear view at the junction and distance from power lines; rocks partly sunk into the ground |
+| Terrain | Bounded, softly fading ground folds, hollows and embankments; continuous grass areas, mud along the drainage and rock on steep cuts; a paved workshop yard |
+| Road | Extra gravel shoulders, a visible U-shaped drain, a turn arrow on the R3 approach and a gravel driveway to the workshop yard; the existing asphalt variation, markings and guard rails stay |
+| Signs | Existing yellow direction signs keep their text, arrows and board positions; posts move behind the readable face, with concrete feet and braces on the back |
+| Buildings | Small transport workshop with a service bay, office front, sloped metal roof, roof seams, rainwater tank, transport crates, a physical sign and a night lamp; the floating Kagundali development name is hidden |
+| Lighting | Less blue haze, more neutral scattering, lower daytime ambient light and sharper shadows; one shared preset for edit mode and runtime |
+| Weather | Existing transitions, clouds, rain strengths, thunderstorms, day/night and quality-dependent effects stay connected to the updated lighting model |
 
-Der deterministische Testaufbau auf generiertem Boden erzeugt **64 Bäume, 49 Büsche,
-47 Farne, 23 Felsen und insgesamt 919 BaseParts** im neuen Bereich. Die zusätzlichen
-Verstärkungen der bestehenden Schilder werden separat gezählt. Auf gespeichertem,
-abweichendem Boden können Objekte entfallen. Bei weniger als 20 geeigneten Baumpositionen
-wird die Ersetzung abgebrochen; bei ungeeignetem Werkstattboden meldet der Bericht
-`Workshop: false`. Diese Fälle benötigen eine Prüfung vor Ort.
+The deterministic test setup on generated ground builds **64 trees, 49 bushes, 47 ferns,
+23 rocks and 919 BaseParts in total** in the new area. The extra braces on the existing
+signs are counted separately. On saved ground that differs, objects can be skipped. With
+fewer than 20 suitable tree positions the replacement stops; on unsuitable workshop ground
+the report says `Workshop: false`. These cases need a look on site.
 
-Die 15 Pflanzenvorlagen werden einmalig als insgesamt 60 native CSG-Teile vorbereitet
-und in `ServerStorage.RoNationJunctionTrees` gespeichert. Ein Baum verwendet vier sichtbare
-CSG-Teile und eine schmale Stammkollision; Busch und Farn je vier nicht kollidierende
-Teile. Modelle streamen atomar. Das regionale Limit beträgt 1.600 BaseParts. Das ist
-eine Instanzgrenze, **kein Nachweis eines GPU-, Dreiecks- oder Mehrspielerbudgets**.
-Es werden eigene Quellformen und Roblox-Materialien verwendet, keine erfundenen Asset-IDs.
+The 15 plant templates are prepared once as 60 native CSG parts in total and saved in
+`ServerStorage.RoNationJunctionTrees`. A tree uses four visible CSG parts and a narrow
+trunk collider; a bush or fern uses four non-colliding parts each. Models stream
+atomically. The regional limit is 1,600 BaseParts. That is an instance limit, **not proof
+of a GPU, triangle or multiplayer budget**. Only original source shapes and Roblox
+materials are used, no invented asset IDs.
 
-## Update in deinem bestehenden Place anwenden
+## Apply the update to your existing place
 
-1. In GitHub Desktop auf **`claude/project-thread-5krwdh`** wechseln und **Fetch origin** /
-   **Pull origin** ausführen. Den lokalen Ordner verwenden, aus dem `rojo serve` läuft.
-2. Den Place mit **File > Save to File As…** sichern. Play stoppen, Rojo verbinden und
-   die neuen Module synchronisieren. Danach speichern, Studio neu starten und Rojo
-   wieder verbinden, damit bereits geladene Module nicht im Cache bleiben.
-3. In Studio **View/Ansicht > Command Bar/Befehlsleiste** öffnen und ausführen:
+1. In GitHub Desktop switch to **`claude/project-thread-5krwdh`** and run **Fetch origin** /
+   **Pull origin**. Use the local folder that `rojo serve` runs from.
+2. Back up the place with **File > Save to File As…**. Stop Play, connect Rojo and let the
+   new modules sync. Then save, restart Studio and reconnect Rojo, so that modules that were
+   already loaded do not stay cached.
+3. In Studio open **View (Ansicht) > Command Bar (Befehlsleiste)** and run:
 
 ```lua
 require(game.ServerStorage.StudioTools.UpgradeKagundali)()
 ```
 
-Die erste native CSG-Vorbereitung und die lokale Terrainprüfung können dauern. Im
-Output erscheint anschließend `kagundali-junction-1` mit Baum-/Busch-/Farnzahlen,
-Teilebudget und Werkstattstatus. Die Studio-Kamera springt an die R3/N5-Kreuzung.
-Es ist kein vollständiger `BuildMap.run()`-Neubau erforderlich.
+The first native CSG preparation and the local terrain check can take a while. Output then
+shows `kagundali-junction-1` with tree, bush and fern counts, the part budget and the
+workshop status. The Studio camera jumps to the R3/N5 junction. A full `BuildMap.run()`
+rebuild is not needed.
 
-4. Im **Explorer** (Studio: **View/Ansicht > Explorer**) unter **Workspace > Terrain**
-   in **Properties/Eigenschaften** `Decoration` aktivieren. Nur das Material `Grass`
-   zeigt das native animierte Gras. Der Code versucht nicht, diese gesperrte Eigenschaft
-   zu lesen oder zu setzen.
-5. Den gespeicherten Stand diagnostizieren:
+4. In the **Explorer** (**View > Explorer**) select **Workspace > Terrain** and tick
+   `Decoration` in **Properties**. Only the `Grass` material shows Roblox's animated grass.
+   The code does not try to read or set this locked property.
+5. Check the saved state:
 
 ```lua
 require(game.ServerStorage.StudioTools.CheckEnvironment)()
 ```
 
-Die Prüfung zählt tatsächlich vorhandene neue Baummodelle und prüft regionale Terrain-
-und Lichtrevisionen zusätzlich zu den bisherigen globalen Prüfungen. Eine `FIX`-Meldung
-für andere Bereiche oder fehlende Audio-IDs bedeutet nicht automatisch, dass die
-Kreuzung fehlgeschlagen ist. Die jeweilige Meldung im Output lesen.
+The check counts the new tree models that are really present and checks the regional
+terrain and lighting revisions in addition to the earlier global checks. A `FIX` line for
+other areas or for missing audio IDs does not automatically mean the junction failed. Read
+each line in Output.
 
-6. Speichern, dann Play starten. Den Ort auch auf Straßenhöhe ansehen und prüfen,
-   ob die Beleuchtung nach dem Start konsistent bleibt. Danach erneut speichern,
-   falls du Einstellungen im Bearbeitungsmodus angepasst hast.
+6. Save, then press Play. Look at the area at street level too and check that the lighting
+   stays consistent after the start. Save again if you changed settings in edit mode.
 
-Optional nur die Terrainänderungen zählen, ohne Assets, Geometrie oder Kamera zu ändern:
+Optional: count only the terrain changes, without changing assets, geometry or the camera:
 
 ```lua
 require(game.ServerStorage.StudioTools.UpgradeKagundali)({ DryRun = true })
 ```
 
-Der Patch schreibt ausschließlich erkannte generierte Geländespalten innerhalb des
-Ausschnitts. Unbekannte, bemalte oder geschützte Spalten bleiben erhalten. Die regionale
-Migration erkennt insbesondere `highland-4`; bei älteren/unbekannten Ständen die
-Erkennungszähler beachten und gegebenenfalls zuerst den dokumentierten
-[`highland-4`-Upgradepfad](06-environment-overhaul.md#apply-to-an-existing-place) verwenden.
-**Terrain wird abschnittsweise geschrieben:** ein späterer Fehler kann bereits geänderte
-Abschnitte hinterlassen. Neue Baumvorlagen werden vor Terrainänderungen vorbereitet,
-neue Geometrie vor dem Austausch vollständig aufgebaut. Ein erneuter Lauf erkennt schon
-aktualisierte Spalten und ersetzt den eigenen Bereich ohne Duplikate.
+The patch writes only recognised generated terrain columns inside the window. Unknown,
+painted or protected columns are kept. The regional migration recognises `highland-4` in
+particular; for older or unknown states read the recognition counters and, if needed, run
+the documented [`highland-4` upgrade path](06-environment-overhaul.md#apply-to-an-existing-place)
+first. **Terrain is written in sections:** a later error can leave sections that were
+already changed. New tree templates are prepared before any terrain change, and new
+geometry is built completely before the swap. A second run recognises columns that are
+already updated and replaces its own area without duplicates.
 
-`BuildMap.run()` und `BuildMap.upgradeEnvironment()` sind mit dem neuen Bereich verbunden.
-Ein späteres `refreshEnvironment()` baut eine bereits angewendete Kreuzung wieder mit
-den neuen Vorlagen auf, statt dort dauerhaft die alten Baumformen zurückzubringen.
-Eigene Handarbeit außerhalb der erzeugten Ordner behalten; erzeugte Ordner sind ersetzbar.
+`BuildMap.run()` and `BuildMap.upgradeEnvironment()` include the new area. A later
+`refreshEnvironment()` rebuilds a junction that was already applied with the new templates
+instead of bringing the old tree shapes back there. Keep your own hand-made work outside
+the generated folders; generated folders can be replaced.
 
-## Vorher/Nachher und Abnahme
+## Before/after and acceptance
 
-**VORHER:** die fünf zuletzt gelieferten Bilder, besonders
-`Ro-Nation_neuer_Screenshot.jpg` (N5/R3-Wegweiser),
-`Ro-Nation_2026-10-27_223933.jpg` (Blattplatten), sowie `224001`, `224005` und `224100`.
-Sie wurden als Problemdokumentation ausgewertet, nicht als gewünschter Stil.
+**BEFORE:** the five screenshots delivered last, especially `Ro-Nation_neuer_Screenshot.jpg`
+(N5/R3 direction sign), `Ro-Nation_2026-10-27_223933.jpg` (leaf plates), and `224001`,
+`224005` and `224100`. They were used to document the problems, not as the target style.
 
-**NACHHER des ersten Stands: inzwischen vom Nutzer geliefert.** Die drei Aufnahmen
-`083507`, `083519` und `083533` vom 28. Oktober zeigen Werkstatt, Gras und neue Bäume,
-aber auch kugelige Kronen und nicht erkennbare Straßenmarkierungen. Die
-[Auswertung und Korrektur](08-kagundali-screenshot-fixes.md) dokumentiert diese Befunde.
-Für junction-2 liegt noch kein Studio-Nachherbild vor; eigener Studio-Zugriff fehlt weiterhin.
+**AFTER the first state: delivered by Justin since.** The three shots `083507`, `083519`
+and `083533` from 28 October show the workshop, grass and new trees, but also ball-shaped
+crowns and road markings that cannot be seen. The
+[review and fix](08-kagundali-screenshot-fixes.md) documents these findings. There is no
+Studio after-image of junction-2 or later yet; Claude and Codex still have no Studio
+access.
 
-![Softwarevorschau der Baum-Quellgeometrie, kein Roblox-Render und kein Nachherbild](kagundali-tree-sources.png)
+![Software preview of the tree source geometry, not a Roblox render and not an after-image](kagundali-tree-sources.png)
 
-Diese Vorschau wird mit `tools/preview-junction-trees.py` direkt aus den Pflanzenvorlagen
-erzeugt. Sie half, zu offene Kronen und die Blattverteilung zu korrigieren. Sie bildet
-weder Roblox-CSG noch Materialtexturen, Spielbeleuchtung oder Terrain ab.
+This preview is generated straight from the plant templates with
+`tools/preview-junction-trees.py`. It helped to correct crowns that were too open and the
+leaf distribution. It does not show Roblox CSG, material textures, game lighting or
+terrain.
 
-Für die tatsächliche Abnahme im selben Place:
+For the real acceptance in the same place:
 
-- Dieselbe R3/N5-Perspektive wie im Vorherbild aufnehmen; zusätzlich auf Straßenhöhe
-  die kleinen Blätter, Astanschlüsse, Baumfüße, Kiesbankette und Schilder ansehen.
-- Werkstatt und ihre R3-Zufahrt prüfen; keine schwebenden Fundamente oder Pflanzen,
-  keine Pfosten vor der Beschriftung, keine Straße durch Unterwuchs.
-- Klare Mittagsbeleuchtung und bedeckten Himmel vergleichen, dann Morgen, Abend und
-  Nacht; im Play-Modus Regen, Gewitter, Lampen, Unterstände und das Wettermenü testen.
-- Speichern und neu öffnen; anschließend den Updater erneut ausführen und auf
-  unveränderte Objektzahlen beziehungsweise fehlende Duplikate achten.
-- Native CSG-Kompilierung, Dreiecke, Streaming und Bildrate auf einem schwächeren Gerät
-  sowie Synchronisation und Verhalten mit mehreren Clients prüfen.
+- Take the same R3/N5 view as in the before-image; at street level also look at the small
+  leaves, branch joints, tree bases, gravel shoulders and signs.
+- Check the workshop and its R3 driveway: no floating foundations or plants, no posts in
+  front of the lettering, no road through undergrowth.
+- Compare clear midday light with an overcast sky, then morning, evening and night; in Play
+  test rain, thunderstorms, lamps, shelters and the weather menu.
+- Save and reopen; then run the updater again and check that object counts stay the same
+  and nothing is duplicated.
+- Check native CSG compilation, triangles, streaming and frame rate on a weaker device, and
+  synchronisation and behaviour with several clients.
 
-**Der visuelle Meilenstein bleibt bis zu diesem Vergleich offen.** Erst nach erfolgreicher
-Abnahme soll dieselbe Gestaltung auf die übrige Landschaft übertragen werden.
+**The visual milestone stays open until this comparison.** Only after a successful
+acceptance should the same design be carried over to the rest of the landscape.
 
-## Dateien und Prüfgrenzen
+## Files and test limits
 
-Abschlussprüfung am 28. Oktober 2026: vollständige Karten-Testsuite bestanden,
-86 Umgebungs-/Wetterprüfungen und 90 Bot-Tests bestanden. Alle 67 Luau-Quelldateien
-kompilieren, die 18 geänderten Luau-Dateien bestehen StyLua und der Rojo-Build ist
-erfolgreich. Die 13 entsprechenden Lichtwerte des gespeicherten Presets stimmen mit
-dem anfänglichen Laufzeitmodell überein. Der vollständige Offline-Aufbau enthält
-39.361 BaseParts unter `Workspace.Map`; diese Zahl beschreibt die ganze Karte,
-nicht den regionalen Zuwachs und nicht die Zahl gleichzeitig gerenderter Teile.
+Final check on 28 October 2026 (by Codex): full map test suite passed, 86
+environment/weather checks and 90 bot tests passed. All 67 Luau source files compile, the
+18 changed Luau files pass StyLua and the Rojo build succeeds. The 13 matching lighting
+values of the saved preset agree with the initial runtime model. The full offline build
+contains 39,361 BaseParts under `Workspace.Map`; this number describes the whole map, not
+the regional increase and not the number of parts rendered at the same time.
 
-| Dateien | Verantwortung |
+| Files | Responsibility |
 | --- | --- |
-| `src/studio/UpgradeKagundali.luau`, `BuildMap.luau` | Direkter Aufruf, Kamerafokus, Einbindung in bestehende Builder |
-| `src/studio/Map/JunctionLandscape.luau`, `KagundaliUpdate.luau` | Lokale Bodenformen, konservative Migration, vorbereiteter Geometrieaustausch und Versionsstände |
-| `src/studio/Map/Builders/JunctionTrees.luau`, `Kagundali.luau` | Originalpflanzen, Platzierung, Bankette, Entwässerung, Wegweiser und Werkstatt |
-| `src/shared/Environment/Model.luau`, `Presentation.luau`, `src/shared/Config/Environment.luau`, `default.project.json` | Laufzeitlicht, Wetterbezug und identisches gespeichertes Anfangspreset |
-| `src/studio/CheckEnvironment.luau` | Prüfung tatsächlich gespeicherter regionaler Geometrie und Revisionen |
-| `tests/map/`, `tests/environment/model.spec.luau` | Gelände-/Builderintegration, Wiederholung, Fehlerfälle, Modelllicht und bestehende Regressionen |
-| `tools/preview-junction-trees.py`, `tests/map/preview-junction.luau` | Reproduzierbare Quellgeometrievorschau |
+| `src/studio/UpgradeKagundali.luau`, `BuildMap.luau` | Direct command, camera focus, connection to the existing builders |
+| `src/studio/Map/JunctionLandscape.luau`, `KagundaliUpdate.luau` | Local ground shapes, conservative migration, staged geometry swap and revisions |
+| `src/studio/Map/Builders/JunctionTrees.luau`, `Kagundali.luau` | Original plants, placement, shoulders, drainage, direction signs and workshop |
+| `src/shared/Environment/Model.luau`, `Presentation.luau`, `src/shared/Config/Environment.luau`, `default.project.json` | Runtime lighting, weather link and the identical saved starting preset |
+| `src/studio/CheckEnvironment.luau` | Check of the regional geometry and revisions that are really saved |
+| `tests/map/`, `tests/environment/model.spec.luau` | Terrain and builder integration, reruns, failure cases, model lighting and existing regressions |
+| `tools/preview-junction-trees.py`, `tests/map/preview-junction.luau` | Repeatable preview of the source geometry |
 
-Die automatisierten Tests prüfen echte Builder gegen ein strenges Roblox-Objektmodell,
-aber simulieren native CSG-Operationen und Terrain-Raycasts. Die Terrainmigration wird
-zusätzlich mit tatsächlichen Vier-Stud-Voxelarrays des bisherigen Generators geprüft:
-DryRun schreibt nichts, bemalte/geschützte Spalten bleiben erhalten und der zweite
-Patch schreibt bereits aktuelle Spalten nicht erneut. Straßenhöhen, Wasser und Gelände
-außerhalb des Ausschnitts werden auf Unverändertheit geprüft.
+The automated tests run the real builders against a strict Roblox object model, but
+simulate native CSG operations and terrain raycasts. The terrain migration is also checked
+with real 4-stud voxel arrays from the earlier generator: DryRun writes nothing,
+painted/protected columns are kept, and a second patch does not rewrite columns that are
+already current. Road heights, water and terrain outside the window are checked to be
+unchanged.
 
-Offen bleiben die echte Sichtprüfung, native CSG-Ausführung, Fahr-/Kollisionstest,
-Speichern/Neuladen und Leistung mit 20–25 Spielern. Die mitgelieferten Regen-/Donner-WAVs
-müssen weiterhin auf Roblox hochgeladen und für die Experience freigegeben werden;
-die leeren IDs bleiben stumm. Die übrigen Stadtplatzhalter, Agrargebiete, Berge und
-weiteren Straßen erhalten in diesem Schritt keinen vorzeitig behaupteten Komplettumbau.
+Still open: the real visual check, native CSG execution, driving and collision tests,
+save/reload and performance with 20–25 players. The included rain/thunder WAVs still have
+to be uploaded to Roblox and permitted for the experience; blank IDs stay silent. The other
+town placeholders, farmland, mountains and remaining roads are not claimed to be rebuilt in
+this step.
 
-**Nächster Bereich nach Abnahme:** die R3 westwärts Richtung Kagundali, mit dem
-Übergang von der Transportwerkstatt zur Bergbau-/Industriezufahrt.
+**Next area after acceptance:** the R3 westwards towards Kagundali, with the transition from
+the transport workshop to the mining/industrial access road.

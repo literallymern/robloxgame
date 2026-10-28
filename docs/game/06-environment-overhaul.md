@@ -224,8 +224,8 @@ environment.setWeather("Thunderstorm") -- Clear, PartlyCloudy, Overcast, Rain, T
 environment.setClockTime(18.5) -- cycle continues from this hour
 ```
 
-During Play, use the **Wetter** menu button to select **Automatisch**, **Minimal**, **Niedrig**,
-**Mittel** or **Hoch**. It applies immediately for the current session; automatic follows
+During Play, use the **Weather** menu button to select **Automatic**, **Minimal**, **Low**,
+**Medium** or **High**. It applies immediately for the current session; automatic follows
 Roblox's saved graphics quality. The panel fits small screens with scrolling choices.
 For scripting tests the **client** command bar still accepts 0 minimal, 1 low, 2 medium, 3 high:
 

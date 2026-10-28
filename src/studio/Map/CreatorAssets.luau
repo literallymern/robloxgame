@@ -17,13 +17,13 @@ local function isGeometry(part: Instance): boolean
 end
 
 local function partsOf(root: Instance): { BasePart }
-	local parts = {}
+	local parts: { BasePart } = {}
 	if isGeometry(root) then
-		table.insert(parts, root)
+		table.insert(parts, root :: BasePart)
 	end
 	for _, child in root:GetDescendants() do
 		if isGeometry(child) then
-			table.insert(parts, child)
+			table.insert(parts, child :: BasePart)
 		end
 	end
 	return parts
@@ -66,6 +66,12 @@ local function category(name: string): string?
 		return "Tree"
 	end
 	return nil
+end
+
+-- Number of templates in one category folder of the library (0 when the folder is missing).
+function Assets.count(library: Instance, kind: string): number
+	local folder = library:FindFirstChild(kind)
+	return if folder then #folder:GetChildren() else 0
 end
 
 function Assets.get(): Folder?
@@ -236,7 +242,7 @@ function Assets.install(loader: any?, metadata: any?): Folder
 			loaded = nil
 		end
 		assert(
-			#library.Tree:GetChildren() > 0 and #library.Lamp:GetChildren() > 0,
+			Assets.count(library, "Tree") > 0 and Assets.count(library, "Lamp") > 0,
 			`No complete tree or lamp models recognized. Pack model names: {table.concat(modelNames, ", ")}`
 		)
 	end)
@@ -267,11 +273,11 @@ function Assets.place(
 ): Model?
 	local library = Assets.get()
 	local folder = if library then library:FindFirstChild(kind) else nil
-	local choices = if folder then folder:GetChildren() else {}
+	local choices: { Instance } = if folder then folder:GetChildren() else {}
 	if #choices == 0 then
 		return nil
 	end
-	table.sort(choices, function(a, b)
+	table.sort(choices, function(a: Instance, b: Instance)
 		return a.Name < b.Name
 	end)
 	local template = choices[1 + (variant - 1) % #choices]

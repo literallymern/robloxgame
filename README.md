@@ -86,7 +86,7 @@ Nach dem Verbinden auf **Play** drücken und das **Output**-Fenster öffnen (*Vi
 [Ro-Nation:Client] Ro-Nation 0.1.0 (Milestone 1) client started for DeinName (5/5 controllers).
 ```
 
-Damit sind die Dienste und Controller gestartet. Oben links erscheinen **Account** und **Wetter**; unter Wetter lässt sich die Darstellung für diese Sitzung einstellen.
+Damit sind die Dienste und Controller gestartet. Oben links erscheinen **Account** und **Weather**; unter Weather lässt sich die Wetterdarstellung für diese Sitzung einstellen.
 
 Einstellungen prüfen: Im Studio-Menü *View > Command Bar* öffnen und eingeben:
 

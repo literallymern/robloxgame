@@ -4,7 +4,7 @@ Run by Justin in Roblox Studio on his PC. Claude cannot run this test (no Studio
 
 This checklist covers the blockout and the landscape pass (layout version 2, [02-map-plan.md](../02-map-plan.md), sections 12 and 13).
 
-Result of the last run: **not run yet.**
+Result of the last run: **steps 1–2 done on 2026-10-26** (`Done in 34 s`, Output as expected; animated grass had to be ticked by hand). The walk-through (steps 3–16) was not reported. Since then the environment ([06](../06-environment-overhaul.md)) and the R3/N5 junction benchmark ([07](../07-kagundali-junction.md)) have their own update commands for a saved place.
 
 ## What was tested before this checklist (cloud session, not Studio)
 

@@ -7,15 +7,16 @@ local Markings = {}
 
 function Markings.clip(a: Vector3, b: Vector3): (number?, number?)
 	local lo, hi = 0, 1
-	for _, axis in { "X", "Z" } do
-		local delta = b[axis] - a[axis]
-		local minimum, maximum = Junction.Bounds["Min" .. axis], Junction.Bounds["Max" .. axis]
+	local bounds = Junction.Bounds
+	for _, axis in { { a.X, b.X, bounds.MinX, bounds.MaxX }, { a.Z, b.Z, bounds.MinZ, bounds.MaxZ } } do
+		local from, minimum, maximum = axis[1], axis[3], axis[4]
+		local delta = axis[2] - from
 		if math.abs(delta) < 1e-8 then
-			if a[axis] < minimum or a[axis] > maximum then
+			if from < minimum or from > maximum then
 				return nil, nil
 			end
 		else
-			local t0, t1 = (minimum - a[axis]) / delta, (maximum - a[axis]) / delta
+			local t0, t1 = (minimum - from) / delta, (maximum - from) / delta
 			lo, hi = math.max(lo, math.min(t0, t1)), math.min(hi, math.max(t0, t1))
 		end
 	end
@@ -141,7 +142,8 @@ end
 
 function Markings.retainPrevious(old: Instance?, replacement: Instance, coverage: any): number
 	local before = #replacement:GetChildren()
-	for _, part in if old then old:GetChildren() else {} do
+	local previous: { Instance } = if old then old:GetChildren() else {}
+	for _, part in previous do
 		if part:IsA("BasePart") then
 			retain(part, coverage, replacement)
 		end
@@ -167,7 +169,10 @@ function Markings.removeReplaced(map: Instance, coverage: any)
 	end
 	local details = map:FindFirstChild("RoadDetails")
 	local folder = if details and Util.isGenerated(details) then details:FindFirstChild("Markings") else nil
-	for _, part in if folder then folder:GetChildren() else {} do
+	if not folder then
+		return
+	end
+	for _, part in folder:GetChildren() do
 		if part:IsA("BasePart") and table.find({ "Centre", "Edge", "Stop" }, part.Name) then
 			local top = part.Position + part.CFrame.UpVector * part.Size.Y / 2
 			local lo = Markings.clip(

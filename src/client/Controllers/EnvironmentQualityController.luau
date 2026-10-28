@@ -10,12 +10,13 @@ local UIController = require(script.Parent.UIController)
 
 local Controller = {}
 local started = false
-local OPTIONS = {
-	{ Label = "Automatisch", Value = nil },
+type Option = { Label: string, Value: number? }
+local OPTIONS: { Option } = {
+	{ Label = "Automatic", Value = nil },
 	{ Label = "Minimal", Value = 0 },
-	{ Label = "Niedrig", Value = 1 },
-	{ Label = "Mittel", Value = 2 },
-	{ Label = "Hoch", Value = 3 },
+	{ Label = "Low", Value = 1 },
+	{ Label = "Medium", Value = 2 },
+	{ Label = "High", Value = 3 },
 }
 
 function Controller.start()
@@ -36,7 +37,7 @@ function Controller.start()
 	bounds.MaxSize = Vector2.new(430, 436)
 	bounds.Parent = window
 
-	local title = Ui.label(window, 0, "Wetterdarstellung", 20)
+	local title = Ui.label(window, 0, "Weather effects", 20)
 	title.Position = UDim2.fromOffset(16, 14)
 	title.Size = UDim2.new(1, -128, 0, 30)
 	title.AutomaticSize = Enum.AutomaticSize.None
@@ -47,14 +48,14 @@ function Controller.start()
 	titleSize.MinTextSize = 12
 	titleSize.MaxTextSize = 20
 	titleSize.Parent = title
-	local close = Ui.button(window, 0, "Schließen", Ui.Colors.Panel)
+	local close = Ui.button(window, 0, "Close", Ui.Colors.Panel)
 	close.AnchorPoint = Vector2.new(1, 0)
 	close.Position = UDim2.new(1, -12, 0, 12)
 	close.Activated:Connect(function()
 		window.Visible = false
 	end)
 
-	local description = Ui.label(window, 0, "Weniger Regeneffekte können das Spiel flüssiger machen.", 14)
+	local description = Ui.label(window, 0, "Fewer rain effects can make the game run more smoothly.", 14)
 	description.Position = UDim2.fromOffset(16, 52)
 	description.Size = UDim2.new(1, -32, 0, 44)
 	description.AutomaticSize = Enum.AutomaticSize.None
@@ -100,10 +101,10 @@ function Controller.start()
 		for index, button in buttons do
 			button.BackgroundColor3 = if index == selected then Ui.Colors.Accent else Ui.Colors.Panel
 		end
-		status.Text = `Ausgewählt: {OPTIONS[selected].Label} · Für diese Sitzung`
+		status.Text = `Selected: {OPTIONS[selected].Label} · this session only`
 	end
 	player:GetAttributeChangedSignal(Config.QualityAttribute):Connect(render)
-	UIController.addMenuButton("Wetter").Activated:Connect(function()
+	UIController.addMenuButton("Weather").Activated:Connect(function()
 		window.Visible = not window.Visible
 	end)
 	window.Parent = UIController.getScreen()

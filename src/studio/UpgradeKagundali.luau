@@ -14,7 +14,7 @@ return function(options: { DryRun: boolean?, Focus: boolean? }?): any
 	local layout = require(ReplicatedStorage.Shared.Config.MapLayout)
 	local hf = Heightfield.new(layout, Util.yield)
 	local result = Update.apply(hf, layout, map, options)
-	local opts = options or {}
+	local opts: { DryRun: boolean?, Focus: boolean? } = options or {}
 	if not opts.DryRun and opts.Focus ~= false then
 		local camera = workspace.CurrentCamera
 		if camera then

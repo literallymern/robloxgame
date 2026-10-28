@@ -87,25 +87,25 @@ function Service.init()
 	if not Config.Enabled or state then
 		return
 	end
+	local folder: Folder
 	local existing = ReplicatedStorage:FindFirstChild(Config.StateName)
 	if existing then
 		assert(
 			existing:IsA("Folder") and existing:GetAttribute("ManagedBy") == "RoNationEnvironment",
 			"Environment state name is occupied by another system"
 		)
-		state = existing
+		folder = existing :: Folder
 	else
-		local folder = Instance.new("Folder")
+		folder = Instance.new("Folder")
 		folder.Name = Config.StateName
 		folder:SetAttribute("ManagedBy", "RoNationEnvironment")
-		state = folder
 	end
+	state = folder
 	epoch = workspace:GetServerTimeNow()
 	transitionStart = epoch - Config.TransitionSeconds
 	nextChange = epoch + random:NextNumber(Config.WeatherHoldSeconds[1], Config.WeatherHoldSeconds[2])
 	nextLightning = epoch + random:NextNumber(18, 35)
 	publish()
-	local folder = state :: Folder
 	folder.Parent = ReplicatedStorage
 	Lighting.GeographicLatitude = Config.Latitude
 	Lighting.ClockTime = clock

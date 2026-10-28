@@ -1,92 +1,90 @@
-# Korrekturen nach den Studio-Bildern vom 28. Oktober
+# Fixes after the Studio screenshots of 28 October
 
-Aktuell: **`kagundali-junction-3`**. Der vom Nutzer kopierte Studio-Output bestätigt,
-dass zuvor **junction-2** angewendet wurde: 64 Bäume, 49 Büsche, 47 Farne,
-799 Teile und vorhandene Werkstatt. 70 Geländespalten wurden geändert, 30.661
-waren bereits aktuell. Die vom Nutzer als neu bezeichneten Bilder und die zusätzliche
-Luftaufnahme `Screenshot 2026-10-28 091306.jpg` dienen als Ausgangspunkt.
-Sie werden nicht in das öffentliche Repository aufgenommen.
+Current: **`kagundali-junction-3`**. The Studio output that Justin copied confirms that
+**junction-2** was applied before: 64 trees, 49 bushes, 47 ferns, 799 parts and the
+workshop present. 70 terrain columns were changed, 30,661 were already current. The
+screenshots Justin called new and the additional aerial shot
+`Screenshot 2026-10-28 091306.jpg` are the starting point. They are not added to the
+repository.
 
-## Befunde und Änderungen
+## Findings and changes
 
-**Straßenmarkierungen:** Der Output enthielt `Road marking probes incomplete` und
-`restored 0 marking parts`. In junction-2 verwarf eine einzige fehlgeschlagene Probe
-die gesamte neue Markierungsgruppe. Das erklärt, warum das Update erfolgreich enden
-konnte, ohne sichtbare Linien wiederherzustellen.
+**Road markings:** the output contained `Road marking probes incomplete` and
+`restored 0 marking parts`. In junction-2 a single failed probe discarded the whole new
+marking group. That explains why the update could finish successfully without bringing
+back any visible lines.
 
-Junction-3 übernimmt jeden erfolgreich geprüften Abschnitt separat. Fehlende Abschnitte
-behalten vorhandene Linien; der Output nennt Anzahl und bis zu vier Beispielkoordinaten.
-Die Höhenabfrage reicht weiter über und unter die erwartete Fahrbahn. Sichtbarer
-Terrain-Asphalt darf bemalt werden, Gras nicht. Die genaue Ursache der ursprünglichen
-fehlgeschlagenen Raycasts lässt sich aus dem bisherigen Output allein nicht bestimmen.
-Erzeugte Linien außerhalb des Bereichs und anders benannte eigene Markierungen bleiben
-erhalten. Wiederholte und globale Updates erzeugen keine zusätzlichen Linien unter
-beibehaltenen regionalen Abschnitten.
+Junction-3 keeps every section that was probed successfully on its own. Missing sections
+keep the existing lines; the output names how many and up to four example coordinates.
+The height probe reaches further above and below the expected road surface. Visible
+terrain asphalt may be painted, grass may not. The exact cause of the original failed
+raycasts cannot be determined from the earlier output alone. Generated lines outside the
+area and differently named lines of your own are kept. Repeated and global updates do not
+create extra lines under kept regional sections.
 
-**Werkstattzufahrt:** Statt zwölf langen Stücken folgen höchstens drei Studs lange
-Abschnitte dem Boden. Pro Station wird die neun Studs breite Zufahrt an drei Punkten
-geprüft. Kiesoberseiten liegen darüber, Unterkanten reichen in den Boden.
-Die bereits eingeführte Grasfreiheit unter der Zufahrt bleibt erhalten. Kiesbankette
-folgen ebenfalls der gespeicherten Bodenhöhe; geschützte Flächen werden ausgespart.
+**Workshop driveway:** instead of twelve long pieces, sections of at most three studs
+follow the ground. At each station the nine-stud-wide driveway is probed at three points.
+Gravel tops sit above the ground, bottoms reach into it. The grass-free strip under the
+driveway introduced earlier stays. Gravel shoulders also follow the saved ground height;
+protected areas are left out.
 
-**Gelbe Wegweiser:** Richtungstafeln werden mindestens 10,8 × 1,95 Studs groß,
-Pfeilspitzen und rückseitige Konstruktion passen sich an. Bestehende Texte und
-TextLabel-Instanzen bleiben erhalten. Bereits versetzte Pfosten werden nicht erneut
-verschoben; wiederholte Updates vergrößern die Tafeln nicht weiter.
+**Yellow direction signs:** direction boards become at least 10.8 × 1.95 studs; arrow heads
+and the construction on the back adjust. Existing texts and TextLabel instances are kept.
+Posts that were already moved are not moved again; repeated updates do not keep enlarging
+the boards.
 
-**Bäume und Laternen:** Der neue [Creator-Store-Import](09-creator-store-assets.md)
-übernimmt Modelle aus zwei offiziellen Roblox-Paketen und bindet sie direkt in den
-Updater ein. Die Bibliothek enthält nur visuelle Geometrie und Texturen. Importierte
-Bäume erhalten schmale Stammkollisionen, Laternen die bekannte Nachtlichtsteuerung.
-Nur erfolgreich ersetzte alte generierte Laternen werden entfernt.
+**Trees and lamps:** the new [Creator Store import](09-creator-store-assets.md) takes
+models from two official Roblox packs and connects them directly to the updater. The
+library holds only visual geometry and textures. Imported trees get narrow trunk
+colliders, lamps the known night-light control. Only old generated lamps that were
+replaced successfully are removed.
 
-## Frühere Korrektur an eigenen Baumvorlagen
+## Earlier fix to the original tree templates
 
-Bei `Part.Shape = Ball` bestimmt die kleinste Größenachse den Kugeldurchmesser.
-Die frühere Offline-Vorschau hatte dagegen frei gestreckte Kugelnetze dargestellt.
-Der native Generator konnte deshalb seine dargestellten Blattformen nicht erzeugen.
-Roblox beschreibt das Verhalten in der offiziellen
-[Ankündigung zu Part.Shape und Size](https://devforum.roblox.com/t/improvements-to-part-shape-size/2443389/1).
-Seit `kagundali-trees-2` wird eine gleichmäßige Kugel zunächst als PartOperation gebacken;
-erst deren Kopien werden gestreckt und vereinigt. Diese eigenen Vorlagen bleiben für
-Installationen ohne Creator-Store-Bibliothek und fehlende optionale Pflanzenkategorien
-verfügbar. Ein erfolgreicher Import hat Vorrang.
+With `Part.Shape = Ball` the smallest size axis sets the sphere diameter. The earlier
+offline preview had drawn freely stretched sphere meshes instead, so the native generator
+could not produce the leaf shapes it showed. Roblox describes the behaviour in the official
+[announcement on Part.Shape and Size](https://devforum.roblox.com/t/improvements-to-part-shape-size/2443389/1).
+Since `kagundali-trees-2` a uniform sphere is first baked into a PartOperation; only its
+copies are stretched and joined. These original templates stay available for places
+without a Creator Store library and for missing optional plant categories. A successful
+import takes priority.
 
-## Anwenden und prüfen
+## Apply and check
 
-Hauptbranch **`claude/project-thread-5krwdh`** holen, Place sichern und Play stoppen.
-Rojo synchronisieren, speichern, Studio neu starten und Rojo erneut verbinden.
-Der Neustart leert bereits mit `require()` geladene alte Module. In die Command Bar:
+Pull the default branch **`claude/project-thread-5krwdh`**, back up the place and stop Play.
+Sync Rojo, save, restart Studio and reconnect Rojo. The restart clears old modules that
+were already loaded with `require()`. In the command bar:
 
 ```lua
 require(game.ServerStorage.StudioTools.UseCreatorStoreAssets)()
 ```
 
-Nach dem Import erscheinen die Vorlagenzahlen je Kategorie; nach dem Kartenupdate
-**`kagundali-junction-3`**, Baumversion **`creator-store-1`** und die Anzahl importierter
-Laternen. Danach speichern. Für Wiederholungen mit derselben gespeicherten Bibliothek:
+After the import the template counts per category appear; after the map update
+**`kagundali-junction-3`**, tree version **`creator-store-1`** and the number of imported
+lamps. Then save. For reruns with the same saved library:
 
 ```lua
 require(game.ServerStorage.StudioTools.UpgradeKagundali)()
 ```
 
-Der Bericht unterscheidet neue, beibehaltene und übersprungene Markierungsstücke.
-`CheckEnvironment()` zählt tatsächliche Bäume und Linien und meldet veraltete Baumversionen.
-Die normale Testszene ohne Import enthält 64 Bäume, 49 Büsche, 47 Farne, 23 Felsen und
-139 Markierungsstücke, insgesamt **1.248 BaseParts**. Die Import-Testszene mit künstlichen
-Packmodellen enthält **835 BaseParts und eine importierte Laterne**. Letztere Zahl ist
-keine Messung der echten Roblox-Pakete. Das regionale Limit bleibt 1.600 Teile;
-eine Überschreitung stoppt vor dem Austausch der bisherigen regionalen Geometrie.
+The report separates new, kept and skipped marking pieces. `CheckEnvironment()` counts the
+trees and lines that are really there and reports outdated tree versions. The normal test
+scene without import contains 64 trees, 49 bushes, 47 ferns, 23 rocks and 139 marking
+pieces, **1,248 BaseParts** in total. The import test scene with artificial pack models
+contains **835 BaseParts and one imported lamp**. That number is not a measurement of the
+real Roblox packs. The regional limit stays at 1,600 parts; going over it stops before the
+old regional geometry is swapped.
 
-## Grenzen der Prüfung
+## Test limits
 
-Regressionstests prüfen Teilfehler bei Markierungen, deren Höhen und Erhalt,
-Importfehler, Skriptentfernung, erhaltene Mesh-/Texturdaten, Bodenplatzierung,
-Laternentausch und wiederholte Updates. Der Test-Mock führt weder natives CSG noch
-Roblox-Rendering aus. **Ein neues Studio-Bild von junction-3 und den echten importierten
-Modellen liegt noch nicht vor.** Packstruktur, sichtbare Texturen, Dreiecksbudget,
-Speicherung und Leistung mit 20–25 Spielern müssen dort geprüft werden.
+Regression tests check partial marking failures, their heights and retention, import
+failures, script removal, kept mesh and texture data, ground placement, lamp replacement
+and repeated updates. The test stand-in runs neither native CSG nor Roblox rendering.
+**There is no Studio image of junction-3 or of the real imported models yet.** Pack
+structure, visible textures, triangle budget, saving and performance with 20–25 players
+have to be checked there.
 
-Die regionale Grasgrenze, entfernte kahle Bergflanken und übrigen Stadtplatzhalter
-sind mit diesem Schritt noch nicht fertig gestaltet. Vor der Ausweitung entlang der R3
-bleibt der Sichtvergleich des zusammenhängenden Kreuzungsbereichs erforderlich.
+The regional grass edge, distant bare mountain sides and the remaining town placeholders
+are not finished in this step. Before extending along the R3, the visual comparison of the
+whole junction area is still needed.

@@ -2,13 +2,13 @@
 
 Work happens one milestone at a time. A milestone starts only after Justin writes `NEXT MILESTONE`. Status values: **Done**, **In progress**, **Waiting for approval**, **Not started**, **Blocked**.
 
-Last update: 2026-10-26. The sequence below is the **integration-aware plan from Justin's architecture update of 2026-10-26**. It replaces the earlier 0–14 plan.
+Last update: 2026-10-28. The sequence below is the **integration-aware plan from Justin's architecture update of 2026-10-26**. It replaces the earlier 0–14 plan.
 
 | # | Milestone | Status | Key prerequisites | Main deliverable |
 |---|---|---|---|---|
 | 0 | Technical and repository audit | **Done** | — | `docs/game/` (this folder), incl. bot audit and system boundaries ([05](05-economy-integration.md)) |
 | 1 | Core architecture and integration prototype | **Done** (Studio staging test passed 2026-10-26) | Milestone 0; Studio API access and HTTP requests on (03, steps 4–5); a staging key | Roblox foundation (services, remotes, logging, permissions); bridge prototype in the bot (off by default); account linking; verified staging test: read an account and make one safe test transfer exactly once |
-| 2 | Complete country map blockout | **In progress** (blockout and landscape pass built and tested offline; waiting for Justin's Studio test) | Milestone 1; Justin runs builders and saves the place | Terrain, roads, footprints of all four cities, airport, border crossings |
+| 2 | Complete country map blockout | **In progress** (blockout and landscape pass built by Justin in Studio; environment overhaul and the Kagundali junction benchmark added by Codex; waiting for Justin's Studio check of the latest state) | Milestone 1; Justin runs builders and saves the place | Terrain, roads, footprints of all four cities, airport, border crossings |
 | 3 | Gundiville government district | Not started | Milestone 2; flag and emblem IDs (done) | General People's Congress, Hausali, Leader's residence, square, statue of Dr. Justin Wachmann |
 | 4 | First playable gameplay loop | Not started | Milestones 1–3; bot reachable over HTTPS for live tests | Spawning, navigation, one working vehicle, bank interface, one civilian job, one property interaction, connected to the bot where feasible; Roblox player profiles (non-financial) |
 | 5 | Secondary cities and infrastructure | Not started | Milestone 2 | Stokondo, Kagundali, Oberdueshuson, airport, customs, fuel, utilities, transport network |
@@ -73,6 +73,25 @@ One pull request (branch `claude/project-thread-55jwuj`). Details and the as-bui
 - **New modules:** `Map/Hash`, `Map/Lakes`, `Map/Biomes`, `Map/Fields`, `Map/Vegetation`, `Map/RoadDetails` (pure, offline-tested); builders `Environment`, `RoadDetails`, `Signs`, `Countryside`, `Vegetation`.
 - **Tests that ran (cloud session):** `python3 tests/map/test_all.py` — 456 layout and terrain checks, the 16 plots match the bot, 61 new landscape checks (cascades only drop, pools voxel-aligned, river never narrows; lakes hold water below their shore and fade into the land, at least 20 studs from roads; fields off roads, water and places; markings inside and on the road surface; posts, signs, lights and poles beside the road on dry ground; a stop sign at every junction and a town sign on every road into a city; trees off roads, water, fields, places and power lines, below the tree line; repeatable), and 44 checks of the real `BuildMap` against the Roblox stand-in (37,281 parts inside the map, under the 45,000 budget; rerun without duplicates). `rojo build` OK (Lighting effects present); StyLua, selene and luau-lsp (strict) with 0 findings. Preview re-rendered.
 - **Not tested yet:** anything in Roblox Studio (how the landscape looks, real build time, frame rate with about 37,000 parts and streaming).
+- **Studio build (Justin, 2026-10-26):** `BuildMap.run()` finished with `Done in 34 s`; the Output matched the expected lines (16 roads, 5 bridges, 1,430 marking parts, 81 signs, 8,207 trees, 4,109 bushes, 2,687 rocks). Studio refused to switch on animated grass (`Could not switch on animated grass`), so `Terrain.Decoration` is ticked by hand (A23). The full walk-through of [testing/m2-map-checklist.md](testing/m2-map-checklist.md) was not reported; Justin sent screenshots that led to the next two revisions.
+
+**Revision 3 — highland environment, `highland-4` (Codex, 2026-10-26 to 2026-10-27).** Pull requests #13 and #14 and three direct commits on the default branch. Details: [06-environment-overhaul.md](06-environment-overhaul.md).
+
+- **Weather and day/night:** `EnvironmentService` (one weather schedule per server, only small attributes replicate, no remotes), client `EnvironmentController`, `WeatherEffects` (camera-local rain, lightning) and `EnvironmentQualityController` (Weather menu: Automatic, Minimal, Low, Medium, High for the session); `Config/Environment` (60-minute day, five weather profiles); shared `Environment/Model` and `Environment/Presentation`.
+- **Landscape:** native CSG tree crowns (`CanopyLibrary`), terrain relief and soil refinement (`LandscapeConfig`), roadside drainage, bridge foundations and furniture grounded on the saved terrain.
+- **Saved places:** `BuildMap.upgradeEnvironment()` patches only terrain columns that still match the earlier generator (`OriginalSurface`, `TerrainUpgrade`, `ExistingTerrain`); `refreshEnvironment()` replaces generated geometry; `StudioTools.CheckEnvironment` reports the saved state.
+- **Audio:** original rain and thunder WAVs in `assets/audio/` (CC0); silent until uploaded (B7).
+
+**Revision 4 — Kagundali junction benchmark (Codex, 2026-10-28).** Three direct commits on the default branch. Details: [07-kagundali-junction.md](07-kagundali-junction.md), [08-kagundali-screenshot-fixes.md](08-kagundali-screenshot-fixes.md), [09-creator-store-assets.md](09-creator-store-assets.md).
+
+- A bounded art benchmark at the R3/N5 junction (X 64–832, Z 2944–3648): own tree, bush and fern templates, a transport workshop, gravel shoulders, drainage, restored markings and larger direction signs; neutral lighting shared by the Rojo preset and the weather model.
+- `UpgradeKagundali()` applies it to a saved place; `UseCreatorStoreAssets()` imports trees and lamps from Roblox's own Forest Pack and City Props Pack (creator check before loading, scripts stripped) and then runs the update.
+- Justin applied junction-2 in Studio on 2026-10-28 (64 trees, 49 bushes, 47 ferns, workshop present); junction-3 and the pack import are not tested in Studio yet.
+
+**Clean-up (Claude, 2026-10-28).** Weather menu text in English (A8), luau-lsp (strict) back to 0 findings (42 type errors in the new modules fixed without behaviour changes), docs 07–09 translated to English, this tracker, [FILE-INVENTORY.md](FILE-INVENTORY.md) and [04](04-assumptions-and-blockers.md) brought up to date.
+
+- **Tests that ran (cloud session, default branch after the clean-up):** `python3 tests/map/test_all.py` (1,513 Luau checks and the property match with the bot, 39,643 parts under `Workspace.Map`) and `python3 tests/environment/run.py` (86 checks) all pass; StyLua, luau-lsp (strict) with 0 findings, `rojo build` OK.
+- **Not tested yet:** the environment, the junction benchmark and the pack import in Roblox Studio; frame rate with about 39,600 parts.
 
 ## Milestone 3 plan (preview)
 

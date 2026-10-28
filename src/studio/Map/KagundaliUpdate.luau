@@ -60,27 +60,28 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	local okay, report = pcall(function()
 		local details = Details.new(layout, hf, sample)
 		local built = Builder.build(feature, layout, staging, sample, library, details)
-		local paintSample = if opts.GeneratedTerrain
+		local junction = staging:FindFirstChild("KagundaliJunction") :: Folder
+		local paintSample: (Vector3) -> Vector3? = if opts.GeneratedTerrain
 			then function(p: Vector3): Vector3
 				return p
 			end
 			else Markings.surface(map)
 		built.RestoredMarkings, built.MarkingsComplete, built.PaintCoverage, built.SkippedMarkings, built.MissingPaintSamples = Markings.build(
 			details,
-			staging.KagundaliJunction,
+			junction,
 			function(p: Vector3): Vector3?
 				return if protected(p.X, p.Z) then nil else paintSample(p)
 			end
 		)
 		built.RetainedMarkings = Markings.retainPrevious(
 			if old then old:FindFirstChild("Markings") else nil,
-			staging.KagundaliJunction.Markings,
+			junction:FindFirstChild("Markings") :: Folder,
 			built.PaintCoverage
 		)
 		built.Markings = built.RestoredMarkings + built.RetainedMarkings
 		built.Parts += built.Markings
 		assert(built.Parts <= Junction.MaxParts, "Junction markings exceeded the regional part budget")
-		staging.KagundaliJunction:SetAttribute("PartCount", built.Parts)
+		junction:SetAttribute("PartCount", built.Parts)
 		return built
 	end)
 	if not okay then
@@ -108,7 +109,8 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	staging:Destroy()
 	report.RefinedSigns = Builder.refineSigns(map)
 	local places = map:FindFirstChild("Places")
-	for _, place in if places and Util.isGenerated(places) then places:GetChildren() else {} do
+	local placeList: { Instance } = if places and Util.isGenerated(places) then places:GetChildren() else {}
+	for _, place in placeList do
 		local marker = place:FindFirstChild("NameMarker")
 		if marker then
 			for _, gui in marker:GetChildren() do

@@ -1,12 +1,12 @@
 # 04 · Assumptions, Proposals and Blockers
 
-Status: updated in Milestone 2, 2026-10-26. Items are removed or updated as they are confirmed or solved.
+Status: updated in Milestone 2, 2026-10-28 (after revisions 3 and 4 by Codex). Items are removed or updated as they are confirmed or solved.
 
 ## 1. Assumptions
 
 | ID | Assumption | How it gets confirmed |
 |---|---|---|
-| A1 | The Studio place contains only the default Baseplate and the Rojo test scripts. | **Confirmed** by Justin (2026-10-26): nothing built yet |
+| A1 | The Studio place contains only the default Baseplate and the Rojo test scripts. | **Confirmed** by Justin (2026-10-26): nothing built yet. **Superseded:** Justin built the map with `BuildMap.run()` on 2026-10-26 and applied the junction benchmark on 2026-10-28 |
 | A2 | The Owner's Roblox account is user `2595858454` (LiterallyDrJustin). It gets Owner rights in game and is the statue avatar. | Stated in the master prompt; group owner is the same account |
 | A3 | Normally one server with up to 25 players runs. The code must still be correct with two or more servers. | Design rule |
 | A4 | North = −Z, East = +X; 1 stud ≈ 0.28 m; city distances are compressed for gameplay. | Accepted with this blueprint |
@@ -22,15 +22,18 @@ Status: updated in Milestone 2, 2026-10-26. Items are removed or updated as they
 | A14 | `GroupService:GetRolesInGroupAsync` returns `IsMember` and the roles with their `Rank` (used for staff checks; `GetRankInGroup` is deprecated). | Studio checklist: the test buttons appear for the Owner; staff ranks are tested when staff join |
 | A15 | `StreamingEnabled` and `Lighting.ClockTime` can be set from `default.project.json` with `$properties`. | `CheckSetup` prints OK for streaming |
 | A16 | Code run from the Studio command bar in edit mode may yield (`task.wait`), so the long map build keeps Studio usable, and its changes are saved with the place. | Yielding confirmed in Milestone 1 (CheckSetup waits for asset info); the long build is confirmed in Justin's Milestone 2 test |
-| A17 | Studio writes the full terrain (about 71 million voxels in 25,600 chunks, solid fill below) in a few minutes and saves it with the place. | Offline run of the real builder: 42 s in the Luau command line tool, including the stand-in's checks. Studio's time is measured in the Milestone 2 test |
+| A17 | Studio writes the full terrain (about 71 million voxels in 25,600 chunks, solid fill below) in a few minutes and saves it with the place. | Offline run of the real builder: 42 s in the Luau command line tool, including the stand-in's checks. **Confirmed 2026-10-26:** Justin's Studio build took 34 s in total (terrain 10–100 % in about 30 s) |
 | A18 | `Terrain:WriteVoxels` takes materials and occupancy as `[x][y][z]` arrays at resolution 4, and occupancy below 1 gives smooth slopes. | Roblox documentation; the offline test rebuilds probe heights from the arrays. Confirmed visually in the Milestone 2 test |
 | A19 | Characters can climb steep terrain (default `MaxSlopeAngle` 89°), so mountains alone do not keep players in; invisible walls at the map edge do. | Roblox default; checked in the Milestone 2 test (step 12) |
 | A20 | The place still has the template `Baseplate` and `SpawnLocation` (A1). Both would end up inside the new terrain, so the builder removes exactly these two and logs it. | A1; Justin backs up the place before the build |
 | A21 | With a 1,024-stud streaming radius, clients do not load distant terrain, so the horizon can look empty from high points. | To be checked in the Milestone 2 Play test. Since the landscape pass an Atmosphere haze softens the edge. Further options: a larger radius, low-detail mountain models (Milestones 8–9) |
 | A22 | Rojo sets the Lighting properties and creates the Atmosphere, Bloom, SunRays and ColorCorrection objects from `default.project.json` when `rojo serve` is (re)started; a Sky that Justin adds by hand is kept. `Lighting.Technology` is not in the file and stays as the place has it. | `rojo build` output contains the four effects with their values. Checked in the Milestone 2 Studio test |
-| A23 | `Terrain.Decoration` (animated grass) can be switched on from the command bar. If a Studio version refuses, the builder logs a hint to tick it by hand. | Offline: the builder wraps it in `pcall`. Checked in the Milestone 2 Studio test |
+| A23 | `Terrain.Decoration` (animated grass) can be switched on from the command bar. If a Studio version refuses, the builder logs a hint to tick it by hand. | **Not true (2026-10-26):** Justin's Studio printed `Could not switch on animated grass`. The property is not scriptable; since revision 3 the code no longer tries, and Justin ticks *Workspace → Terrain → Decoration* by hand |
 | A24 | About 37,000 parts (30,000 of them plants) with instance streaming run smoothly on a PC; phones are measured in Milestone 9. | Offline part count. If Studio or Play gets slow: `MapLayout.Vegetation.Density = 0.6` and rebuild, or `run({ Vegetation = false })` |
-| A25 | Trees as parts (cylinder trunk, stretched sphere crowns via `SpecialMesh`) look acceptable from a car and from the air; real tree models can replace them later without changing where trees stand. | Visual check in the Milestone 2 Studio test |
+| A25 | Trees as parts (cylinder trunk, stretched sphere crowns via `SpecialMesh`) look acceptable from a car and from the air; real tree models can replace them later without changing where trees stand. | **Replaced:** Justin's screenshots led to native CSG crowns (revision 3) and, at the R3/N5 junction, to original templates or Roblox's Forest Pack models (revision 4) |
+| A26 | `GeometryService:UnionAsync` works from the command bar in edit mode, and the compiled CSG crowns are saved with the place. | Offline the CSG calls are simulated. Confirmed once Justin's Studio runs `upgradeEnvironment()` / `UpgradeKagundali()` without CSG errors and the trees are still there after reopening |
+| A27 | `InsertService:LoadAsset` can load Roblox's own Forest Pack (`6432306802`) and City Props Pack (`6370681139`) from the command bar, and `MarketplaceService:GetProductInfo` reports creator ID 1 and asset type 10 (Model) for both. | The IDs could not be checked from the cloud (B2). The import checks creator and type itself and stops without changes if either differs; confirmed at Justin's first `UseCreatorStoreAssets()` run |
+| A28 | About 39,600 parts (full map plus the junction benchmark) with instance streaming still run smoothly on a PC. | Offline part count (budget 45,000). Frame rate is checked in Justin's Play test; phones in Milestone 9 |
 
 ## 2. Proposed implementation choices (not canon)
 
@@ -62,6 +65,9 @@ These are additions needed to build the game. None of them changes an establishe
 | P22 | German-style road furniture: yellow town signs (crossed out when leaving), blue facility signs, round speed limits in km/h (100 national, 80 regional, 50 in towns), white marker posts with a black band | Kagundi's German heritage (language, institutions) carried into everyday streets; the speed limits are development values, not law |
 | P23 | Three unnamed lakes (development names Ranch Lake, West Valley Pond, Highland Tarn) | Livelier landscape; the canon names no lakes in the East District |
 | P24 | Vegetation by region: pine timber plantations in the forested hills, eucalyptus groves and windbreaks on the Oberdueshuson plateau, acacias in the dry west and the Kagundali valley, broadleaf trees elsewhere | The encyclopedia names forested hills, forestry and timber exports and tobacco plantations, but no tree species |
+| P25 | A 60-minute day/night cycle and five weather profiles (clear, partly cloudy, overcast, rain, thunderstorm) with gradual transitions, one schedule per server; visual time is independent of the bot's economic day | Revision 3 by Codex. Only visual: nothing in the economy depends on weather or time of day. About half of each real hour is night |
+| P26 | A bounded art benchmark at the R3/N5 junction is finished and accepted in Studio before the same style is carried to the rest of the map | Revision 4 by Codex: avoids rebuilding the whole map for every visual change |
+| P27 | Trees and street lamps from Roblox's own free packs (Forest Pack, City Props Pack) where they fit; original templates stay as the fallback | Revision 4 by Codex. Official Roblox assets need no third-party permission; scripts are stripped on import |
 
 ## 3. Open decisions for Justin
 
@@ -81,4 +87,6 @@ These are additions needed to build the game. None of them changes an establishe
 | B3 | Running downloaded dev tool binaries was blocked in the cloud session | — | **Resolved in Milestone 1:** with Justin's approval (2026-10-26) StyLua and selene were built from crates.io and luau-lsp from its source code; all Milestone 1 code passes them. StyLua and selene are pinned in `rokit.toml` for Justin's PC |
 | B4 | The economy bot runs only while Justin's PC is on; the bridge exists (Milestone 1 bot pull request) but is off and not deployed | No money features on live servers yet | Justin is arranging 24/7 hosting (2026-10-26). Studio tests use the staging bridge on Justin's PC. Until the bot is reachable, the game shows "temporarily unavailable" and never invents balances |
 | B5 | Flag and emblem IDs | — | **Resolved 2026-10-26:** the first IDs were decals in swapped order. Justin read the image IDs in Studio: flag `74627674981379`, emblem `124794973631384`, now in `src/shared/Config/Assets.luau` |
-| B6 | Claude cannot see the current place file | Hand-built content could be missed | Resolved for now: Justin confirmed nothing is built (A1) |
+| B6 | Claude cannot see the current place file | Hand-built content could be missed | Since the map is built, the upgrade tools protect hand-built parts and terrain columns that do not match the generator; Justin reports the Output |
+| B7 | Rain and thunder audio IDs are blank | Weather is silent | Justin uploads `assets/audio/kagundi-rain-loop.wav` and `kagundi-thunder.wav` under the group, grants the experience permission and puts the IDs into `src/shared/Config/Environment.luau` (guide: `assets/audio/README.md`) |
+| B8 | Two AI assistants (Claude and Codex) push to the same default branch | Edits to the same files can clash | Each fetches the latest default branch before starting; Justin pauses one while the other works on the same area |
