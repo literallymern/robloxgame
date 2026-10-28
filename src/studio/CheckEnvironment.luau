@@ -44,22 +44,37 @@ return function(): Report
 	check("map", map ~= nil, "Saved Workspace.Map must exist before an environment upgrade.")
 	if map then
 		local area = map:FindFirstChild("KagundaliJunction")
-		local trees = 0
+		local expectedTreeVersion = JunctionTrees.currentVersion()
+		local trees, staleTrees = 0, 0
 		for _, child in if area then area:GetDescendants() else {} do
-			if
-				child:IsA("Model")
-				and child:GetAttribute("AssetVersion") == JunctionTrees.Version
-				and child:FindFirstChild("TrunkCollision")
-			then
-				trees += 1
+			if child:IsA("Model") and child:FindFirstChild("TrunkCollision") then
+				if child:GetAttribute("AssetVersion") == expectedTreeVersion then
+					trees += 1
+				else
+					staleTrees += 1
+				end
 			end
 		end
 		report.Counts.KagundaliTrees = trees
+		report.Counts.StaleKagundaliTrees = staleTrees
 		check(
 			"kagundaliGeometry",
-			area ~= nil and area:GetAttribute("Revision") == Junction.Revision and trees >= 20,
-			`Kagundali R3/N5: {trees} new branching trees. If missing, run require(game.ServerStorage.StudioTools.UpgradeKagundali)(); the camera then moves to the benchmark.`
+			area ~= nil and area:GetAttribute("Revision") == Junction.Revision and trees >= 20 and staleTrees == 0,
+			`Kagundali R3/N5: {trees} trees using {expectedTreeVersion}, {staleTrees} stale trees; saved {if area
+				then tostring(area:GetAttribute("Revision"))
+				else "missing"}, expected {Junction.Revision}. Run require(game.ServerStorage.StudioTools.UpgradeKagundali)() to update.`
 		)
+		if area then
+			local paint = countParts(area:FindFirstChild("Markings"))
+			report.Counts.KagundaliMarkings = paint
+			check(
+				"kagundaliMarkings",
+				paint > 0,
+				`Kagundali paint: {paint} actual parts; skipped sections: {tostring(
+					area:GetAttribute("SkippedMarkings")
+				)}. Inspect missing coordinates in the updater output.`
+			)
+		end
 		check(
 			"kagundaliTerrain",
 			map:GetAttribute("KagundaliTerrainRevision") == Junction.Revision,

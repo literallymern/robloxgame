@@ -116,19 +116,26 @@ Den Place sichern, Play stoppen, nach dem Sync speichern und Studio neu starten;
 anschließend Rojo wieder verbinden. In **View > Command Bar**:
 
 ```lua
-require(game.ServerStorage.StudioTools.UpgradeKagundali)()
+require(game.ServerStorage.StudioTools.UseCreatorStoreAssets)()
 ```
 
-Das aktualisiert den vorhandenen Bereich und richtet die Kamera auf die Kreuzung.
+Das lädt die offiziellen Roblox-Pakete **Forest Pack** und **City Props Pack**, übernimmt
+geeignete Mesh-Modelle ohne Demo-Skripte und aktualisiert den vorhandenen Bereich.
+Importierte Bäume, Unterwuchs und Felsen ersetzen dort die bisherigen Vorlagen;
+an vorhandenen Laternenstandorten werden passende importierte Modelle eingesetzt.
+Die Kamera richtet sich anschließend auf die Kreuzung.
 Anschließend speichern und in Play prüfen. Ein vollständiger Kartenneubau ist dafür
 nicht erforderlich. **Die visuelle Studio-Abnahme ist noch offen.** Anleitung,
 Ursachendiagnose, Testgrenzen und Quellgeometrievorschau:
 [`Kagundali R3/N5`](docs/game/07-kagundali-junction.md).
 
-**Korrektur nach deinen Studio-Bildern:** `kagundali-junction-2` behebt die kugeligen
-Blattformen, befreit die Werkstattzufahrt von Gras und stellt lokale Straßenmarkierungen
-wieder her. Den gleichen Update-Befehl nach Sync und Studio-Neustart erneut ausführen.
-Details: [Screenshot-Auswertung und Korrekturen](docs/game/08-kagundali-screenshot-fixes.md).
+**Aktueller Stand: `kagundali-junction-3`.** Gültige Markierungsabschnitte werden auch bei
+einzelnen fehlgeschlagenen Bodenproben gesetzt. Die Kieszufahrt folgt dem Boden in kürzeren
+Abschnitten, und die gelben Richtungstafeln werden größer, wobei ihre Texte erhalten bleiben.
+Nach einem erfolgreichen Import verwendet auch `UpgradeKagundali()` die gespeicherte
+Assetbibliothek ohne erneuten Download. Ohne diese Bibliothek bleiben die eigenen
+Baumvorlagen der Ersatz. Details: [Screenshot-Korrekturen](docs/game/08-kagundali-screenshot-fixes.md)
+und [Creator-Store-Import mit Quellen und Prüfgrenzen](docs/game/09-creator-store-assets.md).
 
 ## Globale Grundlage highland-4
 

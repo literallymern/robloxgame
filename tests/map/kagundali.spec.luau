@@ -150,6 +150,19 @@ check(
 	signTexts and report.RefinedSigns >= 3,
 	"yellow signs keep their actual text while their posts and rear construction are refined"
 )
+local signSizes, postPositions = {}, {}
+for _, sign in signs:GetChildren() do
+	for _, part in sign:GetChildren() do
+		if part:IsA("BasePart") and part.Name == "Post" then
+			postPositions[part] = part.Position
+		end
+		if sign.Name == "DirectionSign" and part:IsA("BasePart") and part.Name == "Board" then
+			assert(part.Size.X >= 10.8 and part.Size.Y >= 1.95)
+			signSizes[part] = part.Size
+		end
+	end
+end
+check(next(signSizes) ~= nil, "retained direction boards gain readable proportions without replacing text instances")
 local area = map.KagundaliJunction
 local allGrounded, sightClear, sourceParts, collisionSafe, driveConnected = true, true, 0, true, false
 local species = {}
@@ -206,6 +219,13 @@ for _, sign in signs:GetChildren() do
 	end
 end
 local again = Update.apply(hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
+for post, position in postPositions do
+	assert((post.Position - position).Magnitude < 1e-8)
+end
+for board, size in signSizes do
+	assert((board.Size - size).Magnitude < 1e-8)
+end
+check(true, "repeat and old-construction migration neither shift posts again nor keep enlarging boards")
 check(
 	first.Parent == nil and again.Parts == report.Parts and #signs:GetDescendants() == signsBefore,
 	"repeat update replaces its scene without stacking vegetation or sign hardware"

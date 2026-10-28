@@ -5,6 +5,7 @@ local Junction = require(script.Parent.Parent.JunctionLandscape)
 local Hash = require(script.Parent.Parent.Hash)
 local Geometry = require(script.Parent.Parent.Geometry)
 local Trees = require(script.Parent.JunctionTrees)
+local CreatorAssets = require(script.Parent.Parent.CreatorAssets)
 local Util = require(script.Parent.Util)
 local Builder = {}
 local UP = Vector3.new(0, 1, 0)
@@ -33,16 +34,29 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 	local _, entry = Junction.access(hf)
 	if entry then
 		local start = Vector3.new(yard.X, y + 0.08, yard.Z - 32)
-		local points: { Vector3 } = { start }
+		local direction = (Vector3.new(entry.X, 0, entry.Z) - Vector3.new(start.X, 0, start.Z)).Unit
+		local across = Vector3.new(-direction.Z, 0, direction.X) * 4.5
+		local points: { Vector3 } = {}
+		local bottoms: { number } = {}
+		local segments = math.ceil((entry - start).Magnitude / 3)
 		local clear = true
-		for i = 1, 12 do
-			local p = start:Lerp(entry, i / 12)
-			local ground = sample(p.X, p.Z)
-			if not ground then
-				clear = false
+		for i = 0, segments do
+			local p = start:Lerp(entry, i / segments)
+			local highest, lowest = -math.huge, math.huge
+			for _, offset in { -across, Vector3.new(), across } do
+				local ground = sample(p.X + offset.X, p.Z + offset.Z)
+				if not ground then
+					clear = false
+					break
+				end
+				highest, lowest = math.max(highest, ground), math.min(lowest, ground)
+			end
+			if not clear then
 				break
 			end
-			table.insert(points, Vector3.new(p.X, if i == 12 then entry.Y + 0.025 else ground + 0.09, p.Z))
+			local top = math.max(highest + 0.16, if i == segments then entry.Y + 0.025 else -math.huge)
+			table.insert(points, Vector3.new(p.X, top, p.Z))
+			table.insert(bottoms, lowest)
 		end
 		if clear then
 			for i = 1, #points - 1 do
@@ -52,7 +66,7 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 					points[i],
 					points[i + 1],
 					9,
-					0.35,
+					math.max(0.35, points[i].Y - bottoms[i] + 0.15, points[i + 1].Y - bottoms[i + 1] + 0.15),
 					{ Material = Enum.Material.Pebble, Color = rgb(123, 113, 93), Decoration = true }
 				)
 			end
@@ -305,9 +319,12 @@ function Builder.build(hf: any, layout: any, parent: Instance, sample: any, libr
 					continue
 				end
 				local ga, gb = sample(pa.X, pa.Z), sample(pb.X, pb.Z)
-				if not ga or not gb or ga > pa.Y + 0.3 or gb > pb.Y + 0.3 or pa.Y - ga > 4 or pb.Y - gb > 4 then
+				if not ga or not gb or ga > pa.Y + 2 or gb > pb.Y + 2 or pa.Y - ga > 4 or pb.Y - gb > 4 then
 					continue
 				end
+				pa, pb =
+					Vector3.new(pa.X, math.max(pa.Y, ga + 0.12), pa.Z),
+					Vector3.new(pb.X, math.max(pb.Y, gb + 0.12), pb.Z)
 				Util.strip(
 					infrastructure,
 					"GravelTransition",
@@ -350,17 +367,41 @@ function Builder.build(hf: any, layout: any, parent: Instance, sample: any, libr
 		local y = suitable(x, z, false)
 		if y then
 			local size = Hash.range(i, 3, 813, 1.5, 4)
-			Util.wedge(
-				plants,
-				"BuriedRock",
-				CFrame.new(x, y + size * 0.12, z) * CFrame.Angles(0.1, i * 1.37, 0.2),
-				Vector3.new(size * 1.3, size, size),
-				{ Material = Enum.Material.Rock, Color = rgb(111, 108, 91), Decoration = true }
-			)
+			local imported = CreatorAssets.place("Rock", i, plants, Vector3.new(x, y - size * 0.25, z), size, i * 1.37)
+			if not imported then
+				Util.wedge(
+					plants,
+					"BuriedRock",
+					CFrame.new(x, y + size * 0.12, z) * CFrame.Angles(0.1, i * 1.37, 0.2),
+					Vector3.new(size * 1.3, size, size),
+					{ Material = Enum.Material.Rock, Color = rgb(111, 108, 91), Decoration = true }
+				)
+			end
 			report.Rocks += 1
 		end
 	end
 	report.Workshop = workshop(root, sample, hf)
+	report.ImportedLamps = 0
+	report.ReplacedLampPositions = {}
+	for index, lamp in details.lights do
+		if Junction.contains(lamp.X, lamp.Z, 20) then
+			local ground = sample(lamp.X, lamp.Z)
+			if ground then
+				local placed = CreatorAssets.place(
+					"Lamp",
+					index,
+					infrastructure,
+					Vector3.new(lamp.X, ground, lamp.Z),
+					17,
+					math.atan2(-lamp.ArmX, -lamp.ArmZ)
+				)
+				if placed then
+					report.ImportedLamps += 1
+					table.insert(report.ReplacedLampPositions, Vector3.new(lamp.X, ground, lamp.Z))
+				end
+			end
+		end
+	end
 	for _, part in root:GetDescendants() do
 		if part:IsA("BasePart") then
 			report.Parts += 1
@@ -379,9 +420,8 @@ function Builder.refineSigns(map: Instance): number
 	local signs = if details then details:FindFirstChild("Signs") else nil
 	local count = 0
 	for _, model in if signs then signs:GetChildren() else {} do
-		-- Construction revision is independent of vegetation/terrain. Do not move the
-		-- retained signposts a second time when upgrading junction-1 to junction-2.
-		if not model:IsA("Model") or model:GetAttribute("JunctionConstruction") ~= nil then
+		local construction = model:GetAttribute("JunctionConstruction")
+		if not model:IsA("Model") or construction == "junction-signs-2" then
 			continue
 		end
 		local board = model.PrimaryPart
@@ -391,11 +431,44 @@ function Builder.refineSigns(map: Instance): number
 		local face = if model.Name == "StopSign" or model.Name == "SpeedSign"
 			then board.CFrame.RightVector
 			else board.CFrame.LookVector
+		if model.Name == "DirectionSign" and model:GetAttribute("JunctionFaceRevision") ~= "junction-signs-2" then
+			for _, panel in model:GetChildren() do
+				if not panel:IsA("BasePart") or panel.Name ~= "Board" then
+					continue
+				end
+				local oldSize = panel.Size
+				local width, height = math.max(oldSize.X, 10.8), math.max(oldSize.Y, 1.95)
+				for _, tip in model:GetChildren() do
+					if tip:IsA("BasePart") and tip.Name == "Tip" then
+						local relative = panel.CFrame:PointToObjectSpace(tip.Position)
+						if math.abs(relative.Y) < oldSize.Y / 2 + 0.05 then
+							local side = if relative.X < 0 then -1 else 1
+							tip.CFrame += panel.CFrame.RightVector * side * (width - oldSize.X) / 2 + panel.CFrame.UpVector * relative.Y * (height / oldSize.Y - 1)
+							tip.Size = Vector3.new(tip.Size.X, tip.Size.Y * height / oldSize.Y, tip.Size.Z)
+							tip.Material = Enum.Material.Metal
+						end
+					end
+				end
+				panel.Size = Vector3.new(width, height, oldSize.Z)
+				for _, gui in panel:GetChildren() do
+					if gui:IsA("SurfaceGui") then
+						gui.PixelsPerStud, gui.MaxDistance = 50, 600
+					end
+				end
+			end
+			model:SetAttribute("JunctionFaceRevision", "junction-signs-2")
+		end
+		local priorBraces = model:FindFirstChild("ConstructionDetails")
+		if construction and priorBraces then
+			priorBraces:Destroy()
+		end
 		local braces = Instance.new("Folder")
 		braces.Name, braces.Parent = "ConstructionDetails", model
 		for _, item in model:GetChildren() do
 			if item:IsA("BasePart") and item.Name == "Post" then
-				item.CFrame -= face * 0.42
+				if not construction then
+					item.CFrame -= face * 0.42
+				end
 				local base = item.Position - UP * (item.Size.X / 2 - 1.5)
 				Util.part(
 					braces,
@@ -417,7 +490,7 @@ function Builder.refineSigns(map: Instance): number
 				end
 			end
 		end
-		model:SetAttribute("JunctionConstruction", Junction.Revision)
+		model:SetAttribute("JunctionConstruction", "junction-signs-2")
 		count += 1
 	end
 	return count
@@ -445,6 +518,22 @@ function Builder.removeOldVegetation(map: Instance): number
 		item:Destroy()
 	end
 	return #remove
+end
+
+function Builder.removeOldLamps(map: Instance, replaced: { Vector3 })
+	local details = map:FindFirstChild("RoadDetails")
+	local lamps = if details and Util.isGenerated(details) then details:FindFirstChild("StreetLights") else nil
+	for _, part in if lamps then lamps:GetChildren() else {} do
+		if part:IsA("BasePart") and table.find({ "Pole", "Arm", "Lamp" }, part.Name) then
+			for _, position in replaced do
+				-- Original arms reach 5.5 studs from their pole. Leave unreplaced sites alone.
+				if Vector3.new(part.Position.X - position.X, 0, part.Position.Z - position.Z).Magnitude <= 6 then
+					part:Destroy()
+					break
+				end
+			end
+		end
+	end
 end
 
 return Builder

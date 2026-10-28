@@ -4,6 +4,7 @@
 -- Compiled once in edit mode; four cached CSG parts per plant, no uploaded asset IDs.
 local Hash = require(script.Parent.Parent.Hash)
 local Util = require(script.Parent.Util)
+local CreatorAssets = require(script.Parent.Parent.CreatorAssets)
 local Trees = {}
 Trees.Version = "kagundali-trees-2"
 Trees.Kinds = { "Broadleaf", "Acacia", "Eucalyptus", "Shrub", "Fern" }
@@ -11,6 +12,10 @@ Trees.Variants = 3
 local NAME = "RoNationJunctionTrees"
 local PALETTE =
 	{ Color3.fromRGB(82, 68, 51), Color3.fromRGB(54, 80, 37), Color3.fromRGB(68, 93, 43), Color3.fromRGB(79, 103, 49) }
+
+function Trees.currentVersion(): string
+	return if CreatorAssets.get() then CreatorAssets.Version else Trees.Version
+end
 
 function Trees.blueprint(kind: string, variant: number): any
 	local index = table.find(Trees.Kinds, kind)
@@ -156,6 +161,15 @@ end
 
 function Trees.prepare(): Folder
 	assert(not game:GetService("RunService"):IsRunning(), "Prepare junction trees in edit mode")
+	local imported = CreatorAssets.get()
+	if
+		imported
+		and #imported.Tree:GetChildren() > 0
+		and #imported.Shrub:GetChildren() > 0
+		and #imported.Fern:GetChildren() > 0
+	then
+		return imported
+	end
 	local storage = game:GetService("ServerStorage")
 	local old = storage:FindFirstChild(NAME)
 	assert(not old or old:GetAttribute("ManagedBy") == NAME, "Junction asset name is occupied by custom content")
@@ -304,6 +318,17 @@ function Trees.plant(
 	height: number,
 	yaw: number
 ): Model
+	local imported = CreatorAssets.place(
+		if kind == "Shrub" or kind == "Fern" then kind else "Tree",
+		variant,
+		parent,
+		position,
+		height,
+		yaw
+	)
+	if imported then
+		return imported
+	end
 	local template = library:FindFirstChild(kind .. variant) :: Model
 	assert(template, "Missing prepared junction species")
 	local plant = template:Clone()

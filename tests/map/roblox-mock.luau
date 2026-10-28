@@ -124,6 +124,10 @@ CF.__index = function(c, key)
 		return function(value, other)
 			return value:Inverse() * other
 		end
+	elseif key == "PointToObjectSpace" then
+		return function(value, point)
+			return value:Inverse() * point
+		end
 	end
 	error(`{key} is not a valid member of CFrame`, 2)
 end
@@ -401,6 +405,14 @@ local CLASSES = {
 		isA = { "UnionOperation", "PartOperation", "TriangleMeshPart", "BasePart", "PVInstance" },
 	},
 	SpecialMesh = { props = { MeshType = "EnumItem" }, isA = { "SpecialMesh", "DataModelMesh" } },
+	MeshPart = {
+		props = { MeshId = "string", TextureID = "string", DoubleSided = "boolean" },
+		base = BASEPART,
+		isA = { "MeshPart", "TriangleMeshPart", "BasePart", "PVInstance" },
+	},
+	SurfaceAppearance = { props = { ColorMap = "string" }, isA = { "SurfaceAppearance" } },
+	Script = { props = { Source = "string" }, isA = { "Script", "BaseScript", "LuaSourceContainer" } },
+	ModuleScript = { props = { Source = "string" }, isA = { "ModuleScript", "LuaSourceContainer" } },
 	SpotLight = {
 		props = {
 			Face = "EnumItem",
@@ -782,6 +794,7 @@ workspace = service("Workspace", {
 		end
 		return {
 			Position = Vector3.new(origin.X, y, origin.Z),
+			Instance = terrain,
 			Normal = normal,
 			Material = if water and not params.IgnoreWater then Enum.Material.Water else Enum.Material.Grass,
 		}

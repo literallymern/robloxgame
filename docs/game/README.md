@@ -11,6 +11,7 @@ Technical documentation for the Roblox game **Ro-Nation**, set in the Democratic
 | [03-dependencies-and-setup.md](03-dependencies-and-setup.md) | which manual steps are needed in Studio and the Creator Dashboard |
 | [04-assumptions-and-blockers.md](04-assumptions-and-blockers.md) | what is assumed, proposed (not canon), still open or blocked |
 | [05-economy-integration.md](05-economy-integration.md) | how the game connects to the Discord economy bot, the only economy |
+| [09-creator-store-assets.md](09-creator-store-assets.md) | how official Roblox trees and lamps are imported and applied to the Kagundali benchmark |
 | [FILE-INVENTORY.md](FILE-INVENTORY.md) | what every file in the project is for |
 | [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md) | how to test the Milestone 1 bank window against the staging bridge in Studio |
 | [testing/m2-map-checklist.md](testing/m2-map-checklist.md) | how to build the Milestone 2 map in Studio and check it |

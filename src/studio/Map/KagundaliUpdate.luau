@@ -65,12 +65,19 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 				return p
 			end
 			else Markings.surface(map)
-		built.Markings, built.MarkingsComplete = Markings.build(details, staging.KagundaliJunction, paintSample)
-		if not built.MarkingsComplete and old and old:FindFirstChild("Markings") then
-			local retained = old.Markings:Clone()
-			retained.Parent = staging.KagundaliJunction
-			built.Markings = #retained:GetChildren()
-		end
+		built.RestoredMarkings, built.MarkingsComplete, built.PaintCoverage, built.SkippedMarkings, built.MissingPaintSamples = Markings.build(
+			details,
+			staging.KagundaliJunction,
+			function(p: Vector3): Vector3?
+				return if protected(p.X, p.Z) then nil else paintSample(p)
+			end
+		)
+		built.RetainedMarkings = Markings.retainPrevious(
+			if old then old:FindFirstChild("Markings") else nil,
+			staging.KagundaliJunction.Markings,
+			built.PaintCoverage
+		)
+		built.Markings = built.RestoredMarkings + built.RetainedMarkings
 		built.Parts += built.Markings
 		assert(built.Parts <= Junction.MaxParts, "Junction markings exceeded the regional part budget")
 		staging.KagundaliJunction:SetAttribute("PartCount", built.Parts)
@@ -81,12 +88,19 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 		error(`Kagundali staging failed; previous geometry retained: {tostring(report)}`)
 	end
 	local replacement = staging:FindFirstChild("KagundaliJunction") :: Folder
-	if report.MarkingsComplete then
-		Markings.removeReplaced(map)
-	else
-		log("Road marking probes incomplete: existing paint retained. Inspect the saved Roads/Bridges surfaces.")
+	Markings.removeReplaced(map, report.PaintCoverage)
+	if not report.MarkingsComplete then
+		log(
+			`Skipped {report.SkippedMarkings} marking sections; valid sections applied and unmatched old paint retained. Missing samples: {table.concat(
+				report.MissingPaintSamples,
+				"; "
+			)}`
+		)
 	end
 	report.RemovedOldPlants = Builder.removeOldVegetation(map)
+	if report.ImportedLamps > 0 then
+		Builder.removeOldLamps(map, report.ReplacedLampPositions)
+	end
 	if old then
 		old:Destroy()
 	end
@@ -107,6 +121,8 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	Environment.apply(log)
 	map:SetAttribute("EnvironmentLightingRevision", Junction.LightingRevision)
 	map:SetAttribute("KagundaliGeometryRevision", Junction.Revision)
+	replacement:SetAttribute("RestoredMarkings", report.RestoredMarkings)
+	replacement:SetAttribute("SkippedMarkings", report.SkippedMarkings)
 	if opts.GeneratedTerrain or (terrain and (terrain.ChangedColumns > 0 or terrain.AlreadyCurrentColumns > 0)) then
 		map:SetAttribute("KagundaliTerrainRevision", Junction.Revision)
 	end
@@ -116,10 +132,10 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	end
 	report.Revision, report.Terrain = Junction.Revision, terrain
 	log(
-		`{Junction.Revision}: {report.Trees} new trees, {report.Shrubs} shrubs, {report.Ferns} ferns; {report.Parts}/{Junction.MaxParts} parts. Workshop: {report.Workshop}.`
+		`{Junction.Revision}: {report.Trees} new trees ({Trees.currentVersion()}), {report.Shrubs} shrubs, {report.Ferns} ferns; {report.Parts}/{Junction.MaxParts} parts. Workshop: {report.Workshop}; imported lamps: {report.ImportedLamps}.`
 	)
 	log(
-		`Removed {report.RemovedOldPlants} old plants; refined {report.RefinedSigns} signs; restored {report.Markings} marking parts. Save the place. Visual acceptance remains a Studio comparison at R3/N5.`
+		`Removed {report.RemovedOldPlants} old plants; refined {report.RefinedSigns} signs; restored {report.RestoredMarkings} marking parts, retained {report.RetainedMarkings}, skipped {report.SkippedMarkings}. Save the place. Visual acceptance remains a Studio comparison at R3/N5.`
 	)
 	return report
 end

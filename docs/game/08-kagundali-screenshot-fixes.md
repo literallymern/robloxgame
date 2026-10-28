@@ -1,84 +1,92 @@
 # Korrekturen nach den Studio-Bildern vom 28. Oktober
 
-Stand: **`kagundali-junction-2` / `kagundali-trees-2`**. Die drei Nutzeraufnahmen
-zeigen den ersten angewendeten Kreuzungsstand. Werkstatt, native Grasdekoration und
-neue Baumgruppen sind im Place angekommen; die visuelle Qualität reicht noch nicht aus.
+Aktuell: **`kagundali-junction-3`**. Der vom Nutzer kopierte Studio-Output bestätigt,
+dass zuvor **junction-2** angewendet wurde: 64 Bäume, 49 Büsche, 47 Farne,
+799 Teile und vorhandene Werkstatt. 70 Geländespalten wurden geändert, 30.661
+waren bereits aktuell. Die vom Nutzer als neu bezeichneten Bilder und die zusätzliche
+Luftaufnahme `Screenshot 2026-10-28 091306.jpg` dienen als Ausgangspunkt.
+Sie werden nicht in das öffentliche Repository aufgenommen.
 
-## Befunde
+## Befunde und Änderungen
 
-- `083507.jpg`: Werkstatt und Vorplatz sind vorhanden. Vor der Werkstatt wächst dichtes
-  Gras; eine durchgehende Kieszufahrt ist kaum erkennbar.
-- `083519.jpg`: Die Kreuzung und gelben Wegweiser sind vorhanden. Rand-, Mittel- und
-  Haltelinien sind nicht erkennbar. Das Bild erklärt nicht, ob sie fehlen oder unter einer
-  gespeicherten Fahrbahn liegen. Die hellen Schildumrisse sind Studio-Auswahlmarkierungen.
-- `083533.jpg`: Die neuen Kronen bestehen sichtbar aus kleinen Kugeln. Die deutliche
-  Grenze des Grasbereichs und große Entwicklungsbeschriftungen bleiben sichtbar.
+**Straßenmarkierungen:** Der Output enthielt `Road marking probes incomplete` und
+`restored 0 marking parts`. In junction-2 verwarf eine einzige fehlgeschlagene Probe
+die gesamte neue Markierungsgruppe. Das erklärt, warum das Update erfolgreich enden
+konnte, ohne sichtbare Linien wiederherzustellen.
 
-Die vollständigen Dateinamen lauten jeweils `Screenshot 2026-10-28 HHMMSS.jpg`.
-Die Aufnahmen wurden geprüft, aber nicht in das öffentliche Repository aufgenommen.
-Sie sind echte Nutzerbilder von junction-1, keine Abnahme der folgenden Korrekturen.
+Junction-3 übernimmt jeden erfolgreich geprüften Abschnitt separat. Fehlende Abschnitte
+behalten vorhandene Linien; der Output nennt Anzahl und bis zu vier Beispielkoordinaten.
+Die Höhenabfrage reicht weiter über und unter die erwartete Fahrbahn. Sichtbarer
+Terrain-Asphalt darf bemalt werden, Gras nicht. Die genaue Ursache der ursprünglichen
+fehlgeschlagenen Raycasts lässt sich aus dem bisherigen Output allein nicht bestimmen.
+Erzeugte Linien außerhalb des Bereichs und anders benannte eigene Markierungen bleiben
+erhalten. Wiederholte und globale Updates erzeugen keine zusätzlichen Linien unter
+beibehaltenen regionalen Abschnitten.
 
-## Ursache und Korrektur
+**Werkstattzufahrt:** Statt zwölf langen Stücken folgen höchstens drei Studs lange
+Abschnitte dem Boden. Pro Station wird die neun Studs breite Zufahrt an drei Punkten
+geprüft. Kiesoberseiten liegen darüber, Unterkanten reichen in den Boden.
+Die bereits eingeführte Grasfreiheit unter der Zufahrt bleibt erhalten. Kiesbankette
+folgen ebenfalls der gespeicherten Bodenhöhe; geschützte Flächen werden ausgespart.
 
-Der Baumfehler lag im Generator **und** der Offline-Vorschau: `Part.Shape = Ball`
-erzeugt auch bei unterschiedlichen Größenwerten eine Kugel mit dem Durchmesser der
-kleinsten Achse. Dünne Blätter wurden dadurch winzig und Kronengruppen zu kleinen
-runden Büscheln. Die Vorschau skalierte ein Kugelnetz frei auf drei Achsen und zeigte
-eine Fülle, die der bisherige Studio-Generator nicht erzeugte. Das ist ein
-Implementierungsfehler, kein Beleg für einen fehlgeschlagenen Rojo-Sync.
+**Gelbe Wegweiser:** Richtungstafeln werden mindestens 10,8 × 1,95 Studs groß,
+Pfeilspitzen und rückseitige Konstruktion passen sich an. Bestehende Texte und
+TextLabel-Instanzen bleiben erhalten. Bereits versetzte Pfosten werden nicht erneut
+verschoben; wiederholte Updates vergrößern die Tafeln nicht weiter.
+
+**Bäume und Laternen:** Der neue [Creator-Store-Import](09-creator-store-assets.md)
+übernimmt Modelle aus zwei offiziellen Roblox-Paketen und bindet sie direkt in den
+Updater ein. Die Bibliothek enthält nur visuelle Geometrie und Texturen. Importierte
+Bäume erhalten schmale Stammkollisionen, Laternen die bekannte Nachtlichtsteuerung.
+Nur erfolgreich ersetzte alte generierte Laternen werden entfernt.
+
+## Frühere Korrektur an eigenen Baumvorlagen
+
+Bei `Part.Shape = Ball` bestimmt die kleinste Größenachse den Kugeldurchmesser.
+Die frühere Offline-Vorschau hatte dagegen frei gestreckte Kugelnetze dargestellt.
+Der native Generator konnte deshalb seine dargestellten Blattformen nicht erzeugen.
 Roblox beschreibt das Verhalten in der offiziellen
 [Ankündigung zu Part.Shape und Size](https://devforum.roblox.com/t/improvements-to-part-shape-size/2443389/1).
+Seit `kagundali-trees-2` wird eine gleichmäßige Kugel zunächst als PartOperation gebacken;
+erst deren Kopien werden gestreckt und vereinigt. Diese eigenen Vorlagen bleiben für
+Installationen ohne Creator-Store-Bibliothek und fehlende optionale Pflanzenkategorien
+verfügbar. Ein erfolgreicher Import hat Vorrang.
 
-`JunctionTrees.prepare()` erzeugt jetzt zunächst aus einer gleichmäßigen Kugel eine
-native `PartOperation`. Ihre Kopien werden zu den vorgesehenen Blattformen gestreckt
-und dann zur Krone vereinigt. Es bleiben vier sichtbare Teile je Pflanze. Die erste
-Vorbereitung benötigt 61 CSG-Aufrufe einschließlich der Grundform; gespeichert werden
-60 Teile in 15 Vorlagen. `Automatic` ersetzt `Performance` für die Detaildarstellung.
-Die neue Assetversion erzwingt die Ersetzung der alten Kugelkronen. Der Mock berücksichtigt
-nun das tatsächliche Ball-Größenverhalten.
-
-Weitere Korrekturen:
-
-- Unter der Kieszufahrt wird `Grass` durch `Ground` ersetzt. Der konservative Patch
-  erkennt gespeichertes junction-1 und die globale highland-4-Grundlage.
-- Der fokussierte Updater stellt Markierungen innerhalb des Ausschnitts wieder her.
-  Raycasts messen ausschließlich gespeicherte Straßen-/Brückenflächen. Alte erzeugte
-  Linien behalten ihre Abschnitte außerhalb des Ausschnitts. Eigene anders benannte
-  Markierungen bleiben erhalten. Bei fehlenden Fahrbahnproben wird die neue Gruppe
-  verworfen, vorhandene Markierungen bleiben erhalten und der Output meldet den Fall.
-- Bereits verbesserte Schildpfosten werden beim Versionswechsel nicht erneut versetzt.
-- Die schwebenden Ortsbeschriftungen unter dem erzeugten `Map.Places` werden ausgeblendet,
-  einschließlich der Grenz-/Stadtnamen im Hintergrund. Physische Wegweiser behalten ihren Text.
-
-## Anwenden
+## Anwenden und prüfen
 
 Hauptbranch **`claude/project-thread-5krwdh`** holen, Place sichern und Play stoppen.
 Rojo synchronisieren, speichern, Studio neu starten und Rojo erneut verbinden.
-Der Neustart leert bereits mit `require()` geladene alte Updater. In die Command Bar:
+Der Neustart leert bereits mit `require()` geladene alte Module. In die Command Bar:
+
+```lua
+require(game.ServerStorage.StudioTools.UseCreatorStoreAssets)()
+```
+
+Nach dem Import erscheinen die Vorlagenzahlen je Kategorie; nach dem Kartenupdate
+**`kagundali-junction-3`**, Baumversion **`creator-store-1`** und die Anzahl importierter
+Laternen. Danach speichern. Für Wiederholungen mit derselben gespeicherten Bibliothek:
 
 ```lua
 require(game.ServerStorage.StudioTools.UpgradeKagundali)()
 ```
 
-Im Output muss **`kagundali-junction-2`** erscheinen. Der deterministische Testaufbau
-enthält 64 Bäume, 49 Büsche, 47 Farne, 23 Felsen und 139 Markierungsstücke, insgesamt
-**1.058 BaseParts** im regionalen Ordner. Zahlen können auf geschütztem Gelände oder
-bei fehlenden Fahrbahnflächen abweichen. Das Limit von 1.600 Teilen umfasst jetzt auch
-die Markierungen. Danach speichern und die gleichen drei Perspektiven vergleichen.
+Der Bericht unterscheidet neue, beibehaltene und übersprungene Markierungsstücke.
+`CheckEnvironment()` zählt tatsächliche Bäume und Linien und meldet veraltete Baumversionen.
+Die normale Testszene ohne Import enthält 64 Bäume, 49 Büsche, 47 Farne, 23 Felsen und
+139 Markierungsstücke, insgesamt **1.248 BaseParts**. Die Import-Testszene mit künstlichen
+Packmodellen enthält **835 BaseParts und eine importierte Laterne**. Letztere Zahl ist
+keine Messung der echten Roblox-Pakete. Das regionale Limit bleibt 1.600 Teile;
+eine Überschreitung stoppt vor dem Austausch der bisherigen regionalen Geometrie.
 
-## Tests und offene Sichtprüfung
+## Grenzen der Prüfung
 
-Regressionstests prüfen skalierte Festkörper statt Ball-Parts, Ersetzung alter Vorlagen,
-Grasfreiheit der Zufahrt, Migration gespeicherter v1-Voxelspalten, Erhalt bemalter und
-geschützter Spalten, Wiederholung ohne neue Terrainänderungen, Markierungshöhen und
-äußere Linienabschnitte sowie fehlende Fahrbahnproben und den Schild-Versionswechsel.
-Die vollständige Kartensuite und 86 Umgebungsprüfungen bestehen, alle 68 Luau-Quelldateien
-kompilieren, StyLua und der Rojo-Build sind erfolgreich. Der Mock ersetzt weiterhin native CSG-Ausführung
-und Raycasts; er ist kein Renderer.
+Regressionstests prüfen Teilfehler bei Markierungen, deren Höhen und Erhalt,
+Importfehler, Skriptentfernung, erhaltene Mesh-/Texturdaten, Bodenplatzierung,
+Laternentausch und wiederholte Updates. Der Test-Mock führt weder natives CSG noch
+Roblox-Rendering aus. **Ein neues Studio-Bild von junction-3 und den echten importierten
+Modellen liegt noch nicht vor.** Packstruktur, sichtbare Texturen, Dreiecksbudget,
+Speicherung und Leistung mit 20–25 Spielern müssen dort geprüft werden.
 
-**Die korrigierten Kronen und Markierungen sind noch nicht in einem neuen Studio-Bild
-verifiziert.** Die Quellgeometrievorschau zeigt die beabsichtigte Form, keinen Nachweis
-des neuen CSG-Ergebnisses. Native Verarbeitung, Speicherung, Dreiecksbudget und Leistung
-mit 20–25 Spielern bleiben zu prüfen. Die scharfe regionale Grasgrenze, entfernte kahle
-Bergflanken und übrigen Stadtplatzhalter sind mit diesem Fehlerbehebungsschritt nicht
-fertig gestaltet. Vor der Ausweitung entlang der R3 braucht der Bereich den erneuten Sichtvergleich.
+Die regionale Grasgrenze, entfernte kahle Bergflanken und übrigen Stadtplatzhalter
+sind mit diesem Schritt noch nicht fertig gestaltet. Vor der Ausweitung entlang der R3
+bleibt der Sichtvergleich des zusammenhängenden Kreuzungsbereichs erforderlich.

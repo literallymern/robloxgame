@@ -23,6 +23,7 @@ MODULES = {
     "StudioTools/BuildMap": "src/studio/BuildMap.luau",
     "StudioTools/CheckEnvironment": "src/studio/CheckEnvironment.luau",
     "StudioTools/UpgradeKagundali": "src/studio/UpgradeKagundali.luau",
+    "StudioTools/UseCreatorStoreAssets": "src/studio/UseCreatorStoreAssets.luau",
 }
 for folder, prefix in (
     ("src/studio/Map", "StudioTools/Map"),
