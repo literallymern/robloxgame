@@ -195,6 +195,13 @@ Color3 = {
 		return { R = r / 255, G = g / 255, B = b / 255, __type = "Color3" }
 	end,
 }
+Vector2 = {
+	new = function(x, y)
+		checkNumber(x, "Vector2.X")
+		checkNumber(y, "Vector2.Y")
+		return { X = x, Y = y, __type = "Vector2" }
+	end,
+}
 UDim2 = {
 	fromOffset = function(x, y)
 		return { __type = "UDim2", xo = x, yo = y }
@@ -298,6 +305,10 @@ local ENUMS = {
 	CollisionFidelity = { "Default", "Hull", "Box", "PreciseConvexDecomposition" },
 	RenderFidelity = { "Automatic", "Precise", "Performance" },
 	RaycastFilterType = { "Include", "Exclude" },
+	HumanoidDisplayDistanceType = { "Viewer", "Subject", "None" },
+	HumanoidHealthDisplayType = { "DisplayWhenDamaged", "AlwaysOn", "AlwaysOff" },
+	HumanoidRigType = { "R6", "R15" },
+	FinishRecordingOperation = { "Cancel", "Commit", "Append" },
 }
 Enum = {}
 for enumName, items in ENUMS do
@@ -327,7 +338,22 @@ local BASEPART = {
 	CanQuery = "boolean",
 	CanTouch = "boolean",
 	CastShadow = "boolean",
+	Reflectance = "number",
 }
+local LIGHT = {
+	Range = "number",
+	Brightness = "number",
+	Color = "Color3",
+	Shadows = "boolean",
+	Enabled = "boolean",
+}
+local function withLight(extra)
+	local props = table.clone(LIGHT)
+	for key, value in extra do
+		props[key] = value
+	end
+	return props
+end
 local CLASSES = {
 	Workspace = { props = { GlobalWind = "Vector3" }, isA = { "Workspace" } },
 	Lighting = {
@@ -404,7 +430,41 @@ local CLASSES = {
 		base = BASEPART,
 		isA = { "UnionOperation", "PartOperation", "TriangleMeshPart", "BasePart", "PVInstance" },
 	},
-	SpecialMesh = { props = { MeshType = "EnumItem" }, isA = { "SpecialMesh", "DataModelMesh" } },
+	SpecialMesh = {
+		props = { MeshType = "EnumItem", TextureId = "string", MeshId = "string" },
+		isA = { "SpecialMesh", "DataModelMesh" },
+	},
+	Seat = {
+		props = { Shape = "EnumItem", Disabled = "boolean" },
+		base = BASEPART,
+		isA = { "Seat", "Part", "FormFactorPart", "BasePart", "PVInstance" },
+	},
+	Decal = {
+		props = { Texture = "string", Face = "EnumItem", Color3 = "Color3", Transparency = "number" },
+		isA = { "Decal", "FaceInstance" },
+	},
+	PointLight = { props = withLight({}), isA = { "PointLight", "Light" } },
+	SurfaceLight = { props = withLight({ Face = "EnumItem", Angle = "number" }), isA = { "SurfaceLight", "Light" } },
+	Humanoid = {
+		props = {
+			DisplayDistanceType = "EnumItem",
+			HealthDisplayType = "EnumItem",
+			BreakJointsOnDeath = "boolean",
+			RequiresNeck = "boolean",
+			EvaluateStateMachine = "boolean",
+		},
+		isA = { "Humanoid" },
+	},
+	Shirt = { props = { ShirtTemplate = "string" }, isA = { "Shirt", "Clothing" } },
+	Pants = { props = { PantsTemplate = "string" }, isA = { "Pants", "Clothing" } },
+	ShirtGraphic = { props = { Graphic = "string" }, isA = { "ShirtGraphic" } },
+	BodyColors = { props = {}, isA = { "BodyColors" } },
+	Accessory = { props = {}, isA = { "Accessory", "Accoutrement" } },
+	LocalScript = {
+		props = { Source = "string" },
+		isA = { "LocalScript", "Script", "BaseScript", "LuaSourceContainer" },
+	},
+	Camera = { props = { CFrame = "CFrame" }, isA = { "Camera" } },
 	MeshPart = {
 		props = { MeshId = "string", TextureID = "string", DoubleSided = "boolean" },
 		base = BASEPART,
@@ -466,7 +526,14 @@ local CLASSES = {
 		isA = { "Frame", "GuiObject" },
 	},
 	ImageLabel = {
-		props = { BackgroundTransparency = "number", Position = "UDim2", Size = "UDim2", Image = "string" },
+		props = {
+			BackgroundTransparency = "number",
+			Position = "UDim2",
+			Size = "UDim2",
+			Image = "string",
+			ImageRectOffset = "Vector2",
+			ImageRectSize = "Vector2",
+		},
 		isA = { "ImageLabel", "GuiObject" },
 	},
 	SurfaceGui = {
@@ -601,6 +668,19 @@ end
 function METHODS.WaitForChild(self, name)
 	return METHODS.FindFirstChild(self, name) or error(`WaitForChild would wait forever for {name}`)
 end
+function METHODS.IsDescendantOf(self, ancestor)
+	if ancestor == nil then
+		return false
+	end
+	local current = rawget(self, "__parent")
+	while current do
+		if current == ancestor then
+			return true
+		end
+		current = rawget(current, "__parent")
+	end
+	return false
+end
 function METHODS.IsA(self, className)
 	if className == "Instance" or className == self.__class then
 		return true
@@ -616,6 +696,98 @@ function METHODS.Destroy(self)
 	end
 	rawset(self, "__parent", nil)
 	rawset(self, "__destroyed", true)
+end
+
+-- Models: pivot, bounding box and uniform scaling, enough for the statue builder.
+local function modelParts(model)
+	local list = {}
+	for _, item in METHODS.GetDescendants(model) do
+		local class = CLASSES[item.__class]
+		if class and class.base then
+			table.insert(list, item)
+		end
+	end
+	return list
+end
+local function corners(part)
+	local frame, size = part.__props.CFrame, part.__props.Size
+	local out = {}
+	for x = -1, 1, 2 do
+		for y = -1, 1, 2 do
+			for z = -1, 1, 2 do
+				table.insert(out, frame * v3(x * size.X / 2, y * size.Y / 2, z * size.Z / 2))
+			end
+		end
+	end
+	return out
+end
+function METHODS.GetPivot(self)
+	assert(self.__class == "Model", "GetPivot: only models in this mock")
+	local primary = self.__props.PrimaryPart
+	if primary then
+		return primary.__props.CFrame
+	end
+	local pivot = rawget(self, "__pivot")
+	if not pivot then
+		local lo, hi = { math.huge, math.huge, math.huge }, { -math.huge, -math.huge, -math.huge }
+		for _, part in modelParts(self) do
+			for _, c in corners(part) do
+				for i, axis in { "X", "Y", "Z" } do
+					lo[i] = math.min(lo[i], c[axis])
+					hi[i] = math.max(hi[i], c[axis])
+				end
+			end
+		end
+		assert(lo[1] < math.huge, "GetPivot: model without parts")
+		pivot = CFrame.new((lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, (lo[3] + hi[3]) / 2)
+		rawset(self, "__pivot", pivot)
+	end
+	return pivot
+end
+function METHODS.PivotTo(self, target)
+	assert(typeOf(target) == "CFrame", "PivotTo: expected a CFrame")
+	local delta = target * METHODS.GetPivot(self):Inverse()
+	for _, part in modelParts(self) do
+		part.__props.CFrame = delta * part.__props.CFrame
+	end
+	if not self.__props.PrimaryPart then
+		rawset(self, "__pivot", target)
+	end
+end
+function METHODS.GetBoundingBox(self)
+	local pivot = METHODS.GetPivot(self)
+	local rotation = pivot - pivot.p
+	local inverse = rotation:Inverse()
+	local lo, hi = { math.huge, math.huge, math.huge }, { -math.huge, -math.huge, -math.huge }
+	for _, part in modelParts(self) do
+		for _, c in corners(part) do
+			local l = inverse * c
+			for i, axis in { "X", "Y", "Z" } do
+				lo[i] = math.min(lo[i], l[axis])
+				hi[i] = math.max(hi[i], l[axis])
+			end
+		end
+	end
+	assert(lo[1] < math.huge, "GetBoundingBox: model without parts")
+	local centre = v3((lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, (lo[3] + hi[3]) / 2)
+	return rotation + rotation * centre, v3(hi[1] - lo[1], hi[2] - lo[2], hi[3] - lo[3])
+end
+function METHODS.GetScale(self)
+	return rawget(self, "__scale") or 1
+end
+function METHODS.ScaleTo(self, scale)
+	checkNumber(scale, "ScaleTo")
+	assert(scale > 0, "ScaleTo: scale must be positive")
+	local factor = scale / METHODS.GetScale(self)
+	local pivot = METHODS.GetPivot(self)
+	local inverse = pivot:Inverse()
+	for _, part in modelParts(self) do
+		local relative = inverse * part.__props.CFrame
+		part.__props.CFrame = pivot * cf(relative.p * factor, relative.r, relative.u, relative.b)
+		part.Size = part.__props.Size * factor
+	end
+	rawset(self, "__scale", scale)
+	MockStats.scaled = (MockStats.scaled or 0) + 1
 end
 
 Inst.__index = function(self, key)
@@ -804,6 +976,80 @@ rawset(workspace, "__props", { Name = "Workspace" })
 terrain.Parent = workspace
 rawget(terrain, "__props").Name = "Terrain"
 
+local camera = newInstance("Camera", false)
+rawget(camera, "__props").Name = "Camera"
+rawget(workspace, "__props").CurrentCamera = camera
+camera.Parent = workspace
+
+-- A small R6-style character standing at the origin and facing +X (so turning it is tested),
+-- with clothing, a face, a hat and a script, like a real avatar model.
+function MockMakeCharacter()
+	local model = newInstance("Model", false)
+	model.Name = "Character"
+	local turn = CFrame.Angles(0, -math.pi / 2, 0) -- LookVector -Z turned to +X
+	local function part(name, x, y, z, sx, sy, sz, className)
+		local p = newInstance(className or "Part", false)
+		p.Name = name
+		p.Size = v3(sx, sy, sz)
+		p.CFrame = turn * CFrame.new(x, y, z)
+		p.Anchored = false
+		p.CanCollide = true
+		p.Parent = model
+		return p
+	end
+	local root = part("HumanoidRootPart", 0, 3, 0, 2, 2, 1)
+	root.Transparency = 1
+	part("Torso", 0, 3, 0, 2, 2, 1)
+	local head = part("Head", 0, 4.5, 0, 2, 1, 1)
+	part("Left Arm", -1.5, 3, 0, 1, 2, 1)
+	part("Right Arm", 1.5, 3, 0, 1, 2, 1)
+	part("Left Leg", -0.5, 1, 0, 1, 2, 1)
+	part("Right Leg", 0.5, 1, 0, 1, 2, 1, "MeshPart").TextureID = "rbxassetid://1"
+	model.PrimaryPart = root
+	local face = newInstance("Decal", false)
+	face.Name = "face"
+	face.Texture = "rbxassetid://2"
+	face.Parent = head
+	local hat = newInstance("Accessory", false)
+	hat.Parent = model
+	local handle = part("Handle", 0, 5.3, 0, 1.6, 0.6, 1.6)
+	handle.Parent = hat
+	local mesh = newInstance("SpecialMesh", false)
+	mesh.TextureId = "rbxassetid://3"
+	mesh.Parent = handle
+	for _, className in { "Shirt", "Pants", "BodyColors", "Humanoid" } do
+		newInstance(className, false).Parent = model
+	end
+	local animate = newInstance("LocalScript", false)
+	animate.Name = "Animate"
+	animate.Parent = model
+	return model
+end
+
+local players = service("Players", {
+	CreateHumanoidModelFromUserId = function(_, userId)
+		checkNumber(userId, "userId")
+		MockStats.avatarRequests = (MockStats.avatarRequests or 0) + 1
+		if MockStats.avatarFails then
+			error("HTTP 403 (Forbidden) [mock]")
+		end
+		return MockMakeCharacter()
+	end,
+	GetHumanoidDescriptionFromUserId = function()
+		error("HTTP 403 (Forbidden) [mock]")
+	end,
+})
+local history = service("ChangeHistoryService", {
+	TryBeginRecording = function()
+		MockStats.recordings = (MockStats.recordings or 0) + 1
+		return "mock-recording"
+	end,
+	FinishRecording = function(_, id, operation)
+		assert(id == "mock-recording", "FinishRecording: unknown recording")
+		MockStats.lastRecording = operation.Name
+	end,
+})
+
 local collection = service("CollectionService", {
 	AddTag = function(_, instance, tag)
 		MockStats.tags[tag] = (MockStats.tags[tag] or 0) + 1
@@ -890,6 +1136,10 @@ game = {
 			return serverStorage
 		elseif name == "GeometryService" then
 			return geometry
+		elseif name == "Players" then
+			return players
+		elseif name == "ChangeHistoryService" then
+			return history
 		end
 		error(`GetService: {name} is not in this mock`)
 	end,

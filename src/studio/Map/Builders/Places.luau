@@ -1,10 +1,12 @@
 --!strict
 -- Footprints of the cities, facilities and border crossings: a coloured outline on the ground,
 -- a floating name over each place, and the placeholder blocks of the Gundiville government
--- district. (Name signs at the roads are built with the other road signs.)
+-- district that are not built yet. (Name signs at the roads are built with the other road signs.)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Heightfield = require(script.Parent.Parent.Heightfield)
 local Util = require(script.Parent.Util)
+local GovernmentDistrict = require(ReplicatedStorage.Shared.Config.GovernmentDistrict)
 
 local Places = {}
 
@@ -35,6 +37,48 @@ local function outline(parent: Instance, place: any, groundY: number)
 	end
 end
 
+-- The placeholder ids that the built government district replaces, if it exists under `map`.
+function Places.replacedByDistrict(map: Instance): { [string]: boolean }
+	local replaced: { [string]: boolean } = {}
+	local built = map:FindFirstChild("GovernmentDistrict")
+	if built and built:GetAttribute("GeneratedBy") == GovernmentDistrict.GeneratedBy then
+		for _, id in GovernmentDistrict.Replaces do
+			replaced[id] = true
+		end
+	end
+	return replaced
+end
+
+-- One placeholder block of the government district (a box, or a slab for open areas).
+function Places.placeholder(block: any, parent: Instance, cityY: number): BasePart
+	local r = block.Rect
+	local cx, cz = (r.MinX + r.MaxX) / 2, (r.MinZ + r.MaxZ) / 2
+	local w, d = r.MaxX - r.MinX, r.MaxZ - r.MinZ
+	local part
+	if block.Height > 0 then
+		part = Util.part(
+			parent,
+			block.Id,
+			CFrame.new(cx, cityY + block.Height / 2, cz),
+			Vector3.new(w, block.Height, d),
+			{ Color = Color3.fromRGB(214, 206, 190), Material = Enum.Material.SmoothPlastic }
+		)
+		Util.label(part, `{block.Name} (placeholder)`, block.Height / 2 + 8, 900, 300)
+	else
+		part = Util.part(
+			parent,
+			block.Id,
+			CFrame.new(cx, cityY, cz), -- top surface 0.2 above the ground
+			Vector3.new(w, 0.4, d),
+			{ Color = Color3.fromRGB(190, 182, 168), Material = Enum.Material.Concrete }
+		)
+		Util.label(part, block.Name, 6, 500, 220)
+	end
+	part:SetAttribute("Placeholder", true)
+	part:SetAttribute("PlaceName", block.Name)
+	return part
+end
+
 function Places.build(hf: Heightfield.Heightfield, layout: any, parent: Instance): number
 	local folder = Util.folder(parent, "Places")
 	local total = 0
@@ -63,36 +107,16 @@ function Places.build(hf: Heightfield.Heightfield, layout: any, parent: Instance
 		total += 6
 	end
 
-	-- Gundiville government district placeholders (replaced in Milestone 3).
+	-- Gundiville government district placeholders. Blocks that the built district replaces
+	-- (Milestone 3, StudioTools.BuildGundiville) are left out while Map.GovernmentDistrict exists.
 	local district = Util.folder(parent, "GundivillePlaceholders")
 	local cityY = hf.land.placeGround.Gundiville
+	local replaced = Places.replacedByDistrict(parent)
 	for _, block in layout.GundivillePlaceholders do
-		local r = block.Rect
-		local cx, cz = (r.MinX + r.MaxX) / 2, (r.MinZ + r.MaxZ) / 2
-		local w, d = r.MaxX - r.MinX, r.MaxZ - r.MinZ
-		local part
-		if block.Height > 0 then
-			part = Util.part(
-				district,
-				block.Id,
-				CFrame.new(cx, cityY + block.Height / 2, cz),
-				Vector3.new(w, block.Height, d),
-				{ Color = Color3.fromRGB(214, 206, 190), Material = Enum.Material.SmoothPlastic }
-			)
-			Util.label(part, `{block.Name} (placeholder)`, block.Height / 2 + 8, 900, 300)
-		else
-			part = Util.part(
-				district,
-				block.Id,
-				CFrame.new(cx, cityY, cz), -- top surface 0.2 above the ground
-				Vector3.new(w, 0.4, d),
-				{ Color = Color3.fromRGB(190, 182, 168), Material = Enum.Material.Concrete }
-			)
-			Util.label(part, block.Name, 6, 500, 220)
+		if not replaced[block.Id] then
+			Places.placeholder(block, district, cityY)
+			total += 1
 		end
-		part:SetAttribute("Placeholder", true)
-		part:SetAttribute("PlaceName", block.Name)
-		total += 1
 	end
 	return total
 end

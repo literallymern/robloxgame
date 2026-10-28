@@ -2,14 +2,14 @@
 
 Work happens one milestone at a time. A milestone starts only after Justin writes `NEXT MILESTONE`. Status values: **Done**, **In progress**, **Waiting for approval**, **Not started**, **Blocked**.
 
-Last update: 2026-10-28. The sequence below is the **integration-aware plan from Justin's architecture update of 2026-10-26**. It replaces the earlier 0–14 plan.
+Last update: 2026-10-28 (Milestone 3 built). The sequence below is the **integration-aware plan from Justin's architecture update of 2026-10-26**. It replaces the earlier 0–14 plan.
 
 | # | Milestone | Status | Key prerequisites | Main deliverable |
 |---|---|---|---|---|
 | 0 | Technical and repository audit | **Done** | — | `docs/game/` (this folder), incl. bot audit and system boundaries ([05](05-economy-integration.md)) |
 | 1 | Core architecture and integration prototype | **Done** (Studio staging test passed 2026-10-26) | Milestone 0; Studio API access and HTTP requests on (03, steps 4–5); a staging key | Roblox foundation (services, remotes, logging, permissions); bridge prototype in the bot (off by default); account linking; verified staging test: read an account and make one safe test transfer exactly once |
-| 2 | Complete country map blockout | **In progress** (blockout and landscape pass built by Justin in Studio; environment overhaul and the Kagundali junction benchmark added by Codex; waiting for Justin's Studio check of the latest state) | Milestone 1; Justin runs builders and saves the place | Terrain, roads, footprints of all four cities, airport, border crossings |
-| 3 | Gundiville government district | Not started | Milestone 2; flag and emblem IDs (done) | General People's Congress, Hausali, Leader's residence, square, statue of Dr. Justin Wachmann |
+| 2 | Complete country map blockout | **Done** (closed by Justin on 2026-10-28 when he moved on to Milestone 3; terrain work continues with Codex) | Milestone 1; Justin runs builders and saves the place | Terrain, roads, footprints of all four cities, airport, border crossings |
+| 3 | Gundiville government district | **Waiting for approval** (built offline 2026-10-28; Justin's Studio test pending) | Milestone 2; flag and emblem IDs (done) | General People's Congress, Hausali, Leader's residence, square, statue of Dr. Justin Wachmann |
 | 4 | First playable gameplay loop | Not started | Milestones 1–3; bot reachable over HTTPS for live tests | Spawning, navigation, one working vehicle, bank interface, one civilian job, one property interaction, connected to the bot where feasible; Roblox player profiles (non-financial) |
 | 5 | Secondary cities and infrastructure | Not started | Milestone 2 | Stokondo, Kagundali, Oberdueshuson, airport, customs, fuel, utilities, transport network |
 | 6 | Institutional gameplay | Not started | Milestones 4–5 | Faction access from `/roster` roles, City Police, Gendarmerie, courts, military facilities, EMS, Brandwehr |
@@ -93,11 +93,29 @@ One pull request (branch `claude/project-thread-55jwuj`). Details and the as-bui
 - **Tests that ran (cloud session, default branch after the clean-up):** `python3 tests/map/test_all.py` (1,513 Luau checks and the property match with the bot, 39,643 parts under `Workspace.Map`) and `python3 tests/environment/run.py` (86 checks) all pass; StyLua, luau-lsp (strict) with 0 findings, `rojo build` OK.
 - **Not tested yet:** the environment, the junction benchmark and the pack import in Roblox Studio; frame rate with about 39,600 parts.
 
-## Milestone 3 plan (preview)
+**Closed (2026-10-28).** Justin moved on to Milestone 3 and handed the terrain to Codex: from now on Codex works on terrain and Claude on the milestones, never at the same time (B8). Open Studio checks of revisions 3 and 4 stay with that terrain work.
 
-Details are fixed when the milestone starts. Sources: [02-map-plan.md](02-map-plan.md), section 5, and Justin's city reference guide.
+### Milestone 3 — Gundiville government district (2026-10-28)
 
-1. Replace the Gundiville placeholders with blockout-quality buildings of the government district: General People's Congress (tallest, dome or tower), main square with market stalls, Hausali, Leader's residence compound, central bank, the avenue with its median, and the streets of the district.
-2. Statue of Dr. Justin Wachmann from the Owner's avatar (user `2595858454`), facing the Congress, on a pedestal (decision D3 after a test render).
-3. Flags and emblem on the government buildings (image IDs from `Config/Assets`).
-4. Builders in `src/studio/` like in Milestone 2, so the district can be rebuilt; Studio checklist with walk-through and screenshots.
+Pushed directly to the default branch `claude/project-thread-5krwdh` (Justin's instruction, no pull request). Details and numbers: [02-map-plan.md](02-map-plan.md), section 14; preview: [gundiville-district-preview.jpg](gundiville-district-preview.jpg).
+
+- **Single source:** `src/shared/Config/GovernmentDistrict.luau` holds the streets, square, the four buildings, the residence layout, the statue (user, position, size, finish, inscription) and the part budget (7,000). Footprints are those of the map plan and the Milestone 2 placeholders.
+- **Builders:** `src/studio/BuildGundiville.luau` (commands `run()`, `statue({ Finish = … })`, `focus()`, `remove()`; one undo step each; refuses to replace a folder it did not build) and `src/studio/Gundiville/` — `Kit` (walls with openings, windows with shutters, columns, pediments, roofs, dome, flags with mirrored backs, emblem, inscriptions, lamps, trees, benches), `Streets`, `Square`, `Congress`, `Hausali`, `CentralBank`, `Residence`, `Statue`, `District`.
+- **Built:** six streets with sidewalks, centre lines, zebra crossings, the avenue median with trees and double lights; the square with 16 market stalls and six flags; the General People's Congress (113 studs, dome, walkable hall and chamber with 50 seats); the Hausali (walkable lobby, speaker's balcony, garden); the Central Bank (walkable banking hall, no money functions); the Leader's residence (walls, guard posts, barrier, villa with walkable hall and office, gardens); the statue of Dr. Justin Wachmann from the Owner's avatar, 30 studs, facing the Congress, with plaques and floodlights. 26 flags and 10 emblems. 3,341 parts (3,274 with the Roblox packs).
+- **Store assets:** if `ServerStorage.RoNationCreatorAssets` exists (Roblox's Forest Pack and City Props Pack, imported by `Map.CreatorAssets`), the district uses those trees and street lamps; otherwise its own. The Creator Store cannot be searched from the cloud session, so no further store models were picked.
+- **Map builder:** `BuildMap` keeps `Workspace.Map.GovernmentDistrict` and skips the placeholders it replaces; terrain tools do not touch it.
+- **Tests that ran (cloud session):** `python3 tests/map/test_all.py` — all specs pass (1,690 Luau checks, including 177 new district checks: footprints and streets match the plan, part budget, everything anchored, Congress tallest, flags and emblems on every government building, mirrored flag backs, readable inscriptions, seats, lamps wired for the night switch, walkable entrances and rooms (collision probes), no building part on a carriageway, statue height, pedestal, north facing and collider, the three finishes, stand-in when the avatar cannot load, `Workspace.StatueSource`, rerun without duplicates, `remove()`, store-asset variant, foreign folder refused); `BuildMap` against the stand-in still passes (39,643 parts). `rojo build` OK; StyLua and luau-lsp (strict) with 0 findings; selene with 0 findings in the new code (its offline Roblox definitions lack `Random` and `UserSettings`, which three weather scripts use). Six views rendered with an offline renderer and checked visually.
+- **Not tested yet:** anything in Roblox Studio: loading the avatar with `Players:CreateHumanoidModelFromUserId` in edit mode (A29), the mirrored flag backs (A30), how the buildings look with Roblox lighting, walking through the doors, frame rate. Justin's checklist: [testing/m3-district-checklist.md](testing/m3-district-checklist.md).
+- **Deviations from the preview:** none in scope. Additions: street names (P28, proposal), the Hausali directory text (P29), gate open and barrier raised until Milestone 6 (P30). Decision D3 (statue finish) is made after Justin compares the finishes in Studio.
+
+## Milestone 4 plan (preview)
+
+Details are fixed when the milestone starts. Sources: the table above, [01-architecture.md](01-architecture.md), sections 3 and 7, and [05-economy-integration.md](05-economy-integration.md).
+
+1. Spawning and new-player arrival at the Gundiville bus terminal; navigation help.
+2. One working vehicle.
+3. Bank interface in the Central Bank, connected to the bot through the existing bridge (balances, linking, transfers within the bot's rules).
+4. One civilian job with a shift (`clockIn` through the bot) and one property interaction.
+5. Non-financial Roblox player profiles (session-locked DataStore).
+
+Prerequisite: the bot is reachable over HTTPS for live tests (B4).

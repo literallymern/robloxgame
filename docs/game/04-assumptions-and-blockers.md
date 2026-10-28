@@ -34,6 +34,10 @@ Status: updated in Milestone 2, 2026-10-28 (after revisions 3 and 4 by Codex). I
 | A26 | `GeometryService:UnionAsync` works from the command bar in edit mode, and the compiled CSG crowns are saved with the place. | Offline the CSG calls are simulated. Confirmed once Justin's Studio runs `upgradeEnvironment()` / `UpgradeKagundali()` without CSG errors and the trees are still there after reopening |
 | A27 | `InsertService:LoadAsset` can load Roblox's own Forest Pack (`6432306802`) and City Props Pack (`6370681139`) from the command bar, and `MarketplaceService:GetProductInfo` reports creator ID 1 and asset type 10 (Model) for both. | The IDs could not be checked from the cloud (B2). The import checks creator and type itself and stops without changes if either differs; confirmed at Justin's first `UseCreatorStoreAssets()` run |
 | A28 | About 39,600 parts (full map plus the junction benchmark) with instance streaming still run smoothly on a PC. | Offline part count (budget 45,000). Frame rate is checked in Justin's Play test; phones in Milestone 9 |
+| A29 | `Players:CreateHumanoidModelFromUserId` works from the command bar in edit mode and returns the Owner's current avatar with clothing, face and accessories. | Engine function, cannot be called from the cloud (B2). If it fails, the builder tries the avatar description (R15), then places a stone stand-in and says so in Output; the fallback is a character inserted by hand as `Workspace.StatueSource` (Milestone 3 guide) |
+| A30 | A `SurfaceGui` with an `ImageLabel` whose `ImageRectSize` is negative in X (`-1024, 609`) shows the flag mirrored, so the back of every flag reads correctly like real cloth. | Offline only the property values are checked. Confirmed when Justin looks at a flag from behind in Studio; if the back is blank, the flags still work from the front |
+| A31 | About 3,300 extra parts for the government district (budget 7,000) do not change the frame rate noticeably next to the 39,600 parts of the map. | Offline count. Most parts are windows and sills; checked in Justin's Play test. The closed wings and offices have no interiors to save parts |
+| A32 | Roblox's City Props Pack street lamp has one arm, so with the pack the avenue's double lamps become single lamps facing alternate carriageways. | The pack contents were read by Codex's import (one lamp template). Without the pack, the district's own lamps have two lanterns |
 
 ## 2. Proposed implementation choices (not canon)
 
@@ -68,6 +72,9 @@ These are additions needed to build the game. None of them changes an establishe
 | P25 | A 60-minute day/night cycle and five weather profiles (clear, partly cloudy, overcast, rain, thunderstorm) with gradual transitions, one schedule per server; visual time is independent of the bot's economic day | Revision 3 by Codex. Only visual: nothing in the economy depends on weather or time of day. About half of each real hour is night |
 | P26 | A bounded art benchmark at the R3/N5 junction is finished and accepted in Studio before the same style is carried to the rest of the map | Revision 4 by Codex: avoids rebuilding the whole map for every visual change |
 | P27 | Trees and street lamps from Roblox's own free packs (Forest Pack, City Props Pack) where they fit; original templates stay as the fallback | Revision 4 by Codex. Official Roblox assets need no third-party permission; scripts are stripped on import |
+| P28 | Street names in the government district: **Avenue du 12 Mai** (ceremonial avenue) and **Rue de l'Indépendance** (main street to N4); the other district streets stay unnamed for now | Signs help navigation. 12 May is Revolution Day (canon holiday); French street names fit the capital's French protectorate period (1919–1960). The names themselves are not canon; change them in `GovernmentDistrict.Streets` |
+| P29 | The Hausali lobby directory reads "HAUSALI / Government Headquarters / People's Committee" | The canon calls the Hausali the government headquarters; "People's Committee" follows the Third Universal Theory structure. Text in `Gundiville/Hausali.luau` |
+| P30 | The residence gate stands open and the barrier is raised; doors are open doorways | Access control and guard roles come with institutional gameplay (Milestone 6); closed gates now would lock players out of a walkable area |
 
 ## 3. Open decisions for Justin
 
@@ -75,7 +82,7 @@ These are additions needed to build the game. None of them changes an establishe
 |---|---|---|---|
 | D1 | Should the economy bot stay the only place where money exists, with the game connected through a bridge? | **Decided 2026-10-26: yes**, confirmed by the architecture update. The bridge prototype is part of Milestone 1. | — |
 | D2 | Publish the experience under the group "Democratic Republic of Kagundi"? | **Decided 2026-10-26: yes, the game runs under the group.** Assets are uploaded under the group too. | — |
-| D3 | Statue finish (P5). The direction is settled: it faces the Congress (P4). | Original colours on a stone pedestal, confirmed after a test render in Studio | Milestone 3 |
+| D3 | Statue finish (P5). The direction is settled: it faces the Congress (P4). | Original colours on a stone pedestal. Built that way in Milestone 3; Justin compares in Studio with `BuildGundiville.statue({ Finish = "Bronze" })` and `{ Finish = "Stone" }` and picks one (back to the original: `{ Finish = "Original" }`) | End of Milestone 3 |
 | D4 | Approve the bot changes listed in [05](05-economy-integration.md), section 8 (bridge module off by default, three new tables, `/link` commands, optional key for `citizenPay`, new tests), delivered as a separate reviewed pull request | **Decided 2026-10-26: approved.** The bot pull request is still reviewed before merge, and deploying to the live bot needs a separate go. | — |
 
 ## 4. Blockers and limits
@@ -83,7 +90,7 @@ These are additions needed to build the game. None of them changes an establishe
 | ID | Blocker | Effect | Work-around |
 |---|---|---|---|
 | B1 | No Studio access for Claude | Claude cannot place parts, run Play tests or publish | Builder scripts + Studio checklists run by Justin |
-| B2 | Roblox web APIs are blocked from Claude's environment | The avatar data cannot be read from here | Justin's screenshot serves as the visual reference; the statue builder uses Roblox's engine functions inside Studio (Milestone 3) |
+| B2 | Roblox web APIs are blocked from Claude's environment | The avatar data cannot be read from here | Justin's screenshot serves as the visual reference; the statue builder uses Roblox's engine functions inside Studio (Milestone 3, A29). The Creator Store cannot be searched either, so store models are only used where an import already exists (Codex's pack import) |
 | B3 | Running downloaded dev tool binaries was blocked in the cloud session | — | **Resolved in Milestone 1:** with Justin's approval (2026-10-26) StyLua and selene were built from crates.io and luau-lsp from its source code; all Milestone 1 code passes them. StyLua and selene are pinned in `rokit.toml` for Justin's PC |
 | B4 | The economy bot runs only while Justin's PC is on; the bridge exists (Milestone 1 bot pull request) but is off and not deployed | No money features on live servers yet | Justin is arranging 24/7 hosting (2026-10-26). Studio tests use the staging bridge on Justin's PC. Until the bot is reachable, the game shows "temporarily unavailable" and never invents balances |
 | B5 | Flag and emblem IDs | — | **Resolved 2026-10-26:** the first IDs were decals in swapped order. Justin read the image IDs in Studio: flag `74627674981379`, emblem `124794973631384`, now in `src/shared/Config/Assets.luau` |

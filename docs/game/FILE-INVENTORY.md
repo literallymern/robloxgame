@@ -2,7 +2,7 @@
 
 Every file and folder of the project, what it is for and which milestone owns it. Updated at the end of every milestone.
 
-Last update: 2026-10-28 (Milestone 2, revisions 3 and 4 by Codex, clean-up).
+Last update: 2026-10-28 (Milestone 3: Gundiville government district).
 
 ## Repository root
 
@@ -65,11 +65,11 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/Map/Fields.luau` | `…StudioTools.Map.Fields` | Farm field patchwork, crop rows, tobacco barns (pure) | 2 (rev. 2) |
 | `src/studio/Map/Vegetation.luau` | `…StudioTools.Map.Vegetation` | Positions of trees, bushes, hedges and rocks (pure) | 2 (rev. 2) |
 | `src/studio/Map/RoadDetails.luau` | `…StudioTools.Map.RoadDetails` | Positions of markings, marker posts, guard rails, street lights, signs, power lines (pure) | 2 (rev. 2) |
-| `src/studio/Map/Builders/Util.luau` | `…Map.Builders.Util` | Generated-content marking, parts, wedges, cylinders, ellipsoids, strips, labels | 2 |
+| `src/studio/Map/Builders/Util.luau` | `…Map.Builders.Util` | Generated-content marking, parts, wedges, cylinders, ellipsoids, strips, labels (reflectance option since 3) | 2, 3 |
 | `src/studio/Map/Builders/Terrain.luau` | `…Map.Builders.Terrain` | Writes the terrain and water in 64 × 64-stud chunks | 2 |
 | `src/studio/Map/Builders/Roads.luau` | `…Map.Builders.Roads` | Road surface parts along straight runs, junction joints | 2 |
 | `src/studio/Map/Builders/Bridges.luau` | `…Map.Builders.Bridges` | Bridge decks, railings, piers | 2 |
-| `src/studio/Map/Builders/Places.luau` | `…Map.Builders.Places` | Place outlines, names, Gundiville placeholders | 2 |
+| `src/studio/Map/Builders/Places.luau` | `…Map.Builders.Places` | Place outlines, names, Gundiville placeholders (skips those the government district replaces) | 2, 3 |
 | `src/studio/Map/Builders/Airport.luau` | `…Map.Builders.Airport` | Runway, taxiway, apron, airport building blocks | 2 |
 | `src/studio/Map/Builders/Crossings.luau` | `…Map.Builders.Crossings` | Customs canopy, barrier, office, truck inspection | 2 |
 | `src/studio/Map/Builders/Properties.luau` | `…Map.Builders.Properties` | 16 property plot markers, tag `PropertyPlot` | 2 |
@@ -94,6 +94,17 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/Map/Builders/Kagundali.luau` | `…Map.Builders.Kagundali` | Junction plants, shoulders, drainage, sign construction, workshop | 2 (rev. 4) |
 | `src/studio/Map/Builders/JunctionTrees.luau` | `…Map.Builders.JunctionTrees` | Original tree, bush and fern templates for the junction (fallback without the packs) | 2 (rev. 4) |
 | `src/studio/Map/Builders/JunctionMarkings.luau` | `…Map.Builders.JunctionMarkings` | Restores road markings on the saved road surface at the junction | 2 (rev. 4) |
+| `src/shared/Config/GovernmentDistrict.luau` | `ReplicatedStorage.Shared.Config.GovernmentDistrict` | Government district: streets, square, buildings, residence, statue (user, size, finish, inscription), part budget (single source) | 3 |
+| `src/studio/BuildGundiville.luau` | `ServerStorage.StudioTools.BuildGundiville` | Commands: `run()`, `statue({ Finish = … })`, `focus()`, `remove()` (edit mode, one undo step each) | 3 |
+| `src/studio/Gundiville/Kit.luau` | `…StudioTools.Gundiville.Kit` | Building kit: walls with openings, windows, shutters, columns, pediments, roofs, dome, flags, emblem, inscriptions, lamps, trees, furniture; part counter | 3 |
+| `src/studio/Gundiville/District.luau` | `…Gundiville.District` | Builds the whole district into one folder and reports parts per builder | 3 |
+| `src/studio/Gundiville/Streets.luau` | `…Gundiville.Streets` | Carriageways, sidewalks, avenue median with trees and lights, centre lines, zebra crossings, street name signs | 3 |
+| `src/studio/Gundiville/Square.luau` | `…Gundiville.Square` | Main square: paving, 16 market stalls, flags, lamps, benches, trees | 3 |
+| `src/studio/Gundiville/Congress.luau` | `…Gundiville.Congress` | General People's Congress with dome, entrance hall and assembly chamber | 3 |
+| `src/studio/Gundiville/Hausali.luau` | `…Gundiville.Hausali` | Hausali with lobby, balcony and garden | 3 |
+| `src/studio/Gundiville/CentralBank.luau` | `…Gundiville.CentralBank` | Central Bank with banking hall (no money functions) | 3 |
+| `src/studio/Gundiville/Residence.luau` | `…Gundiville.Residence` | Leader's residence: walls, gate, guard posts, villa with hall and office, gardens | 3 |
+| `src/studio/Gundiville/Statue.luau` | `…Gundiville.Statue` | Statue of Dr. Justin Wachmann: loads the Owner's avatar, finishes, pedestal, plaques, floodlights; stand-in fallback | 3 |
 
 Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src/client/UI` (Milestone 4/8). See [01-architecture.md](01-architecture.md), section 3.
 
@@ -106,7 +117,8 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `tests/map/heightfield.spec.luau` | Checks of the layout and the terrain calculations | 2 |
 | `tests/map/landscape.spec.luau` | Checks of river cascades, lakes, fields, road details and vegetation | 2 (rev. 2) |
 | `tests/map/builders.spec.luau` | Runs the real `BuildMap` against the Roblox stand-in and checks the result | 2 |
-| `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use | 2 |
+| `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use (since 3 also seats, decals, lights, humanoid characters, `Players`, `ChangeHistoryService`) | 2, 3 |
+| `tests/map/gundiville.spec.luau` | 177 checks of the government district build (plan, budget, buildings, flags, rooms, statue, reruns, store assets) | 3 |
 | `tests/map/preview.luau`, `tests/map/preview.py` | Renders the map preview image (needs Pillow and numpy) | 2 |
 | `tests/map/*.spec.luau` (17 more: river detail, roads realism, vegetation builders, canopy, highland relief, soil, original parity, terrain upgrade, infrastructure, bridge and road ground, Kagundali, Kagundali terrain, junction markings, creator assets, upgrade entry, environment inspection) | Checks of the environment overhaul and the junction benchmark; all run by `test_all.py` | 2 (rev. 3/4) |
 | `tests/map/preview-canopies.luau`, `tests/map/preview-junction.luau` | Geometry data for the tree previews in `tools/` | 2 (rev. 3/4) |
@@ -120,6 +132,8 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `00-audit.md` | Milestone 0 audit: environment, repository, lore, assets, avatar, group, economy |
 | `testing/m1-staging-checklist.md` | Milestone 1 Studio test against the staging bridge |
 | `testing/m2-map-checklist.md` | Milestone 2 Studio map build and walk-through |
+| `testing/m3-district-checklist.md` | Milestone 3 Studio district build and walk-through |
+| `gundiville-district-preview.jpg` | Offline preview of the government district (six views; simplified renderer) |
 | `map-blockout-preview.png` | Preview of the generated map (from `tests/map/preview.py`) |
 | `06-environment-overhaul.md` | Weather, day/night, lighting and the `highland-4` saved-terrain upgrade |
 | `07-kagundali-junction.md` | R3/N5 junction benchmark: what it builds and how to apply it |
@@ -127,7 +141,7 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `09-creator-store-assets.md` | Import of Roblox's Forest Pack and City Props Pack |
 | `canopy-geometry-preview.png`, `kagundali-tree-sources.png` | Software previews of the tree geometry (not Roblox renders) |
 | `01-architecture.md` | Architecture, hierarchy, services, security, sources of truth, persistence, streaming, testing |
-| `02-map-plan.md` | Map size, coordinates, footprints, roads, Gundiville district |
+| `02-map-plan.md` | Map size, coordinates, footprints, roads, Gundiville district (as built: section 14) |
 | `03-dependencies-and-setup.md` | Manual steps for Justin, tools, engine features, third-party code, external systems |
 | `04-assumptions-and-blockers.md` | Assumptions, non-canon proposals, open decisions, blockers |
 | `05-economy-integration.md` | Verified bot audit, system boundaries, bridge endpoints and account linking as built, exactly-once rules, downtime rules, staging, integration acceptance criteria, bot changes |

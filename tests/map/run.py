@@ -20,6 +20,8 @@ MODULES = {
     "ReplicatedStorage/Shared/Config/MapLayout": "src/shared/Config/MapLayout.luau",
     "ReplicatedStorage/Shared/Config/Assets": "src/shared/Config/Assets.luau",
     "ReplicatedStorage/Shared/Config/Environment": "src/shared/Config/Environment.luau",
+    "ReplicatedStorage/Shared/Config/GovernmentDistrict": "src/shared/Config/GovernmentDistrict.luau",
+    "StudioTools/BuildGundiville": "src/studio/BuildGundiville.luau",
     "StudioTools/BuildMap": "src/studio/BuildMap.luau",
     "StudioTools/CheckEnvironment": "src/studio/CheckEnvironment.luau",
     "StudioTools/UpgradeKagundali": "src/studio/UpgradeKagundali.luau",
@@ -28,6 +30,7 @@ MODULES = {
 for folder, prefix in (
     ("src/studio/Map", "StudioTools/Map"),
     ("src/studio/Map/Builders", "StudioTools/Map/Builders"),
+    ("src/studio/Gundiville", "StudioTools/Gundiville"),
     ("src/shared/Environment", "ReplicatedStorage/Shared/Environment"),
 ):
     for file in sorted(os.listdir(os.path.join(ROOT, folder))):

@@ -80,6 +80,7 @@ export type PartOptions = {
 	CastShadow: boolean?,
 	Shape: Enum.PartType?,
 	Decoration: boolean?, -- true = no collision, queries, touches or shadow (markings, outlines)
+	Reflectance: number?,
 }
 
 local function setUp(part: BasePart, parent: Instance, name: string, cframe: CFrame, size: Vector3, o: PartOptions)
@@ -90,6 +91,9 @@ local function setUp(part: BasePart, parent: Instance, name: string, cframe: CFr
 	part.Material = o.Material or Enum.Material.SmoothPlastic
 	part.Color = o.Color or Color3.fromRGB(200, 200, 200)
 	part.Transparency = o.Transparency or 0
+	if o.Reflectance then
+		part.Reflectance = o.Reflectance
+	end
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	if o.Decoration then
