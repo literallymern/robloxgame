@@ -31,6 +31,14 @@ check(
 )
 check(Model.sample(clear, rain, 0, 75, 0.01).Rain < 0.00001, "transition starts without an abrupt slope")
 local noon = Model.lighting(12, clear, 140, Config.Altitude)
+check(
+	noon.Density < 0.18 and noon.Haze < 0.5,
+	"clear midday retains long-distance visibility without the former heavy haze"
+)
+check(
+	math.abs(noon.AtmosphereColor[1] - noon.AtmosphereColor[3]) < 0.025,
+	"daylight atmosphere stays neutral instead of adding a blue mountain veil"
+)
 local night = Model.lighting(0, clear, 140, Config.Altitude)
 local cloudy = Model.lighting(12, Config.Profiles.Overcast, 140, Config.Altitude)
 local cloudyEvening = Model.lighting(18, Config.Profiles.Overcast, 140, Config.Altitude)

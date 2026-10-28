@@ -70,7 +70,7 @@ check("water written", stats.waterCells > 10000, tostring(stats.waterCells))
 check("template Baseplate removed", mockWorkspace:FindFirstChild("Baseplate") == nil)
 check("template SpawnLocation removed", mockWorkspace:FindFirstChild("SpawnLocation") == nil)
 
-local hf = Heightfield.new(MapLayout)
+local hf = load("StudioTools/Map/JunctionLandscape").decorate(Heightfield.new(MapLayout), MapLayout)
 stats.groundSurface = hf.surface -- saved terrain used by geometry-only rebuilds and refresh
 for _, probe in stats.probes do
 	local h, _, water = hf.surface(probe.x, probe.z)
@@ -103,6 +103,7 @@ local expected = {
 	"RoadDetails",
 	"Countryside",
 	"Vegetation",
+	"KagundaliJunction",
 }
 for _, name in expected do
 	local folder = map and map:FindFirstChild(name)

@@ -1,5 +1,12 @@
 # Highland environment overhaul
 
+> **Historical highland-4 baseline.** The newer bounded R3/N5 implementation and revised
+> saved/runtime lighting are documented in [Kagundali junction](07-kagundali-junction.md).
+> Start with its focused command for the latest request. The descriptions and measurements
+> below record the earlier global baseline; its leaf-card trees remain outside the new
+> benchmark. The current full builder/upgrade also applies the Kagundali area, and a later
+> refresh retains an already-applied benchmark. Neither version has visual Studio acceptance.
+
 ## What highland-4 changes
 
 The environment update includes a saved-terrain upgrade, reusable foliage geometry,

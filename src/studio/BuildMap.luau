@@ -40,6 +40,9 @@ local Spawn = require(Builders.Spawn)
 local TerrainBuilder = require(Builders.Terrain)
 local TerrainUpgrade = require(Builders.TerrainUpgrade)
 local CanopyLibrary = require(Builders.CanopyLibrary)
+local JunctionTrees = require(Builders.JunctionTrees)
+local JunctionLandscape = require(Map.JunctionLandscape)
+local KagundaliUpdate = require(Map.KagundaliUpdate)
 local Util = require(Builders.Util)
 local VegetationBuilder = require(Builders.Vegetation)
 
@@ -107,8 +110,9 @@ local function refreshEnvironment(options: RefreshOptions?, context: any?)
 			return
 		end
 	end
+	local hf: any = nil
 	local ok, err = pcall(function()
-		local hf = if context then context.Heightfield else Heightfield.new(layout, Util.yield)
+		hf = if context then context.Heightfield else Heightfield.new(layout, Util.yield)
 		local sampler = if context then context.GroundSampler else savedGroundSampler()
 		if selected.Roads then
 			report.RoadParts = Roads.build(hf, layout, staging)
@@ -150,6 +154,10 @@ local function refreshEnvironment(options: RefreshOptions?, context: any?)
 	end
 	staging:Destroy()
 	local skipped = Environment.apply(log)
+	if (context and context.TerrainUpdated) or map:GetAttribute("KagundaliGeometryRevision") then
+		report.Kagundali =
+			KagundaliUpdate.apply(hf, layout, map, { Terrain = context ~= nil and context.TerrainUpdated == true })
+	end
 	if selected.Roads and selected.RoadDetails and selected.Vegetation then
 		map:SetAttribute("EnvironmentGeometryRevision", BuildMap.EnvironmentRevision)
 	end
@@ -177,6 +185,20 @@ function BuildMap.refreshEnvironment(options: RefreshOptions?)
 	return refreshEnvironment(options, nil)
 end
 
+-- First visual benchmark: bounded terrain/vegetation/infrastructure, without a full-map rebuild.
+function BuildMap.upgradeKagundali(options: { DryRun: boolean? }?)
+	return require(script.Parent.UpgradeKagundali)(options)
+end
+
+function BuildMap.focusKagundali()
+	assert(not RunService:IsRunning(), "Use the benchmark camera in edit mode")
+	local camera = workspace.CurrentCamera
+	assert(camera, "Studio has no current camera")
+	local target = JunctionLandscape.Centre + Vector3.new(0, 5, 0)
+	camera.CFrame = CFrame.lookAt(target + Vector3.new(-120, 40, 100), target)
+	camera.Focus = CFrame.new(target)
+end
+
 -- Full saved-map upgrade: compile reusable foliage first, conservatively patch matching
 -- generated terrain, then replace environment geometry while retaining places and signs.
 -- Terrain writes are incremental; Output reports any interrupted patch and supports a rerun.
@@ -201,6 +223,7 @@ function BuildMap.upgradeEnvironment(options: { DryRun: boolean? }?)
 	end
 	-- A failure to compile CSG leaves the saved terrain and map untouched.
 	CanopyLibrary.prepare(log)
+	JunctionTrees.prepare()
 	local history: any = nil
 	local recording: string? = nil
 	pcall(function()
@@ -258,6 +281,7 @@ function BuildMap.run(options: Options?)
 	local started = os.clock()
 	if opts.Parts ~= false and opts.Vegetation ~= false then
 		CanopyLibrary.prepare(log)
+		JunctionTrees.prepare()
 	end
 
 	log(`Map layout version {MapLayout.Version}. Calculating the landscape...`)
@@ -270,7 +294,7 @@ function BuildMap.run(options: Options?)
 	end
 
 	if opts.Terrain ~= false then
-		TerrainBuilder.build(hf, MapLayout, log)
+		TerrainBuilder.build(JunctionLandscape.decorate(hf, MapLayout), MapLayout, log)
 	end
 	Environment.apply(log)
 
@@ -315,6 +339,7 @@ function BuildMap.run(options: Options?)
 			local parts = VegetationBuilder.build(plants, map)
 			log(`Vegetation: {#plants.trees} trees, {#plants.bushes} bushes, {#plants.rocks} rocks ({parts} parts).`)
 			map:SetAttribute("EnvironmentGeometryRevision", BuildMap.EnvironmentRevision)
+			KagundaliUpdate.apply(hf, MapLayout, map, { Terrain = false, GeneratedTerrain = opts.Terrain ~= false })
 		end
 		if opts.Terrain ~= false then
 			map:SetAttribute("EnvironmentTerrainRevision", BuildMap.EnvironmentRevision)

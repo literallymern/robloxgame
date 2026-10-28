@@ -1,6 +1,7 @@
 --!strict
 -- Deterministic math only: shared by server/client and exercised outside Roblox Studio.
 local Model = {}
+Model.VisualRevision = "neutral-highland-1"
 
 export type Weather = {
 	Rain: number,
@@ -85,21 +86,21 @@ function Model.lighting(clock: number, weather: Weather, altitude: number, altit
 		Day = day,
 		Brightness = 0.35 + day * (2.05 - 1.25 * dim),
 		Exposure = -0.12 - 0.08 * dim,
-		Ambient = { 0.105 + day * 0.12, 0.12 + day * 0.12, 0.16 + day * 0.095 },
+		Ambient = { 0.105 + day * 0.08, 0.12 + day * 0.075, 0.16 + day * 0.05 },
 		OutdoorAmbient = {
-			0.14 + day * (0.24 - 0.075 * dim),
-			0.16 + day * (0.23 - 0.07 * dim),
-			0.21 + day * (0.18 - 0.06 * dim),
+			0.14 + day * (0.18 - 0.055 * dim),
+			0.16 + day * (0.17 - 0.05 * dim),
+			0.21 + day * (0.125 - 0.045 * dim),
 		},
 		SunTint = { warm * 0.09, warm * 0.035, 0 },
-		Density = 0.21
-			+ 0.105 * weather.Haze
+		Density = 0.125
+			+ 0.135 * weather.Haze
 			+ height * altitudeConfig.ExtraHaze
 			+ valleyMist * (altitudeConfig.MorningMistDensity or 0.025),
-		Haze = 0.65 + weather.Haze * 1.65 + horizon * 0.3 + valleyMist * (altitudeConfig.MorningMistHaze or 0.24),
+		Haze = 0.22 + weather.Haze * 1.15 + horizon * 0.2 + valleyMist * (altitudeConfig.MorningMistHaze or 0.24),
 		Glare = (0.08 + horizon * 0.08) * (1 - dim) * day,
-		AtmosphereColor = { 0.72 + day * 0.08 + warm * 0.045, 0.77 + day * 0.06, 0.84 + day * 0.035 - warm * 0.06 },
-		Decay = { 0.38 + warm * 0.08, 0.43, 0.51 - warm * 0.06 },
+		AtmosphereColor = { 0.76 + day * 0.12 + warm * 0.04, 0.78 + day * 0.1, 0.82 + day * 0.045 - warm * 0.06 },
+		Decay = { 0.54 + warm * 0.08, 0.56, 0.58 - warm * 0.06 },
 		CloudColor = {
 			0.55 + day * (0.42 - 0.16 * dim),
 			0.59 + day * (0.39 - 0.17 * dim),

@@ -9,6 +9,8 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config.Environment)
 local BuildMap = require(script.Parent.BuildMap)
 local Canopies = require(script.Parent.Map.Builders.CanopyLibrary)
+local Junction = require(script.Parent.Map.JunctionLandscape)
+local JunctionTrees = require(script.Parent.Map.Builders.JunctionTrees)
 
 type Check = { Id: string, Status: string, Message: string }
 type Report = { Revision: string, Checks: { Check }, Counts: { [string]: number }, Passed: number, Failed: number }
@@ -41,6 +43,33 @@ return function(): Report
 	local map = workspace:FindFirstChild("Map")
 	check("map", map ~= nil, "Saved Workspace.Map must exist before an environment upgrade.")
 	if map then
+		local area = map:FindFirstChild("KagundaliJunction")
+		local trees = 0
+		for _, child in if area then area:GetDescendants() else {} do
+			if
+				child:IsA("Model")
+				and child:GetAttribute("AssetVersion") == JunctionTrees.Version
+				and child:FindFirstChild("TrunkCollision")
+			then
+				trees += 1
+			end
+		end
+		report.Counts.KagundaliTrees = trees
+		check(
+			"kagundaliGeometry",
+			area ~= nil and area:GetAttribute("Revision") == Junction.Revision and trees >= 20,
+			`Kagundali R3/N5: {trees} new branching trees. If missing, run require(game.ServerStorage.StudioTools.UpgradeKagundali)(); the camera then moves to the benchmark.`
+		)
+		check(
+			"kagundaliTerrain",
+			map:GetAttribute("KagundaliTerrainRevision") == Junction.Revision,
+			`Kagundali terrain: {tostring(map:GetAttribute("KagundaliTerrainRevision"))}; expected {Junction.Revision}. Preserved custom columns still need visual inspection.`
+		)
+		check(
+			"lightingRevision",
+			map:GetAttribute("EnvironmentLightingRevision") == Junction.LightingRevision,
+			`Saved natural atmosphere: {tostring(map:GetAttribute("EnvironmentLightingRevision"))}; expected {Junction.LightingRevision}.`
+		)
 		for _, kind in { "Geometry", "Terrain" } do
 			local revision = map:GetAttribute(`Environment{kind}Revision`)
 			check(

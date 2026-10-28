@@ -202,7 +202,7 @@ function Presentation.apply(handles: any, weather: Model.Weather, clock: number,
 	Lighting.ColorShift_Top = colour(visual.SunTint)
 	Lighting.ColorShift_Bottom = Color3.new(0, 0, 0)
 	Lighting.GlobalShadows = true
-	Lighting.ShadowSoftness = 0.35
+	Lighting.ShadowSoftness = 0.24
 	Lighting.EnvironmentDiffuseScale = 0.85
 	Lighting.EnvironmentSpecularScale = 0.8
 	if handles.Atmosphere then

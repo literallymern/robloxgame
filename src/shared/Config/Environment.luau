@@ -27,7 +27,7 @@ return {
 	Altitude = {
 		Base = 140,
 		Range = 600,
-		ExtraHaze = 0.035,
+		ExtraHaze = 0.02,
 		RainScale = 0.15,
 		ResponseSeconds = 2.5,
 		-- A light humid valley veil after dawn; it clears during the morning.

@@ -36,50 +36,50 @@
       "$properties": {
         "ClockTime": 9.5,
         "GeographicLatitude": -2,
-        "Brightness": 2.4,
+        "Brightness": 2.25,
         "Ambient": [
-          0.225,
-          0.24,
-          0.255
+          0.185,
+          0.195,
+          0.21000000000000002
         ],
         "OutdoorAmbient": [
-          0.38,
-          0.39,
-          0.39
+          0.3134,
+          0.324,
+          0.3296
         ],
         "ColorShift_Top": [
-          0,
-          0,
-          0
+          0.0,
+          0.0,
+          0.0
         ],
         "EnvironmentDiffuseScale": 0.85,
         "EnvironmentSpecularScale": 0.8,
         "GlobalShadows": true,
-        "ShadowSoftness": 0.35,
+        "ShadowSoftness": 0.24,
         "ColorShift_Bottom": [
           0,
           0,
           0
         ],
-        "ExposureCompensation": -0.13
+        "ExposureCompensation": -0.1296
       },
       "RoNationAtmosphere": {
         "$className": "Atmosphere",
         "$properties": {
-          "Density": 0.235,
+          "Density": 0.15855045166071408,
           "Offset": 0.15,
           "Color": [
-            0.8,
-            0.83,
-            0.875
+            0.88,
+            0.88,
+            0.865
           ],
           "Decay": [
-            0.38,
-            0.43,
-            0.51
+            0.54,
+            0.56,
+            0.58
           ],
-          "Glare": 0.07,
-          "Haze": 1.05
+          "Glare": 0.0704,
+          "Haze": 0.5070443359428553
         }
       },
       "RoNationBloom": {
@@ -101,10 +101,10 @@
         "$className": "ColorCorrectionEffect",
         "$properties": {
           "Brightness": 0,
-          "Contrast": 0.05,
-          "Saturation": -0.07,
+          "Contrast": 0.052,
+          "Saturation": -0.0698,
           "TintColor": [
-            1,
+            1.0,
             0.995,
             0.985
           ]

@@ -385,6 +385,7 @@ local CLASSES = {
 	},
 	BillboardGui = {
 		props = {
+			Enabled = "boolean",
 			Size = "UDim2",
 			StudsOffsetWorldSpace = "Vector3",
 			MaxDistance = "number",
@@ -519,7 +520,10 @@ local METHODS = {}
 function METHODS.SetAttribute(self, name, value)
 	assert(type(name) == "string", "SetAttribute: name must be a string")
 	local t = typeOf(value)
-	assert(t == "string" or t == "number" or t == "boolean" or t == "nil", `SetAttribute: unsupported type {t}`)
+	assert(
+		t == "string" or t == "number" or t == "boolean" or t == "nil" or t == "Vector3",
+		`SetAttribute: unsupported type {t}`
+	)
 	if t == "number" then
 		checkNumber(value, "SetAttribute " .. name)
 	end

@@ -90,8 +90,8 @@ template:Clone().Parent = map.Vegetation
 local handles = load("ReplicatedStorage/Shared/Environment/Presentation").new()
 local current = readOnlyInspect()
 check(
-	current.Failed == 2 and current.Counts.CanopyTemplates == 20 and current.Counts.BridgeModels == 5,
-	"structurally current fixture reports only its two missing audio settings"
+	current.Failed == 5 and current.Counts.CanopyTemplates == 20 and current.Counts.BridgeModels == 5,
+	"old global fixture reports missing audio and all three unapplied benchmark components"
 )
 check(
 	status(current, "grass") == "INFO" and status(current, "acceptance") == "INFO",
@@ -100,8 +100,8 @@ check(
 Config.Effects.Audio.Rain, Config.Effects.Audio.Thunder = "rbxassetid://123", "rbxassetid://456"
 local configured = readOnlyInspect()
 check(
-	configured.Failed == 0 and status(configured, "audioRain") == "INFO",
-	"configured audio IDs are not misreported as verified playback"
+	configured.Failed == 3 and status(configured, "audioRain") == "INFO",
+	"configured audio IDs do not conceal an unapplied benchmark or claim verified playback"
 )
 local custom = Instance.new("BloomEffect")
 custom.Name, custom.Enabled, custom.Intensity, custom.Parent = "CustomBloom", true, 0.5, lighting

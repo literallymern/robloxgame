@@ -113,6 +113,11 @@ end
 load("StudioTools/Map/Builders/Environment").apply = function()
 	return {}
 end
+local benchmarkApplied = false
+load("StudioTools/Map/KagundaliUpdate").apply = function(_, _, _, options)
+	benchmarkApplied = options.Terrain == true
+	return { Revision = "kagundali-junction-1" }
+end
 local BuildMap = load("StudioTools/BuildMap")
 
 local beforeRoads = map.Roads
@@ -123,6 +128,7 @@ check(
 )
 table.clear(order)
 local report = BuildMap.upgradeEnvironment()
+check("full environment upgrade includes the bounded Kagundali benchmark", benchmarkApplied)
 check(
 	"full upgrade prepares native foliage before terrain, then geometry",
 	order[1] == "canopy" and order[2] == "terrain" and order[3] == "geometry"

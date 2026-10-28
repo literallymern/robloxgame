@@ -104,7 +104,28 @@ require(game.ServerStorage.StudioTools.BuildMap).run()
 
 Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke, den Spawn und die Landschaft (Bäume, Büsche, Felsen, Felder, Zäune, Markierungen, Schilder, Laternen, Strommasten) neu. Es ist der vollständige Neubau für einen neuen Place. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
 
-## Vorhandene Karte auf highland-4 aktualisieren
+## Aktuelles Update: Kagundali-Kreuzung R3/N5
+
+Neue Baumvorlagen, dichterer Unterwuchs, lokale Geländeformen, Kiesbankette,
+Entwässerung, überarbeitete Schildkonstruktionen und eine Transportwerkstatt bilden
+den ersten zusammenhängend überarbeiteten Bereich. Die Beleuchtung wird sowohl im
+gespeicherten Preset als auch im laufenden Wettersystem neutraler eingestellt.
+
+Den Hauptbranch **`claude/project-thread-5krwdh`** holen und über Rojo synchronisieren.
+Den Place sichern, Play stoppen, nach dem Sync speichern und Studio neu starten;
+anschließend Rojo wieder verbinden. In **View > Command Bar**:
+
+```lua
+require(game.ServerStorage.StudioTools.UpgradeKagundali)()
+```
+
+Das aktualisiert den vorhandenen Bereich und richtet die Kamera auf die Kreuzung.
+Anschließend speichern und in Play prüfen. Ein vollständiger Kartenneubau ist dafür
+nicht erforderlich. **Die visuelle Studio-Abnahme ist noch offen.** Anleitung,
+Ursachendiagnose, Testgrenzen und Quellgeometrievorschau:
+[`Kagundali R3/N5`](docs/game/07-kagundali-junction.md).
+
+## Globale Grundlage highland-4
 
 Die vier Referenzbilder sind in dieses Update eingeflossen: weniger kahle Flecken auf sanften Hängen, größere Laub- und Eukalyptuskronen sowie Fundamente, Laternen und Strommasten, die dem gespeicherten Boden folgen. Das vorhandene natürliche Licht bleibt erhalten.
 
