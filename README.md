@@ -106,12 +106,11 @@ Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübe
 
 ## Current update: Kagundali junction R3/N5
 
-Current code: **`kagundali-junction-4`**. The corrected `ok.zip` screenshots show imported
-vegetation, an imported lamp, visible road markings and a continuous workshop driveway.
-This follow-up clears native grass along the concrete channels, probes their floors across
-the ground, prefers road-light templates and handles duplicate generated junction folders.
-The remaining spherical tree shapes still need a Studio inspection; the output now counts
-actual imported and native tree models.
+Current code: **`kagundali-junction-5`**. The latest six Studio screenshots show
+textured trees, the slender imported street light, visible paint and largely grass-free
+channels. This follow-up embeds exposed roots using nearby ground samples, grounds the
+shorter concrete sections and leaves the workshop driveway clear with a concrete crossing.
+The new placement and geometry still need a Studio comparison.
 
 Pull the default branch **`claude/project-thread-5krwdh`**, back up the place and stop Play.
 Sync Rojo, save, restart Studio, then reconnect Rojo. In **View > Command Bar**:

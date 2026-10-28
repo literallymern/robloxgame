@@ -13,6 +13,113 @@ local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
+-- Clip a channel against the finite driveway, including the channel's own half-width.
+local function outsideAccess(a: Vector3, b: Vector3, start: Vector3?, finish: Vector3?): { { Vector3 } }
+	if not start or not finish then
+		return { { a, b } }
+	end
+	local delta = Vector3.new(finish.X - start.X, 0, finish.Z - start.Z)
+	local along = delta.Unit
+	local across = Vector3.new(-along.Z, 0, along.X)
+	local from, step = a - start, b - a
+	local lo, hi = 0, 1
+	for _, axis in
+		{ { Direction = along, Min = -6, Max = delta.Magnitude + 6 }, { Direction = across, Min = -6, Max = 6 } }
+	do
+		local origin, velocity = from:Dot(axis.Direction), step:Dot(axis.Direction)
+		if math.abs(velocity) < 1e-8 then
+			if origin < axis.Min or origin > axis.Max then
+				return { { a, b } }
+			end
+		else
+			local t1, t2 = (axis.Min - origin) / velocity, (axis.Max - origin) / velocity
+			lo, hi = math.max(lo, math.min(t1, t2)), math.min(hi, math.max(t1, t2))
+		end
+	end
+	if lo >= hi then
+		return { { a, b } }
+	end
+	local result = {}
+	if lo > 0 then
+		table.insert(result, { a, a:Lerp(b, lo) })
+	end
+	if hi < 1 then
+		table.insert(result, { a:Lerp(b, hi), b })
+	end
+	return result
+end
+
+local function channel(parent: Instance, a: Vector3, b: Vector3, across: Vector3, sample: any)
+	local length = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Magnitude
+	if length < 0.5 then
+		return
+	end
+	local segments = math.ceil(length / 16)
+	local points: { Vector3 } = {}
+	local lifts: { number } = {}
+	for i = 0, segments do
+		local p = a:Lerp(b, i / segments)
+		local top = -math.huge
+		for _, side in { -1, 0, 1 } do
+			local ground = sample(p.X + across.X * side * 1.4, p.Z + across.Z * side * 1.4)
+			if not ground then
+				return
+			end
+			top = math.max(top, ground + 0.12)
+		end
+		table.insert(points, Vector3.new(p.X, top, p.Z))
+	end
+	-- Raise shared stations together, so neighbouring sections have no vertical step.
+	for i = 1, segments do
+		local da, db = points[i], points[i + 1]
+		if math.abs(da.Y - db.Y) > 3 then
+			return
+		end
+		local lift = 0
+		local probes = math.ceil((db - da).Magnitude / 2)
+		for j = 0, probes do
+			local p = da:Lerp(db, j / probes)
+			for _, side in { -1, 0, 1 } do
+				local ground = sample(p.X + across.X * side * 1.4, p.Z + across.Z * side * 1.4)
+				if not ground then
+					return
+				end
+				lift = math.max(lift, ground + 0.12 - p.Y)
+			end
+		end
+		if lift > 0.8 then
+			return -- Preserve protected ground and leave sharp changes without suspended concrete.
+		end
+		lifts[i] = lift
+	end
+	for i, p in points do
+		points[i] = p + UP * math.max(lifts[i - 1] or 0, lifts[i] or 0)
+	end
+	local concrete = { Material = Enum.Material.Concrete, Color = rgb(124, 121, 108), Decoration = true }
+	for i = 1, segments do
+		local da, db = points[i], points[i + 1]
+		local depths = { 0.22, 0.5, 0.5 }
+		local vertical = Vector3.new(db.X - da.X, 0, db.Z - da.Z).Magnitude / (db - da).Magnitude
+		local probes = math.ceil((db - da).Magnitude / 2)
+		for j = 0, probes do
+			local p = da:Lerp(db, j / probes)
+			for index, side in { 0, -1, 1 } do
+				local ground = sample(p.X + across.X * side * 1.3, p.Z + across.Z * side * 1.3)
+				if not ground then
+					return
+				end
+				local top = p.Y + (if side == 0 then 0 else 0.28)
+				depths[index] = math.max(depths[index], (top - ground + 0.15) / vertical)
+			end
+		end
+		Util.strip(parent, "DrainInvert", da, db, 2.4, depths[1], concrete)
+		for index, side in { -1, 1 } do
+			local offset = across * side * 1.3 + UP * 0.28
+			Util.strip(parent, "DrainWall", da + offset, db + offset, 0.22, depths[index + 1], concrete)
+		end
+	end
+end
+
 local function workshop(root: Instance, sample: any, hf: any): boolean
 	local yard = Junction.Yard
 	local y = sample(yard.X, yard.Z)
@@ -43,7 +150,8 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 		for i = 0, segments do
 			local p = start:Lerp(entry, i / segments)
 			local highest, lowest = -math.huge, math.huge
-			for _, offset in { -across, Vector3.new(), across } do
+			for _, side in { -1, -0.5, 0, 0.5, 1 } do
+				local offset = across * side
 				local ground = sample(p.X + offset.X, p.Z + offset.Z)
 				if not ground then
 					clear = false
@@ -58,16 +166,56 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 			table.insert(points, Vector3.new(p.X, top, p.Z))
 			table.insert(bottoms, lowest)
 		end
+		-- A saved terrain lip can lie between the stations. Keep adjacent tops shared
+		-- while lifting the whole crossing surface clear of those intermediate probes.
+		local lifts: { number } = {}
 		if clear then
 			for i = 1, #points - 1 do
+				local lift = 0
+				for j = 0, 4 do
+					local p = points[i]:Lerp(points[i + 1], j / 4)
+					for _, side in { -1, -0.5, 0, 0.5, 1 } do
+						local ground = sample(p.X + across.X * side, p.Z + across.Z * side)
+						if not ground then
+							clear = false
+							break
+						end
+						lift = math.max(lift, ground + 0.12 - p.Y)
+						bottoms[i] = math.min(bottoms[i], ground)
+						bottoms[i + 1] = math.min(bottoms[i + 1], ground)
+					end
+				end
+				lifts[i] = lift
+			end
+			for i, p in points do
+				points[i] = p + UP * math.max(lifts[i - 1] or 0, lifts[i] or 0)
+			end
+		end
+		if clear then
+			local drains = Junction.drains(hf)
+			for i = 1, #points - 1 do
+				local centre = (points[i] + points[i + 1]) / 2
+				local crossing = false
+				for _, drain in drains do
+					if
+						Geometry.segmentDistance(drain.A.X, drain.A.Z, drain.B.X, drain.B.Z, centre.X, centre.Z) < 3.5
+					then
+						crossing = true
+						break
+					end
+				end
 				Util.strip(
 					model,
-					"WorkshopAccess",
+					if crossing then "WorkshopDrainCrossing" else "WorkshopAccess",
 					points[i],
 					points[i + 1],
 					9,
 					math.max(0.35, points[i].Y - bottoms[i] + 0.15, points[i + 1].Y - bottoms[i + 1] + 0.15),
-					{ Material = Enum.Material.Pebble, Color = rgb(123, 113, 93), Decoration = true }
+					{
+						Material = if crossing then Enum.Material.Concrete else Enum.Material.Pebble,
+						Color = if crossing then rgb(124, 121, 108) else rgb(123, 113, 93),
+						Decoration = not crossing,
+					}
 				)
 			end
 		end
@@ -234,7 +382,7 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 				local kind = if candidate % 6 == 0 then "Acacia" else centre[3]
 				local height = (if kind == "Eucalyptus" then 42 else 30)
 					* Hash.range(cluster, candidate, 802, 0.72, 1.22)
-				Trees.plant(library, plants, kind, 1 + candidate % 3, Vector3.new(x, y, z), height, angle)
+				Trees.plant(library, plants, kind, 1 + candidate % 3, Vector3.new(x, y, z), height, angle, sample)
 				table.insert(occupied, Vector3.new(x, y, z))
 				report.Trees += 1
 				placed += 1
@@ -337,45 +485,18 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 			end
 		end
 	end
+	report.Workshop = workshop(root, sample, hf)
+	local accessStart, accessEnd = Junction.access(hf)
 	for _, path in Junction.drains(hf) do
-		local a, b, across = path.A, path.B, path.Across
-		local ya, yb = sample(a.X, a.Z), sample(b.X, b.Z)
-		if not ya or not yb or math.abs(ya - yb) >= 5 then
-			continue
-		end
-		local clear, lift = true, 0.12
-		local probes = math.max(1, math.ceil((b - a).Magnitude / 4))
-		for i = 0, probes do
-			local t = i / probes
-			local p = a:Lerp(b, t)
-			for _, side in { -1, 0, 1 } do
-				local ground = sample(p.X + across.X * side * 1.4, p.Z + across.Z * side * 1.4)
-				if not ground then
-					clear = false
-					break
-				end
-				lift = math.max(lift, ground + 0.12 - (ya + (yb - ya) * t))
-			end
-			if not clear then
-				break
-			end
-		end
-		if not clear or lift > 1.2 then
-			continue -- Preserve protected footprints and avoid suspended channels over sharp dips.
-		end
-		local da, db = Vector3.new(a.X, ya + lift, a.Z), Vector3.new(b.X, yb + lift, b.Z)
-		local concrete = { Material = Enum.Material.Concrete, Color = rgb(124, 121, 108), Decoration = true }
-		Util.strip(infrastructure, "DrainInvert", da, db, 2.4, math.max(0.2, lift + 0.1), concrete)
-		for _, bank in { -1, 1 } do
-			Util.strip(
-				infrastructure,
-				"DrainWall",
-				da + across * bank * 1.3 + UP * 0.5,
-				db + across * bank * 1.3 + UP * 0.5,
-				0.22,
-				0.7,
-				concrete
+		for _, span in
+			outsideAccess(
+				path.A,
+				path.B,
+				if report.Workshop then accessStart else nil,
+				if report.Workshop then accessEnd else nil
 			)
+		do
+			channel(infrastructure, span[1], span[2], path.Across, sample)
 		end
 	end
 	for i = 1, 28 do
@@ -396,7 +517,6 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 			report.Rocks += 1
 		end
 	end
-	report.Workshop = workshop(root, sample, hf)
 	report.ImportedLamps = 0
 	report.ReplacedLampPositions = {}
 	for index, lamp in details.lights do

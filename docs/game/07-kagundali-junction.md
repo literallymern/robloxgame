@@ -1,9 +1,9 @@
 # Kagundali R3/N5: first visual benchmark area
 
-> **Current code: junction-4.** Justin's corrected `ok.zip` archive shows the previous
-> update and imported assets in Studio. Remaining issues, fixes and the update
-> command: [Studio screenshot fixes](08-kagundali-screenshot-fixes.md). The numbers and
-> implementation notes below document the first state.
+> **Current code: junction-5.** The latest six Studio screenshots show junction-4
+> and its imported assets. Root placement, channel grounding and the driveway crossing
+> are updated next: [Studio screenshot fixes](08-kagundali-screenshot-fixes.md).
+> The numbers and implementation notes below document the first state.
 
 **State: `kagundali-junction-1`, lighting `neutral-highland-1`.** The code and the offline
 test setup are in place. The visual acceptance in Roblox Studio is open: the build

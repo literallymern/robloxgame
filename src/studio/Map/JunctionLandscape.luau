@@ -4,7 +4,7 @@
 local Geometry = require(script.Parent.Geometry)
 
 local Junction = {}
-Junction.Revision = "kagundali-junction-4"
+Junction.Revision = "kagundali-junction-5"
 Junction.LightingRevision = "neutral-highland-1"
 Junction.Bounds = table.freeze({ MinX = 64, MaxX = 832, MinZ = 2944, MaxZ = 3648 })
 Junction.Centre = Vector3.new(453.2403817191586, 55.695266970006095, 3298.6057257873795)

@@ -102,8 +102,27 @@ for _, p in placed:GetChildren() do
 	end
 end
 check(
-	math.abs(low - 30) < 1e-6 and math.abs(high - 58) < 1e-6 and placed.TrunkCollision.CanCollide,
-	"imported tree scales to requested height, grounds at its base and has narrow collision"
+	math.abs(low - 29.3) < 1e-6 and math.abs(high - 57.3) < 1e-6 and placed.TrunkCollision.CanCollide,
+	"tree keeps source proportions while its root tips are embedded and trunk collision stays grounded"
+)
+local sloped = Trees.plant(library, parent, "Broadleaf", 1, Vector3.new(100, 30, 200), 28, 0.7, function(x, _z)
+	return 30 + (x - 100) * 0.5
+end)
+check(
+	math.abs(sloped:GetAttribute("RootEmbedDepth") - 1.82) < 1e-6
+		and (sloped:GetAttribute("GroundPosition") - Vector3.new(100, 30, 200)).Magnitude < 1e-6
+		and sloped.Trunk.CFrame.UpVector.Y == 1,
+	"planting samples downhill ground around the roots without tilting the trunk or moving its ground reference"
+)
+local cliff = Assets.place("Tree", 1, parent, Vector3.new(0, 30, 0), 28, 0, function()
+	return -100
+end)
+local unknown = Assets.place("Tree", 1, parent, Vector3.new(0, 30, 0), 28, 0, function()
+	return nil
+end)
+check(
+	cliff:GetAttribute("RootEmbedDepth") == 3 and math.abs(unknown:GetAttribute("RootEmbedDepth") - 0.7) < 1e-6,
+	"root embedding is bounded at abrupt drops and missing neighbour probes keep the conservative base depth"
 )
 local lamp = Assets.place("Lamp", 1, parent, Vector3.new(10, 20, 30), 17, math.pi / 2)
 local light = lamp.LightEmitter:FindFirstChildOfClass("SpotLight")
@@ -169,6 +188,7 @@ local importedTrees, importedLamps = 0, 0
 for _, child in map.KagundaliJunction:GetDescendants() do
 	if child:IsA("Model") and child:GetAttribute("AssetVersion") == Assets.Version then
 		if child:GetAttribute("Category") == "Tree" then
+			assert(child:GetAttribute("RootEmbedDepth") >= 0.5, "regional planting did not embed imported roots")
 			importedTrees += 1
 		end
 		if child:GetAttribute("Category") == "Lamp" then

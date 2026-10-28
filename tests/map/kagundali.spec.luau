@@ -247,6 +247,41 @@ for _, part in area.Roadside:GetChildren() do
 	end
 end
 check(drainCount > 0, "channel floors clear the ground across their full width and length")
+local accessStart, accessEnd = Junction.access(feature)
+local Geometry = load("StudioTools/Map/Geometry")
+local crossingCount = 0
+for _, part in area:GetDescendants() do
+	if part:IsA("BasePart") and (part.Name == "DrainWall" or part.Name == "DrainInvert") then
+		assert(part.Size.Z < 16.5, "long channel span did not follow the finer ground profile")
+		for i = 0, 12 do
+			local bottom = part.CFrame * Vector3.new(0, -part.Size.Y / 2, part.Size.Z * (i / 12 - 0.5))
+			assert(bottom.Y < feature.surface(bottom.X, bottom.Z), "channel underside is suspended above the ground")
+			for _, side in { -1, 1 } do
+				local p = part.CFrame
+					* Vector3.new(side * part.Size.X / 2, part.Size.Y / 2, part.Size.Z * (i / 12 - 0.5))
+				assert(
+					Geometry.segmentDistance(accessStart.X, accessStart.Z, accessEnd.X, accessEnd.Z, p.X, p.Z) >= 4.5,
+					"open channel concrete crosses the workshop driving corridor"
+				)
+			end
+		end
+	elseif part:IsA("BasePart") and part.Name == "WorkshopDrainCrossing" then
+		crossingCount += 1
+		assert(part.Material == Enum.Material.Concrete and part.CanCollide)
+		for i = 0, 8 do
+			for _, side in { -1, 0, 1 } do
+				local p = part.CFrame
+					* Vector3.new(side * part.Size.X / 2, part.Size.Y / 2, part.Size.Z * (i / 8 - 0.5))
+				assert(
+					p.Y > feature.surface(p.X, p.Z),
+					`workshop crossing surface is buried: {p.X},{p.Z} top={p.Y} ground={feature.surface(p.X, p.Z)}`
+				)
+			end
+		end
+	end
+end
+check(true, "short channel sections reach into the ground and leave the full driveway width clear")
+check(crossingCount > 0, "workshop crossing has a grounded concrete driving surface with collision")
 local arrowCount, safeMarking = 0, true
 for _, part in area.Roadside:GetChildren() do
 	if part.Name == "ApproachTurnArrow" then

@@ -316,7 +316,8 @@ function Trees.plant(
 	variant: number,
 	position: Vector3,
 	height: number,
-	yaw: number
+	yaw: number,
+	groundSample: ((number, number) -> number?)?
 ): Model
 	local imported = CreatorAssets.place(
 		if kind == "Shrub" or kind == "Fern" then kind else "Tree",
@@ -324,7 +325,8 @@ function Trees.plant(
 		parent,
 		position,
 		height,
-		yaw
+		yaw,
+		groundSample
 	)
 	if imported then
 		return imported

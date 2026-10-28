@@ -1,12 +1,16 @@
 # Fixes after the Studio screenshots of 28 October
 
-Current code: **`kagundali-junction-4`**. The latest accepted screenshot archive is
-**`ok.zip`**, containing five PNG images. Justin explicitly withdrew
-`bilder_screenshots_1355.zip`; its images must not be used to assess the latest update.
-The correct images show textured trees, an imported lamp, visible road markings, a
-continuous workshop driveway and no floating place labels. They also show grass entering
-the concrete channels, a bulky decorative lamp and spherical shapes among the leaf meshes.
-The screenshots remain outside the public repository.
+Current code: **`kagundali-junction-5`**. The latest accepted uploads are
+**`Screenshot 2026-10-28 184333.zip`** (five images) and
+**`Screenshot 2026-10-28 184502.zip`** (one image). These show the junction-4 update:
+the shown grove has textured trees without the earlier spherical shapes, the slender
+street light is present, road paint is visible, and channels are largely free of grass.
+They also show exposed tree roots, raised-looking concrete channels and a channel
+running through the workshop driveway. These are the focus of junction-5.
+
+The earlier corrected archive was `ok.zip`. Justin explicitly withdrew
+`bilder_screenshots_1355.zip`; its images must not be used to assess the update.
+All user screenshots remain outside the public repository.
 
 The earlier Studio output that Justin copied confirms that
 **junction-2** was applied before: 64 trees, 49 bushes, 47 ferns, 799 parts and the
@@ -16,6 +20,29 @@ screenshots Justin called new and the additional aerial shot
 repository.
 
 ## Findings and changes
+
+**Root placement (junction-5):** imported tree proportions and upright trunks stay intact.
+Their visual geometry is lowered by a small height-dependent amount plus the measured
+nearby downhill drop. Eight ground probes surround each trunk; total embedding is capped
+at three studs. Missing neighbour probes retain the conservative base depth. The actual
+ground reference and narrow trunk collision do not move. This is a placement correction
+for the existing Store models, not a replacement tree generator. Exact root contact still
+needs the real mesh checked in Studio.
+
+**Grounded channels (junction-5):** concrete spans are at most 16 horizontal studs long,
+with shared endpoint heights. Floors probe the ground across their width and along each
+span at intervals of at most two studs. Wall rims are lower, and floor/wall thickness
+extends their undersides into the sampled ground. Channels skip protected points and
+sharp height changes. No new terrain material or height changes are introduced relative
+to junction-4.
+
+**Driveway crossing (junction-5):** channel floors and walls are clipped outside the full
+nine-stud driving corridor, with clearance for channel width. The driveway has a concrete
+surface with collision where it crosses the channel, using the same ground profile as the
+adjacent gravel. Additional probes between driveway stations clear intermediate terrain
+lips while retaining shared endpoint heights. This removes the continuous raised wall
+across the access. It does not simulate water flow or an excavated underground culvert.
+
 
 **Channel beds (junction-4):** terrain materials and concrete geometry now share the same
 channel footprints. A narrow Ground strip clears grass-bearing voxel centres beside the
@@ -31,7 +58,7 @@ templates, these take priority over alphabetically earlier decorative lamp posts
 source proportions are preserved and the known day/night controller still owns the light.
 This selection change uses the saved library; no new pack download is required.
 
-**Remaining spherical crowns:** the images alone do not establish which instances produce
+**Earlier spherical crowns (before junction-4):** the images alone do not establish which instances produce
 these shapes. The updater now replaces every generated `KagundaliJunction` folder when
 duplicates exist; previously `FindFirstChild` only found one. Custom folders with that
 name block the update, and old paint is retained without duplication where new probes
@@ -89,8 +116,8 @@ were already loaded with `require()`. In the command bar:
 require(game.ServerStorage.StudioTools.UpgradeKagundali)()
 ```
 
-This reuses the imported library already visible in `ok.zip`. The output should report
-**`kagundali-junction-4`**, actual imported/native tree counts and replaced region folders.
+This reuses the imported library already visible in the screenshots. The output should report
+**`kagundali-junction-5`**, actual imported/native tree counts and replaced region folders.
 Save afterwards. If the library has not yet been installed, use the combined import command:
 
 ```lua
@@ -104,8 +131,8 @@ invoke `BuildGundiville`. Use the regional command above on the saved place.
 The report separates new, kept and skipped marking pieces. `CheckEnvironment()` counts the
 trees and lines that are really there and reports outdated tree versions. The normal test
 scene without import contains 64 trees, 49 bushes, 47 ferns, 23 rocks and 139 marking
-pieces, **1,254 BaseParts** in total. The import test scene with artificial pack models
-contains **841 BaseParts and one imported lamp**. That number is not a measurement of the
+pieces, **1,479 BaseParts** in total. The import test scene with artificial pack models
+contains **1,066 BaseParts and one imported lamp**. That number is not a measurement of the
 real Roblox packs. The regional limit stays at 1,600 parts; going over it stops before the
 old regional geometry is swapped.
 
@@ -114,15 +141,18 @@ old regional geometry is swapped.
 Regression tests check partial marking failures, their heights and retention, import
 failures, script removal, kept mesh and texture data, ground placement, lamp replacement
 and repeated updates. The test stand-in runs neither native CSG nor Roblox rendering.
-`ok.zip` provides visual evidence of the preceding update and the imported models.
-**The junction-4 corrections have not yet been verified in new Studio images.** Exact live
-pack hierarchy, the cause of the remaining round shapes, triangle budget, saved-place
-behaviour and performance with 20–25 players still require Studio inspection.
+The six latest user images provide visual evidence of junction-4; the new junction-5
+root placement, channel support and crossing geometry still require Studio comparison.
+The real pack hierarchy, triangle budget and performance with 20–25 players also require
+Studio inspection. Offline part counts are not rendering or performance measurements.
 
-Validation includes 29 regional scene checks, 12 terrain-migration checks and 20 import
-checks. Strict luau-lsp analysis uses Roblox definitions and the current Rojo sourcemap.
-The government-district test is deliberately excluded because it executes
-`BuildGundiville`; the protected files are checked for unchanged contents.
+Validation includes 31 regional scene checks, 12 terrain-migration checks and 22 import
+checks. The scene checks sample concrete undersides, floor clearance, driveway width
+and the collision surface. Import checks cover flat, sloped and missing ground probes,
+bounded embedding, source proportions and the real regional updater. Strict luau-lsp
+analysis uses Roblox definitions and the current Rojo sourcemap. District suites are
+excluded because `BuildGundiville` must not be executed; protected files are checked
+against the newly pulled main-branch versions.
 
 The regional grass edge, distant bare mountain sides and the remaining town placeholders
 are not finished in this step. Before extending along the R3, the visual comparison of the

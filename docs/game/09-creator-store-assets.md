@@ -52,7 +52,9 @@ keep their project-specific text and are improved by the sign builder.
   Scripts, sounds, demo controls and all other children are removed before the library goes
   into ServerStorage or the geometry into Workspace. The downloaded pack itself is never
   parented into the place.
-- Trees are aligned to the ground, scaled and get narrow trunk colliders. Leaves block
+- Trees keep source proportions and get narrow trunk colliders. Since junction-5 their
+  root tips are embedded using nearby downhill ground samples, capped at three studs.
+  Trunks stay upright and collision remains at the actual ground reference. Leaves block
   neither players nor camera raycasts.
 - Lamps get a downward light emitter with the existing attributes for night light and
   distance cut-off. Original textures are kept. Old generated lamps disappear only at
@@ -79,9 +81,9 @@ terrain columns before a later geometry error. A place backup is therefore still
 The direct asset download was blocked in the cloud by the network connection (proxy tunnel
 HTTP 403). No Roblox Studio is available there. **The real pack hierarchies could not be
 inspected locally.** The corrected user images provide visual evidence of imported models,
-but the latest lamp-selection and duplicate-folder corrections still await a Studio view.
-The 20 import regressions use
-artificial models and check selection, script removal, texture retention, failure cases,
+and the six newer Studio images show the slender street light and a grove without the
+earlier spherical crowns. The junction-5 placement changes still await Studio comparison.
+The 22 import regressions use artificial models and check selection, script removal, texture retention, failure cases,
 ground placement, night-light attributes and the connection to the real map updater. They
 are not proof of a successful live download or of how the original packs look.
 
@@ -90,6 +92,6 @@ shape and textures, a continuous driveway, visible lines, readable direction sig
 lamps by day and night. The 1,600-part limit is not a triangle or frame-rate measurement;
 both still have to be checked with the real models.
 
-The latest checks include 20 import regressions and 86 environment checks. All 82 Luau
-source files compile; strict luau-lsp analysis, StyLua and the Rojo build pass. The map
-suite excludes the government-district test so `BuildGundiville` is never executed.
+The latest checks include 22 import regressions and 86 environment checks. All 92 Luau source files
+compile; strict luau-lsp analysis, StyLua and the Rojo build pass. The map suite
+excludes district and architecture tests so `BuildGundiville` is never executed.

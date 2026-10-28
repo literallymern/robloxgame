@@ -269,7 +269,8 @@ function Assets.place(
 	parent: Instance,
 	position: Vector3,
 	height: number,
-	yaw: number
+	yaw: number,
+	groundSample: ((number, number) -> number?)?
 ): Model?
 	local library = Assets.get()
 	local folder = if library then library:FindFirstChild(kind) else nil
@@ -298,10 +299,32 @@ function Assets.place(
 	local template = choices[1 + (variant - 1) % #choices]
 	local model = template:Clone() :: Model
 	local factor = height / (template:GetAttribute("SourceHeight") :: number)
-	local frame = CFrame.new(position) * CFrame.Angles(0, yaw, 0)
+	-- Whole-model bounds include the exposed roots. Bury their lowest tips and
+	-- account for nearby downhill ground without tilting the trunk or stretching it.
+	local embed = 0
+	if kind == "Tree" then
+		embed = math.clamp(height * 0.025, 0.5, 1.25)
+		if groundSample then
+			local lowest = position.Y
+			local radius = math.clamp(height * 0.08, 1.5, 4)
+			for i = 1, 8 do
+				local angle = i * math.pi / 4
+				local ground =
+					groundSample(position.X + math.cos(angle) * radius, position.Z + math.sin(angle) * radius)
+				if ground then
+					lowest = math.min(lowest, ground)
+				end
+			end
+			embed = math.min(3, embed + position.Y - lowest)
+		end
+	end
+	local frame = CFrame.new(position - Vector3.new(0, embed, 0)) * CFrame.Angles(0, yaw, 0)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	model:SetAttribute("AssetVersion", Assets.Version)
 	model:SetAttribute("GroundPosition", position)
+	if kind == "Tree" then
+		model:SetAttribute("RootEmbedDepth", embed)
+	end
 	local highest: BasePart? = nil
 	for _, child in model:GetChildren() do
 		local part = child :: BasePart
