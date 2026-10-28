@@ -21,6 +21,7 @@ local ORDER = {
 	"RemoteService",
 	"EconomyGateway",
 	"AccountLinkService",
+	"DoorService",
 }
 
 -- Runs fn and returns whether it worked plus the error text if it did not.

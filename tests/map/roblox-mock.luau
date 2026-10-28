@@ -294,6 +294,14 @@ local ENUMS = {
 		"ForceField",
 		"Air",
 		"Water",
+		"Plaster",
+		"ClayRoofTiles",
+		"CeramicTiles",
+		"Carpet",
+		"Leather",
+		"RoofShingles",
+		"Rubber",
+		"Cardboard",
 	},
 	PartType = { "Ball", "Block", "Cylinder", "Wedge", "CornerWedge" },
 	MeshType = { "Brick", "Cylinder", "Sphere", "Wedge", "FileMesh" },
@@ -309,6 +317,11 @@ local ENUMS = {
 	HumanoidHealthDisplayType = { "DisplayWhenDamaged", "AlwaysOn", "AlwaysOff" },
 	HumanoidRigType = { "R6", "R15" },
 	FinishRecordingOperation = { "Cancel", "Commit", "Append" },
+	ModelLevelOfDetail = { "Automatic", "Disabled", "SLIM", "StreamingMesh" },
+	ProximityPromptStyle = { "Default", "Custom" },
+	KeyCode = { "E", "F" },
+	EasingStyle = { "Linear", "Quad", "Sine" },
+	EasingDirection = { "In", "Out", "InOut" },
 }
 Enum = {}
 for enumName, items in ENUMS do
@@ -406,7 +419,25 @@ local CLASSES = {
 		isA = { "ColorCorrectionEffect", "PostEffect" },
 	},
 	Folder = { props = {}, isA = { "Folder" } },
-	Model = { props = { PrimaryPart = "any", ModelStreamingMode = "EnumItem" }, isA = { "Model", "PVInstance" } },
+	Model = {
+		props = { PrimaryPart = "any", ModelStreamingMode = "EnumItem", LevelOfDetail = "EnumItem" },
+		isA = { "Model", "PVInstance" },
+	},
+	ProximityPrompt = {
+		props = {
+			ActionText = "string",
+			ObjectText = "string",
+			HoldDuration = "number",
+			MaxActivationDistance = "number",
+			RequiresLineOfSight = "boolean",
+			KeyboardKeyCode = "EnumItem",
+			Enabled = "boolean",
+			Style = "EnumItem",
+			UIOffset = "Vector2",
+		},
+		events = { "Triggered" },
+		isA = { "ProximityPrompt" },
+	},
 	Part = { props = { Shape = "EnumItem" }, base = BASEPART, isA = { "Part", "BasePart", "PVInstance" } },
 	SpawnLocation = {
 		props = { Shape = "EnumItem", Neutral = "boolean", Duration = "number", Enabled = "boolean" },
@@ -579,6 +610,34 @@ local function typeOf(value)
 	return type(value)
 end
 
+-- A stand-in for RBXScriptSignal: Connect returns a connection; tests call :Fire(...).
+function MockSignal()
+	local handlers = {}
+	local signal = { __type = "RBXScriptSignal" }
+	function signal.Connect(_, fn)
+		table.insert(handlers, fn)
+		return {
+			Disconnect = function()
+				local i = table.find(handlers, fn)
+				if i then
+					table.remove(handlers, i)
+				end
+			end,
+		}
+	end
+	function signal.Fire(_, ...)
+		for _, fn in table.clone(handlers) do
+			fn(...)
+		end
+	end
+	return signal
+end
+
+-- Roblox's typeof knows the engine types; the mock's value types carry __type.
+function typeof(value)
+	return typeOf(value)
+end
+
 local Inst = {}
 local function newInstance(className, isService)
 	local class = CLASSES[className]
@@ -680,10 +739,18 @@ function METHODS.SetMaterialColor(self, material, colour)
 	assert(typeOf(colour) == "Color3", "SetMaterialColor: bad colour")
 	MockStats.materialColours = (MockStats.materialColours or 0) + 1
 end
-function METHODS.FindFirstChild(self, name)
+function METHODS.FindFirstChild(self, name, recursive)
 	for _, child in self.__children do
 		if child.__props.Name == name then
 			return child
+		end
+	end
+	if recursive then
+		for _, child in self.__children do
+			local found = METHODS.FindFirstChild(child, name, true)
+			if found then
+				return found
+			end
 		end
 	end
 	return nil
@@ -851,6 +918,16 @@ Inst.__index = function(self, key)
 	local value = self.__props[key]
 	if value ~= nil then
 		return value
+	end
+	local eventClass = CLASSES[self.__class]
+	if eventClass and eventClass.events and table.find(eventClass.events, key) then
+		local events = rawget(self, "__events")
+		if not events then
+			events = {}
+			rawset(self, "__events", events)
+		end
+		events[key] = events[key] or MockSignal()
+		return events[key]
 	end
 	local child = METHODS.FindFirstChild(self, key)
 	if child then
@@ -1116,12 +1193,33 @@ local history = service("ChangeHistoryService", {
 	end,
 })
 
+local taggedBy = {}
+local tagAdded, tagRemoved = {}, {}
 local collection = service("CollectionService", {
 	AddTag = function(_, instance, tag)
 		MockStats.tags[tag] = (MockStats.tags[tag] or 0) + 1
 		local tags = rawget(instance, "__tags") or {}
+		local new = not tags[tag]
 		tags[tag] = true
 		rawset(instance, "__tags", tags)
+		if new then
+			taggedBy[tag] = taggedBy[tag] or {}
+			table.insert(taggedBy[tag], instance)
+			if tagAdded[tag] then
+				tagAdded[tag]:Fire(instance)
+			end
+		end
+	end,
+	GetTagged = function(_, tag)
+		return table.clone(taggedBy[tag] or {})
+	end,
+	GetInstanceAddedSignal = function(_, tag)
+		tagAdded[tag] = tagAdded[tag] or MockSignal()
+		return tagAdded[tag]
+	end,
+	GetInstanceRemovedSignal = function(_, tag)
+		tagRemoved[tag] = tagRemoved[tag] or MockSignal()
+		return tagRemoved[tag]
 	end,
 	HasTag = function(_, instance, tag)
 		local tags = rawget(instance, "__tags")
@@ -1133,6 +1231,25 @@ local runService = service("RunService", {
 		return false
 	end,
 })
+local tweens = service("TweenService", {
+	Create = function(_, instance, info, goals)
+		assert(type(info) == "table" and info.__type == "TweenInfo", "TweenService:Create needs a TweenInfo")
+		local tween = { Completed = MockSignal() }
+		function tween.Play()
+			for key, value in goals do
+				instance[key] = value
+			end
+			MockStats.tweens = (MockStats.tweens or 0) + 1
+			tween.Completed:Fire()
+		end
+		return tween
+	end,
+})
+TweenInfo = {
+	new = function(time, style, direction)
+		return { __type = "TweenInfo", Time = time or 1, EasingStyle = style, EasingDirection = direction }
+	end,
+}
 local lighting = service("Lighting")
 local serverStorage = service("ServerStorage")
 local geometry = service("GeometryService", {
@@ -1206,6 +1323,8 @@ game = {
 			return players
 		elseif name == "ChangeHistoryService" then
 			return history
+		elseif name == "TweenService" then
+			return tweens
 		end
 		error(`GetService: {name} is not in this mock`)
 	end,

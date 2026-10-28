@@ -41,12 +41,15 @@ export type Street = {
 
 local District = {}
 
-District.Version = "district-1"
+District.Version = "district-2"
 District.GeneratedBy = "BuildGundiville"
 District.GroundY = 60
 District.RoadTop = 0.05 -- asphalt top above the ground (N4 and N5 start at the ground)
 District.WalkTop = 0.6 -- sidewalks, the square and building plinths
-District.MaxParts = 7000 -- the whole district; checked by tests/map/gundiville.spec.luau
+-- The whole district; checked by tests/map/gundiville.spec.luau. Since the building overhaul
+-- (furnished interiors behind every window) the four buildings take about 26,800 parts; most
+-- are small details without collision, and StreamingEnabled sends clients only what is near.
+District.MaxParts = 30000
 
 -- Placeholder blocks of MapLayout.GundivillePlaceholders that this district replaces.
 District.Replaces = frozenList({ "Avenue", "Square", "Congress", "Hausali", "Residence", "CentralBank" })
@@ -129,7 +132,7 @@ District.Congress = table.freeze({
 	PodiumHeight = 4,
 	StoreyHeight = 14,
 	Storeys = 3,
-	Chamber = rect(-52, 52, -428, -344),
+	Chamber = rect(-53, 53, -420, -345), -- centre lines of its walls (Architecture.Plan)
 	DomeDiameter = 60,
 })
 

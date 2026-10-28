@@ -338,7 +338,18 @@ end
 
 -- Seats: the assembly chamber, offices and benches.
 local chamberSeats = 0
-local chamber = models.Congress and models.Congress:FindFirstChild("Chamber")
+local function folderOfKind(root: Instance?, kind: string): Instance?
+	if not root then
+		return nil
+	end
+	for _, item in root:GetDescendants() do
+		if item:IsA("Folder") and item:GetAttribute("Kind") == kind then
+			return item
+		end
+	end
+	return nil
+end
+local chamber = folderOfKind(models.Congress, "Chamber")
 if chamber then
 	for _, item in chamber:GetDescendants() do
 		if item:IsA("Seat") and item.Name == "Seat" then
@@ -347,7 +358,8 @@ if chamber then
 	end
 end
 check("assembly chamber has at least 40 seats", chamberSeats >= 40, chamberSeats)
-check("Leader's chair in the office", models.Residence and models.Residence:FindFirstChild("LeadersChair") ~= nil)
+local office = folderOfKind(models.Residence, "LeadersOffice")
+check("Leader's chair in the office", office ~= nil and office:FindFirstChild("LeadersChair", true) ~= nil)
 check("teller chairs in the bank", report.CentralBank.Tellers == 5)
 print(`INFO {seats} seats in total, {chamberSeats} in the chamber`)
 

@@ -1,76 +1,199 @@
 --!strict
 -- The residence of the Leader of the Revolution: a walled, guarded compound with gardens,
 -- set back north-east of the square (map plan: gate in the south wall). Behind the gate with
--- its guard posts and boom barrier, a drive leads to a turning circle with a fountain in front
--- of a white villa with a portico and a balcony. The entrance hall and the Leader's office are
--- walkable. The gate stands open and the barrier is raised; access control follows with the
--- institutional gameplay (Milestone 6).
+-- its two manned guard posts and the boom barrier, a drive leads to a turning circle with a
+-- fountain in front of a white villa with a portico and a balcony.
+--
+-- The villa (Architecture.Plan) has two storeys. On the ground floor: the entrance hall with
+-- the main stair, the salon and the music room, the dining room and the kitchen, the library,
+-- the aide-de-camp's office and the Leader's office with the desk and the Leader's chair.
+-- Upstairs: the private rooms (bedrooms, a family room, a study, bathrooms, a dressing room and
+-- a guest suite) around the upper hall, which opens onto the balcony over the portico. Every
+-- window opens into a room. The gate stands open and the barrier is raised; access control
+-- follows with the institutional gameplay (Milestone 6).
 
 local Kit = require(script.Parent.Kit)
-local Util = require(script.Parent.Parent.Map.Builders.Util)
+local Architecture = script.Parent.Parent.Architecture
+local Parts = require(Architecture.Parts)
+local Materials = require(Architecture.Materials)
+local Openings = require(Architecture.Openings)
+local Plan = require(Architecture.Plan)
+local Shell = require(Architecture.Shell)
+local Rooms = require(Architecture.Rooms)
+local Furniture = require(Architecture.Furniture)
+local Exterior = require(Architecture.Exterior)
+
+type Space = Plan.Space
+type Room = Rooms.Room
 
 local Residence = {}
 
 local COBBLES: Kit.Options = { Material = Enum.Material.Cobblestone, Color = Color3.fromRGB(150, 140, 128) }
 local SHUTTERS: Kit.Options = { Material = Enum.Material.WoodPlanks, Color = Color3.fromRGB(70, 96, 120) }
-local LEATHER: Kit.Options = { Material = Enum.Material.Fabric, Color = Color3.fromRGB(92, 52, 36) }
 local FLOWERS = {
 	Color3.fromRGB(196, 40, 52),
 	Color3.fromRGB(236, 196, 60),
 	Color3.fromRGB(226, 120, 160),
 	Color3.fromRGB(240, 240, 236),
 }
+local DOOR_X = 580 -- the villa's portal, on the axis of the gate
+local GARDEN_X = 530 -- the garden door of the dining room, towards the gazebo
 
-local function chair(parent: Instance, name: string, position: Vector3, facing: Vector3, options: Kit.Options)
-	local seat = Instance.new("Seat")
-	seat.Name = name
-	seat.Anchored = true
-	seat.Size = Vector3.new(2.6, 0.6, 2.4)
-	seat.CFrame = CFrame.lookAt(position, position + facing)
-	seat.Material = options.Material or Enum.Material.Fabric
-	seat.Color = options.Color or Color3.fromRGB(92, 52, 36)
-	seat.TopSurface = Enum.SurfaceType.Smooth
-	seat.BottomSurface = Enum.SurfaceType.Smooth
-	seat.Parent = parent
-	Util.part(
-		parent,
-		name .. "Back",
-		CFrame.lookAt(position, position + facing) * CFrame.new(0, 1.6, 1.15),
-		Vector3.new(2.6, 3, 0.4),
-		options
-	)
-	Kit.add(2)
+-- Places a piece centred at the world point (x, z) with its front towards `dir` (an axis
+-- direction), if nothing (doors, windows, other furniture) is in the way.
+local function put(
+	room: Room,
+	x: number,
+	z: number,
+	dir: Vector3,
+	width: number,
+	depth: number,
+	build: (frame: CFrame) -> ()
+): boolean
+	local u, w = Rooms.toLocal(room, x, z)
+	local side: Rooms.Side = "Left"
+	if dir:Dot(-room.N) > 0.5 then
+		side = "Front"
+	elseif dir:Dot(room.N) > 0.5 then
+		side = "Back"
+	elseif dir:Dot(room.A) > 0.5 then
+		side = "Right"
+	end
+	return Rooms.item(room, u, w, side, width, depth, false, build)
 end
 
-local function guardPost(parent: Instance, r: Kit.Rect, y: number, doorSide: number)
-	-- A small booth: glazed above a counter towards the drive, door on the north side.
+-- A CFrame on a wall surface at (x, y, z), facing `dir` (into the room).
+local function wallAt(x: number, y: number, z: number, dir: Vector3): CFrame
+	local p = Vector3.new(x, y, z)
+	return CFrame.lookAt(p, p + dir)
+end
+
+-- A wall lantern (glass box on a bracket) that the day/night cycle switches on at night.
+local function lantern(parent: Instance, x: number, y: number, z: number, out: Vector3)
+	local p = Vector3.new(x, y, z)
+	Parts.part(
+		parent,
+		"LanternBracket",
+		CFrame.lookAt(p + out * 0.4, p + out),
+		Vector3.new(0.2, 0.2, 0.8),
+		Parts.detail(Materials.Metal.Iron)
+	)
+	local glass = Parts.part(parent, "Lantern", CFrame.lookAt(p + out * 0.9, p + out * 2), Vector3.new(0.9, 1.4, 0.9), {
+		Material = Enum.Material.Glass,
+		Color = Color3.fromRGB(250, 238, 200),
+		CastShadow = false,
+		CanCollide = false,
+	})
+	glass:SetAttribute("RoNationLamp", true)
+	local light = Instance.new("PointLight")
+	light:SetAttribute("RoNationStreetLight", true)
+	light.Enabled = false
+	light.Range = 18
+	light.Brightness = 1.2
+	light.Color = Color3.fromRGB(255, 224, 180)
+	light.Parent = glass
+end
+
+-- Guard post just inside the gate: plastered walls, a working door on the side towards the
+-- villa, a window towards the gate, and towards the drive a counter under a glazed front where
+-- the guard sits at a desk with a CCTV monitor and a telephone. `r` is the 8 x 8 booth,
+-- `driveSide` the direction of the drive (+1 = +X).
+local function guardPost(parent: Instance, r: Kit.Rect, y: number, driveSide: number)
+	local booth = Kit.folder(parent, "GuardPost")
 	local h = 9
 	local plaster = Kit.Style.Plaster
-	Kit.slab(parent, "BoothFloor", r, y - 0.2, y + 0.3, Kit.Style.Granite)
+	local t = 0.8
+	local floor = y + 0.3
+	Kit.slab(booth, "BoothFloor", r, y - 0.2, floor, Kit.Style.Granite)
+	local outer = if driveSide > 0 then r.MinX + t / 2 else r.MaxX - t / 2
+	local inner = if driveSide > 0 then r.MaxX - t / 2 else r.MinX + t / 2
+	local x0, x1 = r.MinX + t, r.MaxX - t
 	local cx = (r.MinX + r.MaxX) / 2
-	-- Wall away from the drive and the two end walls (the north one with the door).
-	local outer = if doorSide > 0 then r.MinX + 0.4 else r.MaxX - 0.4
-	Kit.wall(parent, "BoothWall", "Z", r.MinZ, r.MaxZ, outer, 0.8, y + 0.3, y + h, nil, plaster)
-	Kit.wall(parent, "BoothWall", "X", r.MinX, r.MaxX, r.MaxZ - 0.4, 0.8, y + 0.3, y + h, {
-		{ From = cx - 1.5, To = cx + 1.5, Bottom = y + 3.6, Top = y + 7.5 },
-	}, plaster)
-	Kit.wall(parent, "BoothWall", "X", r.MinX, r.MaxX, r.MinZ + 0.4, 0.8, y + 0.3, y + h, {
-		{ From = cx - 1.6, To = cx + 1.6, Bottom = y + 0.3, Top = y + 7.5 },
-	}, plaster)
-	local inner = if doorSide > 0 then r.MaxX - 0.4 else r.MinX + 0.4
-	Kit.box(parent, "BoothCounter", inner - 0.4, y + 0.3, r.MinZ + 0.8, inner + 0.4, y + 3.6, r.MaxZ - 0.8, plaster)
-	Kit.box(parent, "BoothGlass", inner - 0.1, y + 3.6, r.MinZ + 0.8, inner + 0.1, y + h, r.MaxZ - 0.8, Kit.Style.Glass)
-	Kit.box(parent, "BoothGlass", cx - 1.5, y + 3.6, r.MaxZ - 0.5, cx + 1.5, y + 7.5, r.MaxZ - 0.3, Kit.Style.Glass)
-	Kit.slab(parent, "BoothRoof", Kit.inset(r, -1), y + h, y + h + 0.8, Kit.Style.Slate)
-	local sx = inner + doorSide * 0.5
+	local cz = (r.MinZ + r.MaxZ) / 2
+	-- Back wall (away from the drive) and the corner posts of the glazed front.
+	Openings.solid(
+		booth,
+		"BoothWall",
+		{ Axis = "Z", At = outer, Thickness = t, Out = -driveSide },
+		r.MinZ,
+		r.MaxZ,
+		floor,
+		y + h,
+		nil,
+		plaster
+	)
+	for _, z in { r.MinZ + t / 2, r.MaxZ - t / 2 } do
+		Kit.box(booth, "BoothPost", inner - t / 2, floor, z - t / 2, inner + t / 2, y + h, z + t / 2, plaster)
+	end
+	-- North wall with the door, south wall with a window towards the gate.
+	local north: Openings.Wall = { Axis = "X", At = r.MinZ + t / 2, Thickness = t, Out = -1 }
+	local south: Openings.Wall = { Axis = "X", At = r.MaxZ - t / 2, Thickness = t, Out = 1 }
+	local door = { From = cx - 1.6, To = cx + 1.6, Bottom = floor, Top = floor + 7.2 }
+	Openings.solid(booth, "BoothWall", north, x0, x1, floor, y + h, { door }, plaster)
+	Openings.door(booth, north, door.From, door.To, floor, door.Top, {
+		Leaf = Materials.Wood.Walnut,
+		Frame = Materials.Frame.White,
+		Handle = Materials.Metal.Brass,
+	}, { Swing = 1, Hinge = if driveSide > 0 then "Start" else "End", Label = "Guard Post" })
+	local window = { From = cx - 1.5, To = cx + 1.5, Bottom = y + 3.6, Top = y + 7.4 }
+	Openings.solid(booth, "BoothWall", south, x0, x1, floor, y + h, { window }, plaster)
+	Openings.window(booth, south, window.From, window.To, window.Bottom, window.Top, {
+		Frame = Materials.Frame.White,
+		Glass = Materials.Glass.Window,
+		Sill = Kit.Style.Marble,
+		Board = Materials.Wood.White,
+	})
+	-- The glazed front: counter wall, sill, glass with a frame and two mullions.
+	local z0, z1 = r.MinZ + t, r.MaxZ - t
+	Kit.box(booth, "BoothCounter", inner - t / 2, floor, z0, inner + t / 2, y + 3.3, z1, plaster)
+	Kit.box(booth, "BoothSill", inner - t / 2 - 0.2, y + 3.3, z0, inner + t / 2 + 0.2, y + 3.5, z1, Kit.Style.Marble)
+	Kit.box(booth, "BoothGlass", inner - 0.06, y + 3.5, z0, inner + 0.06, y + h - 0.6, z1, Materials.Glass.Window)
+	local frame = Parts.detail(Materials.Frame.White)
+	Kit.box(booth, "BoothFrame", inner - 0.2, y + h - 0.6, z0, inner + 0.2, y + h, z1, frame)
+	for _, z in { z0 + (z1 - z0) / 3, z0 + 2 * (z1 - z0) / 3 } do
+		Kit.box(booth, "BoothMullion", inner - 0.15, y + 3.5, z - 0.1, inner + 0.15, y + h - 0.6, z + 0.1, frame)
+	end
+	-- Inside: the desk along the counter, the guard's chair facing the drive, a CCTV monitor,
+	-- a telephone, a notice board, an extinguisher and the ceiling light.
+	local deskX = inner - driveSide * (t / 2 + 0.8)
+	local look = Vector3.new(-driveSide, 0, 0) -- the desk front faces the guard
+	local deskFrame = CFrame.lookAt(Vector3.new(deskX, floor, cz + 0.6), Vector3.new(deskX, floor, cz + 0.6) + look)
+	Furniture.desk(booth, deskFrame, 4.6, 1.6, Materials.Wood.Oak)
+	Furniture.computer(booth, deskFrame * CFrame.new(0, 0, 0.2), 2.95)
+	Parts.part(
+		booth,
+		"Telephone",
+		deskFrame * CFrame.new(1.6, 3.15, 0),
+		Vector3.new(0.9, 0.3, 0.7),
+		Parts.detail(Materials.Plastic.Black)
+	)
+	local chairAt = Vector3.new(deskX - driveSide * 2.2, floor, cz + 0.6)
+	Furniture.officeChair(
+		booth,
+		CFrame.lookAt(chairAt, chairAt + Vector3.new(driveSide, 0, 0)),
+		Materials.Fabric.Charcoal
+	)
+	local backFace = outer + driveSide * t / 2
+	Furniture.noticeBoard(
+		booth,
+		wallAt(backFace, floor + 5, cz + 1, Vector3.new(driveSide, 0, 0)),
+		2.6,
+		2,
+		math.floor(cx)
+	)
+	Furniture.extinguisher(booth, wallAt(backFace, floor + 2.4, r.MinZ + t + 0.8, Vector3.new(driveSide, 0, 0)))
+	Furniture.ceilingLight(booth, Vector3.new(cx, y + h, cz), 2, 2, 14)
+	-- Roof with an overhang, the sign over the drive and a lantern over the door.
+	Kit.slab(booth, "BoothRoof", Kit.inset(r, -1), y + h, y + h + 0.8, Kit.Style.Slate)
+	local sx = inner + driveSide * (t / 2 + 0.6)
 	local sign = Kit.box(
-		parent,
+		booth,
 		"BoothSign",
 		sx - 0.1,
-		y + h - 1.6,
+		y + h - 1.9,
 		r.MinZ + 1.5,
 		sx + 0.1,
-		y + h - 0.3,
+		y + h - 0.5,
 		r.MaxZ - 1.5,
 		Kit.Style.DarkWood
 	)
@@ -78,8 +201,433 @@ local function guardPost(parent: Instance, r: Kit.Rect, y: number, doorSide: num
 		sign,
 		{ "GUARD POST" },
 		Color3.fromRGB(240, 230, 200),
-		if doorSide > 0 then Enum.NormalId.Right else Enum.NormalId.Left
+		if driveSide > 0 then Enum.NormalId.Right else Enum.NormalId.Left
 	)
+	lantern(booth, cx + 2.6, floor + 7.4, r.MinZ, Vector3.new(0, 0, -1))
+end
+
+-- Villa interiors ----------------------------------------------------------------------------
+
+-- The entrance hall: marble with a runner from the portal to the stair, the national emblem
+-- and a portrait facing each other over benches, flags at the foot of the stair, plants and two
+-- chandeliers.
+local function hall(room: Room)
+	local folder = room.Folder
+	local y = room.Floor
+	local ceiling = y + room.Height
+	local r = room.Space.Rect
+	local half = Plan.Partition / 2
+	local west, east = r.MinX + half, r.MaxX - half
+	Kit.slab(
+		folder,
+		"RunnerBorder",
+		Kit.rect(DOOR_X - 3.6, DOOR_X + 3.6, r.MinZ, r.MaxZ - 0.3),
+		y,
+		y + 0.04,
+		Kit.with(Kit.Style.DarkGranite, { Decoration = true })
+	)
+	Kit.slab(
+		folder,
+		"Runner",
+		Kit.rect(DOOR_X - 3, DOOR_X + 3, r.MinZ, r.MaxZ - 0.3),
+		y + 0.04,
+		y + 0.1,
+		Kit.Style.Carpet
+	)
+	Kit.emblem(folder, { Axis = "X", At = west, Out = 1 }, -722, y + 6.8, 4.2, 0.2)
+	Furniture.picture(folder, wallAt(east, y + 6.6, -722, Vector3.new(-1, 0, 0)), 4.6, 6, 3)
+	for _, side in { -1, 1 } do
+		local x = if side < 0 then west + 0.9 else east - 0.9
+		local facing = Vector3.new(-side, 0, 0)
+		put(room, x, -722, facing, 6, 1.6, function(frame)
+			Furniture.bench(folder, frame, 6, Materials.Wood.Walnut)
+		end)
+		for _, z in { -727.5, -716.5 } do
+			put(room, if side < 0 then west + 1.2 else east - 1.2, z, facing, 1.8, 1.8, function(frame)
+				Furniture.plant(folder, frame.Position, 5.5, math.floor(z) + side)
+			end)
+		end
+		put(room, if side < 0 then west + 1.2 else east - 1.2, r.MaxZ - 1.4, facing, 1.8, 1.8, function(frame)
+			Furniture.plant(folder, frame.Position, 6, 20 + side)
+		end)
+		Kit.flagpole(folder, Vector3.new(DOOR_X + side * 11.5, y, r.MinZ + 1.5), 9, 3, Vector3.new(side, 0, 0.3))
+	end
+	for _, z in { -706, -730 } do
+		Furniture.chandelier(folder, Vector3.new(DOOR_X, ceiling, z), 3.4, 40)
+	end
+end
+
+-- The upper hall: a sitting corner by the west wall, a display cabinet and pictures, the
+-- runner from the stair to the balcony door, chandeliers.
+local function upperHall(room: Room)
+	local folder = room.Folder
+	local y = room.Floor
+	local ceiling = y + room.Height
+	local r = room.Space.Rect
+	local half = Plan.Partition / 2
+	local west, east = r.MinX + half, r.MaxX - half
+	Kit.slab(
+		folder,
+		"Runner",
+		Kit.rect(DOOR_X - 2.6, DOOR_X + 2.6, r.MinZ, r.MaxZ - 0.3),
+		y,
+		y + 0.08,
+		Kit.Style.Carpet
+	)
+	local fabric = Materials.Fabric.Beige
+	put(room, west + 1.5, -718, Vector3.new(1, 0, 0), 9, 2.9, function(frame)
+		Furniture.sofa(folder, frame, 3, fabric)
+	end)
+	put(room, west + 5.4, -718, Vector3.new(1, 0, 0), 5, 2.6, function(frame)
+		Furniture.coffeeTable(folder, frame, 5, 2.6, Materials.Wood.Walnut)
+	end)
+	for _, z in { -722, -714 } do
+		put(room, west + 9.2, z, Vector3.new(-1, 0, 0), 3, 2.8, function(frame)
+			Furniture.armchair(folder, frame, Materials.Leather.Tan)
+		end)
+	end
+	Furniture.rug(
+		folder,
+		CFrame.lookAt(Vector3.new(west + 5.4, y, -718), Vector3.new(west + 6.4, y, -718)),
+		13,
+		9,
+		Materials.Fabric.Red
+	)
+	Furniture.picture(folder, wallAt(west, y + 6.4, -718, Vector3.new(1, 0, 0)), 6, 4, 9)
+	put(room, east - 0.95, -718, Vector3.new(-1, 0, 0), 6, 1.8, function(frame)
+		Furniture.cabinet(folder, frame, 6, 1.8, 3.4, Materials.Wood.Walnut)
+		Furniture.plant(folder, (frame * CFrame.new(2, 3.4, 0)).Position, 2.6, 31)
+	end)
+	Furniture.picture(folder, wallAt(east, y + 6.4, -718, Vector3.new(-1, 0, 0)), 4.4, 3.4, 12)
+	for _, x in { west + 1.2, east - 1.2 } do
+		put(room, x, r.MaxZ - 1.4, Vector3.new(0, 0, -1), 1.8, 1.8, function(frame)
+			Furniture.plant(folder, frame.Position, 6, math.floor(x))
+		end)
+	end
+	for _, z in { -706, -730 } do
+		Furniture.chandelier(folder, Vector3.new(DOOR_X, ceiling, z), 3, 36)
+	end
+end
+
+-- The passages from the halls to the ends of the villa: a runner, pictures, console tables
+-- with plants.
+local function passage(room: Room)
+	local folder = room.Folder
+	local y = room.Floor
+	local r = room.Space.Rect
+	local cz = (r.MinZ + r.MaxZ) / 2
+	Kit.slab(folder, "Runner", Kit.rect(r.MinX + 1, r.MaxX - 1, cz - 1.6, cz + 1.6), y, y + 0.08, Kit.Style.Carpet)
+	local walls: { Rooms.Side } = { "Left", "Right", "Left", "Right" }
+	for i, side in walls do
+		Rooms.findWall(room, side :: Rooms.Side, 5.6, 4.6, function(wall)
+			Furniture.picture(folder, wall, 4, 3, room.Seed + i)
+		end)
+	end
+	local consoles: { Rooms.Side } = { "Left", "Right" }
+	for _, side in consoles do
+		Rooms.alongWall(room, side :: Rooms.Side, 4, 1.4, false, function(frame)
+			Furniture.table(folder, frame, 4, 1.4, Materials.Wood.Walnut, 2.8)
+			Furniture.plant(folder, (frame * CFrame.new(1.2, 2.8, 0)).Position, 2.2, room.Seed)
+		end)
+	end
+end
+
+-- The Leader's office: the desk with the Leader's chair before the national emblem and two
+-- flags, bookcases along the back wall, visitors' chairs, a sitting corner by the front windows
+-- and a conference table at the east end.
+local function office(room: Room, report: { [string]: number })
+	local folder = room.Folder
+	local y = room.Floor
+	local ceiling = y + room.Height
+	local r = room.Space.Rect
+	local half = Plan.Partition / 2
+	local north, west = r.MinZ + half, r.MinX + half
+	local cx = 620
+	local mahogany = Materials.Wood.Mahogany
+	Furniture.rug(
+		folder,
+		CFrame.lookAt(Vector3.new(cx, y, -721), Vector3.new(cx, y, -720)),
+		20,
+		15,
+		Materials.Fabric.Red
+	)
+
+	-- The desk (its front, the Leader's side, faces north) with a blotter, a lamp, a telephone
+	-- and a nameplate towards the visitors.
+	local deskAt = Vector3.new(cx, y, -727)
+	local desk = CFrame.lookAt(deskAt, deskAt + Vector3.new(0, 0, -1))
+	Furniture.desk(folder, desk, 10, 4.2, mahogany)
+	Parts.part(
+		folder,
+		"Blotter",
+		desk * CFrame.new(0, 3.07, -0.4),
+		Vector3.new(3.6, 0.04, 2),
+		Parts.detail(Materials.Leather.Black)
+	)
+	local lampAt = (desk * CFrame.new(-3.8, 3.04, 0.8)).Position
+	Parts.cylinder(
+		folder,
+		"DeskLamp",
+		lampAt,
+		lampAt + Vector3.new(0, 1.4, 0),
+		0.25,
+		Parts.detail(Materials.Metal.Brass)
+	)
+	Parts.cylinder(
+		folder,
+		"DeskLampShade",
+		lampAt + Vector3.new(0, 1.2, 0),
+		lampAt + Vector3.new(0, 1.9, 0),
+		1.2,
+		Parts.detail(Materials.Fabric.Green)
+	)
+	Parts.part(
+		folder,
+		"Telephone",
+		desk * CFrame.new(3.6, 3.2, 0.4),
+		Vector3.new(1, 0.35, 0.8),
+		Parts.detail(Materials.Plastic.Black)
+	)
+	local plate = Parts.part(
+		folder,
+		"DeskNameplate",
+		desk * CFrame.new(0, 3.38, 1.7),
+		Vector3.new(3.4, 0.6, 0.2),
+		Kit.Style.Bronze
+	)
+	Kit.inscription(plate, { "LEADER OF THE REVOLUTION" }, Color3.fromRGB(240, 220, 170), Enum.NormalId.Back)
+
+	-- The Leader's chair: a high-backed leather chair on a pedestal.
+	local seatAt = Vector3.new(cx, y + 1.65, -730.6)
+	local chairFrame = CFrame.lookAt(seatAt, seatAt + Vector3.new(0, 0, 1))
+	local leather = Materials.Leather.Oxblood
+	Parts.seat(folder, "LeadersChair", chairFrame, Vector3.new(2.6, 0.5, 2.4), leather)
+	Parts.part(folder, "LeadersChairBack", chairFrame * CFrame.new(0, 2.1, 1.15), Vector3.new(2.9, 4.2, 0.5), leather)
+	for _, side in { -1, 1 } do
+		Parts.part(
+			folder,
+			"LeadersChairArm",
+			chairFrame * CFrame.new(side * 1.45, 0.65, 0),
+			Vector3.new(0.35, 0.8, 2.3),
+			leather
+		)
+	end
+	Parts.cylinder(
+		folder,
+		"LeadersChairFoot",
+		Vector3.new(cx, y, -730.6),
+		Vector3.new(cx, y + 1.4, -730.6),
+		0.5,
+		Parts.detail(Materials.Metal.Dark)
+	)
+	Parts.cylinder(
+		folder,
+		"LeadersChairBase",
+		Vector3.new(cx, y, -730.6),
+		Vector3.new(cx, y + 0.2, -730.6),
+		2.4,
+		Parts.detail(Materials.Metal.Dark)
+	)
+	report.Seats += 1
+
+	-- Emblem and flags behind the desk, bookcases on both sides of them.
+	Kit.emblem(folder, { Axis = "Z", At = north, Out = 1 }, cx, y + 7.6, 4.4, 0.2)
+	for _, side in { -1, 1 } do
+		Kit.flagpole(folder, Vector3.new(cx + side * 6.5, y, north + 1.4), 9, 3, Vector3.new(side, 0, 0.3))
+		report.Flags += 1
+	end
+	for i, x in { 599.4, 603.6, 607.8, 632.2, 636.4, 640.6 } do
+		local p = Vector3.new(x, y, north + 0.78)
+		Furniture.shelf(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, 1)), 4.2, 1.5, 9, Materials.Wood.Walnut, 70 + i)
+	end
+	for _, dx in { -2.6, 2.6 } do
+		local p = Vector3.new(cx + dx, y, -722.2)
+		Furniture.chair(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, -1)), mahogany, Materials.Leather.Brown)
+		report.Seats += 1
+	end
+
+	-- Sitting corner by the front windows: sofa, armchairs and a coffee table on a rug.
+	Furniture.rug(
+		folder,
+		CFrame.lookAt(Vector3.new(610, y, -700.5), Vector3.new(610, y, -699.5)),
+		17,
+		11,
+		Materials.Fabric.Beige
+	)
+	do
+		local p = Vector3.new(610, y, -705)
+		Furniture.sofa(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, 1)), 3, Materials.Leather.Brown)
+		report.Seats += 3
+	end
+	do
+		local p = Vector3.new(610, y, -700.5)
+		Furniture.coffeeTable(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, 1)), 5, 2.6, mahogany)
+	end
+	for _, side in { -1, 1 } do
+		local p = Vector3.new(610 + side * 6.8, y, -700.5)
+		Furniture.armchair(folder, CFrame.lookAt(p, p - Vector3.new(side, 0, 0)), Materials.Leather.Brown)
+		report.Seats += 1
+	end
+
+	-- Conference table at the east end.
+	do
+		local p = Vector3.new(647, y, -712)
+		Furniture.table(folder, CFrame.lookAt(p, p + Vector3.new(1, 0, 0)), 12, 4.4, Materials.Wood.Walnut)
+		for _, z in { -716, -712, -708 } do
+			for _, side in { -1, 1 } do
+				local c = Vector3.new(647 + side * 3.8, y, z)
+				Furniture.chair(
+					folder,
+					CFrame.lookAt(c, c - Vector3.new(side, 0, 0)),
+					Materials.Wood.Walnut,
+					Materials.Fabric.Green
+				)
+				report.Seats += 1
+			end
+		end
+	end
+
+	-- A cabinet with a painting over it on the west wall, a clock over the door, plants.
+	do
+		local p = Vector3.new(west + 0.95, y, -722)
+		Furniture.cabinet(folder, CFrame.lookAt(p, p + Vector3.new(1, 0, 0)), 6, 1.8, 3.4, Materials.Wood.Walnut)
+	end
+	Furniture.picture(folder, wallAt(west, y + 6.4, -722, Vector3.new(1, 0, 0)), 5, 3.6, 11)
+	Furniture.clock(folder, wallAt(west, y + 9.6, -705, Vector3.new(1, 0, 0)))
+	for _, corner in { { 597.4, -733 }, { 656.4, -733 }, { 597.4, -693.6 } } do
+		Furniture.plant(folder, Vector3.new(corner[1], y, corner[2]), 6, math.floor(corner[1]))
+	end
+	Furniture.airConditioner(folder, wallAt(651, ceiling - 1.6, north, Vector3.new(0, 0, 1)))
+
+	-- Lights: a chandelier over the desk, ceiling lights over the two corners.
+	Furniture.chandelier(folder, Vector3.new(cx, ceiling, -722), 3.2, 36)
+	Furniture.ceilingLight(folder, Vector3.new(610, ceiling, -700.5), 4, 4, 26)
+	Furniture.ceilingLight(folder, Vector3.new(647, ceiling, -712), 4, 6, 26)
+end
+
+local function villaSpaces(report: { [string]: number }): { Space }
+	local list: { Space } = {}
+	local function add(space: Space)
+		table.insert(list, space)
+	end
+	local parquet = Materials.Floor.Parquet
+	add({
+		Name = "Entrance Hall",
+		Kind = "Hall",
+		Rect = Plan.rect(565, 595, -745, -692),
+		Storey = 0,
+		Open = true,
+		Lights = false,
+		Custom = hall,
+	})
+	add({
+		Name = "Stair",
+		Kind = "Stair",
+		Rect = Plan.rect(565, 595, -768, -745),
+		Storey = 0,
+		Top = 1,
+		Entry = "MaxZ",
+		Grand = true,
+	})
+	for s = 0, 1 do
+		add({
+			Name = "West Passage",
+			Kind = "Corridor",
+			Rect = Plan.rect(502, 565, -745, -735),
+			Storey = s,
+			Open = true,
+			Floor = parquet,
+			Custom = passage,
+		})
+		add({
+			Name = "East Passage",
+			Kind = "Corridor",
+			Rect = Plan.rect(595, 658, -745, -735),
+			Storey = s,
+			Open = true,
+			Floor = parquet,
+			Custom = passage,
+		})
+	end
+
+	-- Ground floor: reception rooms, the kitchen and the Leader's office.
+	add({
+		Name = "Salon",
+		Kind = "Salon",
+		Rect = Plan.rect(525, 565, -735, -692),
+		Storey = 0,
+		Doors = { Plan.door("MaxX", -705, "Double") },
+	})
+	add({
+		Name = "Music Room",
+		Kind = "Music",
+		Rect = Plan.rect(502, 525, -735, -692),
+		Storey = 0,
+		Doors = { Plan.door("MaxX", -705, "Double") },
+	})
+	add({
+		Name = "Dining Room",
+		Kind = "Dining",
+		Rect = Plan.rect(502, 545, -768, -745),
+		Storey = 0,
+		Extra = { Plan.door("MaxX") },
+	})
+	add({ Name = "Kitchen", Kind = "Kitchen", Rect = Plan.rect(545, 565, -768, -745), Storey = 0 })
+	add({
+		Name = "Office of the Leader",
+		Kind = "LeadersOffice",
+		Rect = Plan.rect(595, 658, -735, -692),
+		Storey = 0,
+		Floor = Materials.Floor.ParquetDark,
+		Lights = false,
+		Doors = { Plan.door("MinX", -705, "Double") },
+		Custom = function(room: Room)
+			office(room, report)
+		end,
+	})
+	add({ Name = "Library", Kind = "Library", Rect = Plan.rect(595, 635, -768, -745), Storey = 0 })
+	add({ Name = "WC", Kind = "WC", Rect = Plan.rect(635, 645, -768, -745), Storey = 0 })
+	add({ Name = "Aide-de-Camp", Kind = "Office", Rect = Plan.rect(645, 658, -768, -745), Storey = 0 })
+
+	-- Upper floor: the private rooms.
+	add({
+		Name = "Upper Hall",
+		Kind = "Landing",
+		Rect = Plan.rect(565, 595, -745, -692),
+		Storey = 1,
+		Open = true,
+		Floor = parquet,
+		Lights = false,
+		Custom = upperHall,
+	})
+	add({ Name = "Bedroom", Kind = "Bedroom", Rect = Plan.rect(502, 535, -735, -692), Storey = 1 })
+	add({ Name = "Family Room", Kind = "Family", Rect = Plan.rect(535, 565, -735, -692), Storey = 1 })
+	add({ Name = "Study", Kind = "Study", Rect = Plan.rect(502, 545, -768, -745), Storey = 1 })
+	add({ Name = "Bathroom", Kind = "Bathroom", Rect = Plan.rect(545, 565, -768, -745), Storey = 1 })
+	add({ Name = "Master Bedroom", Kind = "Bedroom", Rect = Plan.rect(595, 635, -735, -692), Storey = 1 })
+	add({
+		Name = "Dressing Room",
+		Kind = "Dressing",
+		Rect = Plan.rect(635, 658, -735, -715),
+		Storey = 1,
+		Doors = { Plan.door("MinX") },
+	})
+	add({
+		Name = "Master Bathroom",
+		Kind = "Bathroom",
+		Rect = Plan.rect(635, 658, -715, -692),
+		Storey = 1,
+		Doors = { Plan.door("MinX") },
+	})
+	add({ Name = "Guest Room", Kind = "Guest", Rect = Plan.rect(595, 635, -768, -745), Storey = 1 })
+	add({
+		Name = "Guest Bathroom",
+		Kind = "Bathroom",
+		Rect = Plan.rect(635, 658, -768, -745),
+		Storey = 1,
+		Doors = { Plan.door("MinX") },
+	})
+	return list
 end
 
 function Residence.build(district: any, parent: Instance): { [string]: number }
@@ -89,8 +637,9 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 	local W = G + district.WalkTop
 	local r = res.Rect
 	local gx = res.Gate
+	assert(gx == DOOR_X, "Residence: the villa plan expects the gate at x 580")
 	local plaster, ochre = Kit.Style.Plaster, Kit.Style.Ochre
-	local report = { Windows = 0, Flags = 0, Trees = 0, Seats = 0 }
+	local report: { [string]: number } = { Windows = 0, Flags = 0, Trees = 0, Seats = 0 }
 
 	-- Apron along the south wall to North Street, lawn inside the walls.
 	Kit.slab(model, "Apron", Kit.rect(r.MinX, r.MaxX, r.MaxZ, r.MaxZ + 20), G - 0.6, W, Kit.Style.Paving)
@@ -124,7 +673,7 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 		local x = gx + side * 14
 		Kit.box(model, "GatePillar", x - 2, W - 0.6, r.MaxZ - 3, x + 2, W + 13, r.MaxZ + 1, plaster)
 		Kit.box(model, "GatePillarCap", x - 2.6, W + 13, r.MaxZ - 3.6, x + 2.6, W + 14, r.MaxZ + 1.6, ochre)
-		local lantern = Kit.box(
+		local lamp = Kit.box(
 			model,
 			"GateLantern",
 			x - 0.8,
@@ -135,14 +684,14 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 			r.MaxZ - 0.2,
 			{ Material = Enum.Material.Glass, Color = Color3.fromRGB(250, 238, 200), CastShadow = false }
 		)
-		lantern:SetAttribute("RoNationLamp", true)
+		lamp:SetAttribute("RoNationLamp", true)
 		local light = Instance.new("PointLight")
 		light:SetAttribute("RoNationStreetLight", true)
 		light.Enabled = false
 		light.Range = 24
 		light.Brightness = 1.5
 		light.Color = Color3.fromRGB(255, 224, 180)
-		light.Parent = lantern
+		light.Parent = lamp
 		-- Open leaf, swung inwards against the inside of the pillar.
 		local hinge = gx + side * 12
 		Kit.box(
@@ -230,170 +779,218 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 		end
 	end
 
-	-- The villa: two storeys, white plaster, shutters, slate roof, portico with balcony.
+	-- The villa: two storeys, white plaster with ochre quoins and bands, shuttered windows,
+	-- slate roof, portico with the balcony.
 	local F = W + 2
 	local H = 12
 	local R = F + 2 * H
 	local t = 2
 	local v = villa
-	local doorX = gx
 	Kit.slab(model, "VillaPlinth", Kit.inset(v, -0.8), W - 0.6, F, Kit.Style.Granite)
-	Kit.wall(model, "Wall", "X", v.MinX, v.MaxX, v.MaxZ - t / 2, t, F, R, {
-		{ From = doorX - 4, To = doorX + 4, Bottom = F, Top = F + 10 },
-	}, plaster)
-	Kit.wall(model, "Wall", "X", v.MinX, v.MaxX, v.MinZ + t / 2, t, F, R, nil, plaster)
-	Kit.wall(model, "Wall", "Z", v.MinZ + t, v.MaxZ - t, v.MinX + t / 2, t, F, R, nil, plaster)
-	Kit.wall(model, "Wall", "Z", v.MinZ + t, v.MaxZ - t, v.MaxX - t / 2, t, F, R, nil, plaster)
-	Kit.slab(model, "Attic", Kit.inset(v, t), R - 1, R, plaster)
-	Kit.band(model, "StringCourse", v, F + H - 0.3, F + H + 0.5, 0.4, ochre)
+	local plan = Plan.new({
+		Model = model,
+		Building = "Residence",
+		Footprints = { Kit.inset(v, t) },
+		Levels = { F, F + H, R },
+		Spaces = villaSpaces(report),
+		DoorSigns = false,
+		Style = {
+			Partition = Materials.Wall.Warm,
+			Door = { Leaf = Materials.Wood.Walnut, Frame = Materials.Frame.White, Handle = Materials.Metal.Brass },
+			GlassDoor = {
+				Leaf = Materials.Wood.Walnut,
+				Frame = Materials.Frame.White,
+				Handle = Materials.Metal.Brass,
+				Glass = Materials.Glass.Interior,
+			},
+			Stair = {
+				Tread = Materials.Floor.Marble,
+				Landing = Materials.Floor.Marble,
+				Spine = Materials.Wall.Warm,
+				Rail = Materials.Metal.Brass,
+			},
+			Floors = { Corridor = Materials.Floor.Parquet },
+			Accent = Materials.Wall.Panel,
+		},
+		Seed = 4,
+	})
+
+	-- Facades: windows on a 10-stud grid with marble sills and lintels and open shutters; the
+	-- portal and the balcony door on the axis of the gate, a garden door at the back.
+	local facade = Kit.folder(model, "Facade")
+	local window: Openings.WindowStyle = {
+		Frame = Materials.Frame.White,
+		Glass = Materials.Glass.Window,
+		Sill = Kit.Style.Marble,
+		Board = Materials.Wood.White,
+		Lintel = Kit.Style.Marble,
+		Shutters = SHUTTERS,
+	}
+	local doorStyle: Openings.DoorStyle = {
+		Leaf = Materials.Wood.Walnut,
+		Frame = Materials.Frame.White,
+		Handle = Materials.Metal.Brass,
+		Glass = Materials.Glass.Window,
+	}
+	local function row(centres: { number }, storeys: { number }): Shell.WindowRow
+		return { Centres = centres, Width = 3.6, Height = 7.5, Sill = 2.5, Storeys = storeys }
+	end
+	local frontDoors: { Shell.DoorSpec } = {
+		{ At = DOOR_X, Width = 8, Height = 10, Storey = 0, Double = true, StartOpen = true, Label = "Residence" },
+		{ At = DOOR_X, Width = 6, Height = 10, Storey = 1, Double = true, Label = "Balcony" },
+	}
+	local xs = Shell.steps(510, 10, 650)
+	local zs = Shell.steps(-760, 10, -700)
+	local beside = Shell.without(xs, { { DOOR_X - 15, DOOR_X + 15 } })
+	local runs: { Shell.Run } = {
+		{
+			Axis = "X",
+			At = v.MaxZ - t / 2,
+			From = v.MinX,
+			To = v.MaxX,
+			Thickness = t,
+			Out = 1,
+			Material = plaster,
+			Window = window,
+			Door = doorStyle,
+			Windows = { row(beside, { 0, 1 }), row({ DOOR_X - 10, DOOR_X + 10 }, { 1 }) },
+			Doors = frontDoors,
+		},
+		{
+			Axis = "X",
+			At = v.MinZ + t / 2,
+			From = v.MinX,
+			To = v.MaxX,
+			Thickness = t,
+			Out = -1,
+			Material = plaster,
+			Window = window,
+			Door = doorStyle,
+			Windows = { row(Shell.without(xs, { { GARDEN_X - 5, GARDEN_X + 5 } }), { 0 }), row(xs, { 1 }) },
+			Doors = { { At = GARDEN_X, Width = 6, Height = 9, Storey = 0, Double = true, Label = "Garden" } },
+		},
+	}
+	for _, side in { -1, 1 } do
+		table.insert(runs, {
+			Axis = "Z",
+			At = (if side < 0 then v.MinX else v.MaxX) - side * t / 2,
+			From = v.MinZ + t,
+			To = v.MaxZ - t,
+			Thickness = t,
+			Out = side,
+			Material = plaster,
+			Window = window,
+			Windows = { row(zs, { 0, 1 }) },
+		})
+	end
+	local shell = Shell.build(plan, facade, runs)
+	report.Windows = shell.Windows
+	model:SetAttribute("WindowsWithoutRoom", shell.Unmapped)
+	model:SetAttribute("WindowsBlocked", shell.Blocked)
+	local interior = Plan.build(plan, Rooms.furnish)
+	for key, value in interior do
+		report[key] = value
+	end
+
+	-- Bands, quoins, roof with gable ends, chimneys, gutters and downpipes.
+	local balconyGap: { Kit.Gap } = { { Side = "South", From = DOOR_X - 15, To = DOOR_X + 15 } }
+	Kit.band(model, "StringCourse", v, F + H - 0.3, F + H + 0.5, 0.4, ochre, balconyGap)
 	Kit.band(model, "Cornice", v, R - 0.8, R + 0.2, 1, ochre)
-	Kit.gableRoof(model, v, R, 11, "X", 1.5, Kit.Style.Slate)
-	local gable = 11 * ((v.MaxZ - v.MinZ) / 2) / ((v.MaxZ - v.MinZ) / 2 + 1.5)
-	Kit.pediment(model, { Axis = "X", At = v.MinX, Out = -1 }, v.MinZ, v.MaxZ, R, gable, -t, 0, plaster)
-	Kit.pediment(model, { Axis = "X", At = v.MaxX, Out = 1 }, v.MinZ, v.MaxZ, R, gable, -t, 0, plaster)
+	local roofHeight = 11
+	Kit.gableRoof(model, v, R, roofHeight, "X", 1.5, Kit.Style.Slate)
+	local gable = roofHeight * ((v.MaxZ - v.MinZ) / 2) / ((v.MaxZ - v.MinZ) / 2 + 1.5)
+	Kit.pediment(model, { Axis = "X", At = v.MinX, Out = -1 }, v.MinZ, v.MaxZ, R, gable, -t, 1.55, plaster)
+	Kit.pediment(model, { Axis = "X", At = v.MaxX, Out = 1 }, v.MinZ, v.MaxZ, R, gable, -t, 1.55, plaster)
 	for _, x in { v.MinX + 30, v.MaxX - 30 } do
 		Kit.box(model, "Chimney", x - 2, R + 4, v.MinZ + 16, x + 2, R + 14, v.MinZ + 20, plaster)
+		Kit.box(
+			model,
+			"ChimneyCap",
+			x - 2.4,
+			R + 14,
+			v.MinZ + 15.6,
+			x + 2.4,
+			R + 14.5,
+			v.MinZ + 20.4,
+			Kit.Style.Granite
+		)
 	end
 	for _, corner in { { v.MinX, v.MinZ }, { v.MinX, v.MaxZ }, { v.MaxX, v.MinZ }, { v.MaxX, v.MaxZ } } do
 		Kit.box(model, "Quoin", corner[1] - 1.4, F, corner[2] - 1.4, corner[1] + 1.4, R - 0.8, corner[2] + 1.4, ochre)
 	end
-	local spec: Kit.WindowSpec = {
-		Width = 3.6,
-		Height = 7.5,
-		Spacing = 10,
-		Sills = { F + 2.5, F + H + 2.5 },
-		Trim = Kit.Style.Marble,
-		Shutters = SHUTTERS,
-	}
-	local front: Kit.Face = { Axis = "Z", At = v.MaxZ, Out = 1 }
-	local frontSpec = table.clone(spec)
-	frontSpec.Skip = { { doorX - 15, doorX + 15 } }
-	report.Windows += Kit.windows(model, front, v.MinX + 4, v.MaxX - 4, frontSpec)
-	report.Windows += Kit.windows(model, { Axis = "Z", At = v.MinZ, Out = -1 }, v.MinX + 4, v.MaxX - 4, spec)
-	report.Windows += Kit.windows(model, { Axis = "X", At = v.MinX, Out = -1 }, v.MinZ + 4, v.MaxZ - 4, spec)
-	report.Windows += Kit.windows(model, { Axis = "X", At = v.MaxX, Out = 1 }, v.MinZ + 4, v.MaxZ - 4, spec)
-	-- Portico: four columns carrying the balcony, French window behind it, emblem, flag.
-	for _, dx in { -12, -4, 4, 12 } do
-		Kit.column(model, doorX + dx, v.MaxZ + 6, F, F + H - 0.8, 2.6, Kit.Style.Marble)
+	Exterior.gutter(model, "X", v.MaxZ + 1.5, v.MinX - 1.5, v.MaxX + 1.5, R, 1)
+	Exterior.gutter(model, "X", v.MinZ - 1.5, v.MinX - 1.5, v.MaxX + 1.5, R, -1)
+	for _, x in { v.MinX + 3, v.MaxX - 3 } do
+		Exterior.downpipe(model, x, v.MaxZ, Vector3.new(0, 0, 1), R, F, 1)
+		Exterior.downpipe(model, x, v.MinZ, Vector3.new(0, 0, -1), R, F, 1)
 	end
-	Kit.box(model, "PorticoStep", doorX - 15, W - 0.2, v.MaxZ, doorX + 15, F, v.MaxZ + 8.5, Kit.Style.Granite)
-	Kit.box(model, "PorticoStep", doorX - 15, W - 0.2, v.MaxZ + 8.5, doorX + 15, W + 1, v.MaxZ + 10, Kit.Style.Granite)
-	Kit.faceBox(model, "Balcony", front, doorX - 15, doorX + 15, F + H - 0.8, F + H + 0.2, 0, 8.5, Kit.Style.Marble)
-	Kit.faceBox(model, "Balustrade", front, doorX - 15, doorX + 15, F + H + 0.2, F + H + 3.2, 8, 8.5, Kit.Style.Marble)
-	Kit.faceBox(model, "Balustrade", front, doorX - 15, doorX - 14.5, F + H + 0.2, F + H + 3.2, 0, 8, Kit.Style.Marble)
-	Kit.faceBox(model, "Balustrade", front, doorX + 14.5, doorX + 15, F + H + 0.2, F + H + 3.2, 0, 8, Kit.Style.Marble)
-	Kit.faceBox(
+	-- Air conditioners under some windows at the back and on the east side.
+	local back: Openings.Wall = { Axis = "X", At = v.MinZ + t / 2, Thickness = t, Out = -1 }
+	local eastWall: Openings.Wall = { Axis = "Z", At = v.MaxX - t / 2, Thickness = t, Out = 1 }
+	Exterior.acUnit(model, back, 550, F + 0.5)
+	Exterior.acUnit(model, back, 520, F + H + 0.5)
+	Exterior.acUnit(model, back, 610, F + H + 0.5)
+	Exterior.acUnit(model, eastWall, -720, F + 0.5)
+	Exterior.acUnit(model, eastWall, -750, F + 0.5)
+
+	-- Portico: four columns carrying the balcony, the portal surround, lanterns, emblem, flags.
+	local front: Kit.Face = { Axis = "Z", At = v.MaxZ, Out = 1 }
+	for _, dx in { -12, -4, 4, 12 } do
+		Kit.column(model, DOOR_X + dx, v.MaxZ + 6, F, F + H - 1, 2.6, Kit.Style.Marble)
+	end
+	Kit.box(model, "PorticoStep", DOOR_X - 15, W - 0.2, v.MaxZ, DOOR_X + 15, F, v.MaxZ + 8.5, Kit.Style.Granite)
+	Kit.box(
 		model,
-		"BalconyDoor",
-		front,
-		doorX - 3,
-		doorX + 3,
-		F + H + 0.2,
-		F + H + 8.5,
-		-0.2,
-		0.15,
-		Kit.Style.Glass
+		"PorticoStep",
+		DOOR_X - 15,
+		W - 0.2,
+		v.MaxZ + 8.5,
+		DOOR_X + 15,
+		W + 1,
+		v.MaxZ + 10,
+		Kit.Style.Granite
 	)
-	Kit.faceBox(model, "DoorFrame", front, doorX - 5, doorX - 4, F, F + 11, 0, 0.4, Kit.Style.DarkWood)
-	Kit.faceBox(model, "DoorFrame", front, doorX + 4, doorX + 5, F, F + 11, 0, 0.4, Kit.Style.DarkWood)
-	Kit.faceBox(model, "DoorFrame", front, doorX - 5, doorX + 5, F + 10, F + 11, 0, 0.4, Kit.Style.DarkWood)
-	Kit.emblem(model, { Axis = "Z", At = v.MaxZ + 8.5, Out = 1 }, doorX, F + H + 1.7, 2.6, 0.05)
+	Kit.faceBox(model, "Balcony", front, DOOR_X - 15, DOOR_X + 15, F + H - 1, F + H, 0, 8.5, Kit.Style.Marble)
+	Kit.faceBox(model, "Balustrade", front, DOOR_X - 15, DOOR_X + 15, F + H, F + H + 3.2, 8, 8.5, Kit.Style.Marble)
+	Kit.faceBox(model, "Balustrade", front, DOOR_X - 15, DOOR_X - 14.5, F + H, F + H + 3.2, 0, 8, Kit.Style.Marble)
+	Kit.faceBox(model, "Balustrade", front, DOOR_X + 14.5, DOOR_X + 15, F + H, F + H + 3.2, 0, 8, Kit.Style.Marble)
+	Kit.ceilingLight(model, DOOR_X, v.MaxZ + 4.5, F + H - 1, 2, 20)
+	Kit.faceBox(model, "DoorSurround", front, DOOR_X - 5.3, DOOR_X - 4.35, F, F + 10.4, 0, 0.4, Kit.Style.Marble)
+	Kit.faceBox(model, "DoorSurround", front, DOOR_X + 4.35, DOOR_X + 5.3, F, F + 10.4, 0, 0.4, Kit.Style.Marble)
+	Kit.faceBox(model, "DoorSurround", front, DOOR_X - 5.3, DOOR_X + 5.3, F + 10.35, F + 11.3, 0, 0.5, Kit.Style.Marble)
 	for _, side in { -1, 1 } do
-		Kit.flagpole(model, Vector3.new(doorX + side * 26, W, v.MaxZ + 16), 26, 8, Vector3.new(side, 0, 0))
+		lantern(model, DOOR_X + side * 7, F + 7, v.MaxZ, Vector3.new(0, 0, 1))
+	end
+	Kit.emblem(model, { Axis = "Z", At = v.MaxZ + 8.5, Out = 1 }, DOOR_X, F + H + 1.6, 2.6, 0.05)
+	for _, side in { -1, 1 } do
+		Kit.flagpole(model, Vector3.new(DOOR_X + side * 26, W, v.MaxZ + 16), 26, 8, Vector3.new(side, 0, 0))
 		report.Flags += 1
 	end
 
-	-- Interior: entrance hall and the Leader's office; the rest of the villa is closed.
-	local hall = Kit.rect(doorX - 20, doorX + 20, v.MaxZ - 30, v.MaxZ - t)
-	local office = Kit.rect(hall.MaxX + 1, v.MaxX - 14, v.MinZ + 30, v.MaxZ - t)
-	local ceiling = F + H - 1
-	Kit.wall(model, "InnerWall", "Z", hall.MinZ - 1, hall.MaxZ, hall.MinX - 0.5, 1, F, ceiling, nil, plaster)
-	Kit.wall(model, "InnerWall", "X", hall.MinX - 1, hall.MaxX + 1, hall.MinZ - 0.5, 1, F, ceiling, nil, plaster)
-	Kit.wall(model, "InnerWall", "Z", office.MinZ - 1, office.MaxZ, hall.MaxX + 0.5, 1, F, ceiling, {
-		{ From = hall.MaxZ - 12, To = hall.MaxZ - 6, Bottom = F, Top = F + 8.5 },
-	}, plaster)
-	Kit.wall(model, "InnerWall", "X", office.MinX, office.MaxX + 1, office.MinZ - 0.5, 1, F, ceiling, nil, plaster)
-	Kit.wall(model, "InnerWall", "Z", office.MinZ - 1, office.MaxZ, office.MaxX + 0.5, 1, F, ceiling, nil, plaster)
-	Kit.slab(model, "Floor", Kit.rect(hall.MinX, office.MaxX, office.MinZ, hall.MaxZ), F, F + 0.1, Kit.Style.Floor)
+	-- Garden terrace at the back, before the dining room's garden door.
 	Kit.slab(
 		model,
-		"Ceiling",
-		Kit.rect(hall.MinX - 1, office.MaxX + 1, office.MinZ - 1, hall.MaxZ),
-		ceiling,
-		ceiling + 1,
-		plaster
+		"Terrace",
+		Kit.rect(GARDEN_X - 12, GARDEN_X + 12, v.MinZ - 4.5, v.MinZ - 0.8),
+		W - 0.6,
+		F,
+		Kit.Style.Granite
 	)
-	-- Hall: runner, emblem, flags, benches, light.
-	Kit.slab(model, "Runner", Kit.rect(doorX - 3, doorX + 3, hall.MinZ, hall.MaxZ), F + 0.1, F + 0.2, Kit.Style.Carpet)
-	Kit.emblem(model, { Axis = "Z", At = hall.MinZ, Out = 1 }, doorX, F + 6.5, 4, 0.2)
-	for _, side in { -1, 1 } do
-		Kit.flagpole(model, Vector3.new(doorX + side * 6, F + 0.1, hall.MinZ + 1.5), 9, 3, Vector3.new(side, 0, 0.3))
-		Kit.bench(model, Vector3.new(hall.MinX + 1.4, F + 0.1, hall.MinZ + 8 + (side + 1) * 6), Vector3.new(1, 0, 0))
-		report.Flags += 1
-	end
-	Kit.ceilingLight(model, doorX, (hall.MinZ + hall.MaxZ) / 2, ceiling, 4, 26)
-	-- Office: desk with the Leader's chair, visitor chairs, flags and emblem behind the desk,
-	-- bookshelves, a rug and a sofa corner.
-	local ox = (office.MinX + office.MaxX) / 2
-	local deskZ = office.MinZ + 12
-	Kit.slab(
+	Kit.box(
 		model,
-		"Rug",
-		Kit.rect(ox - 12, ox + 12, office.MinZ + 6, office.MaxZ - 6),
-		F + 0.1,
-		F + 0.2,
-		Kit.Style.Carpet
+		"TerraceStep",
+		GARDEN_X - 5,
+		W - 0.2,
+		v.MinZ - 6,
+		GARDEN_X + 5,
+		W + 1,
+		v.MinZ - 4.5,
+		Kit.Style.Granite
 	)
-	Kit.box(model, "Desk", ox - 6, F + 0.2, deskZ - 2, ox + 6, F + 3.4, deskZ + 2, Kit.Style.DarkWood)
-	Kit.box(model, "DeskTop", ox - 6.3, F + 3.4, deskZ - 2.3, ox + 6.3, F + 3.7, deskZ + 2.3, Kit.Style.DarkWood)
-	chair(model, "LeadersChair", Vector3.new(ox, F + 1.8, deskZ - 5), Vector3.new(0, 0, 1), LEATHER)
-	for _, dx in { -3.5, 3.5 } do
-		chair(model, "VisitorChair", Vector3.new(ox + dx, F + 1.5, deskZ + 5), Vector3.new(0, 0, -1), Kit.Style.Carpet)
-	end
-	report.Seats += 3
-	local behind: Kit.Face = { Axis = "Z", At = office.MinZ, Out = 1 }
-	Kit.emblem(model, behind, ox, F + 7, 4.4, 0.2)
 	for _, side in { -1, 1 } do
-		Kit.flagpole(model, Vector3.new(ox + side * 6, F + 0.2, office.MinZ + 1.6), 9, 3, Vector3.new(side, 0, 0.3))
-		report.Flags += 1
-		local shelfX = if side < 0 then office.MinX + 1 else office.MaxX - 1
-		Kit.box(
-			model,
-			"Bookshelf",
-			shelfX - 1,
-			F + 0.1,
-			office.MinZ + 6,
-			shelfX + 1,
-			F + 8.5,
-			office.MinZ + 22,
-			Kit.Style.DarkWood
-		)
-		for k = 0, 2 do
-			Kit.box(
-				model,
-				"Books",
-				shelfX - side * 1.05,
-				F + 1.5 + k * 2.4,
-				office.MinZ + 6.5,
-				shelfX - side * 1.1,
-				F + 3.2 + k * 2.4,
-				office.MinZ + 21.5,
-				{
-					Material = Enum.Material.Fabric,
-					Color = FLOWERS[1 + k],
-					Decoration = true,
-				}
-			)
-		end
+		Furniture.plant(model, Vector3.new(GARDEN_X + side * 10.5, F, v.MinZ - 2.6), 4.5, 90 + side)
 	end
-	local sofaZ = office.MaxZ - 9
-	Kit.box(model, "CoffeeTable", ox - 3, F + 0.2, sofaZ - 2, ox + 3, F + 1.8, sofaZ + 2, Kit.Style.DarkWood)
-	for _, side in { -1, 1 } do
-		chair(model, "Sofa", Vector3.new(ox + side * 6, F + 1.4, sofaZ), Vector3.new(-side, 0, 0), LEATHER)
-		report.Seats += 1
-	end
-	Kit.ceilingLight(model, ox, deskZ + 4, ceiling, 4, 26)
-	Kit.ceilingLight(model, ox, sofaZ, ceiling, 3, 20)
+	lantern(model, GARDEN_X - 5, F + 6.5, v.MinZ, Vector3.new(0, 0, -1))
 
 	-- Gardens: trees along the walls, a gazebo behind the villa.
 	local treeIndex = 0
@@ -413,12 +1010,12 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 		treeAt(r.MaxX - 10, z)
 	end
 	local gz = (r.MinZ + v.MinZ) / 2
-	local gxz = Vector3.new(v.MinX + 30, W, gz)
-	Kit.drum(model, "GazeboFloor", gxz.X, gxz.Z, W - 0.6, W + 0.8, 16, Kit.Style.Marble)
+	local centre = Vector3.new(GARDEN_X, W, gz)
+	Kit.drum(model, "GazeboFloor", centre.X, centre.Z, W - 0.6, W + 0.8, 16, Kit.Style.Marble)
 	for k = 0, 5 do
 		local a = k * math.pi / 3
-		local p = gxz + Vector3.new(math.cos(a) * 6.6, 0, math.sin(a) * 6.6)
-		Util.cylinder(
+		local p = centre + Vector3.new(math.cos(a) * 6.6, 0, math.sin(a) * 6.6)
+		Parts.cylinder(
 			model,
 			"GazeboColumn",
 			p + Vector3.new(0, 0.8, 0),
@@ -426,15 +1023,57 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 			0.9,
 			Kit.Style.Marble
 		)
-		Kit.add(1)
 	end
 	-- The roof ring hides the lower half of the dome.
-	Kit.drum(model, "GazeboRoof", gxz.X, gxz.Z, W + 7.4, W + 10.6, 16, Kit.Style.Plaster)
-	Kit.ellipsoid(model, "GazeboDome", gxz + Vector3.new(0, 10.6, 0), Vector3.new(15, 6.4, 15), Kit.Style.Copper)
-	Kit.bench(model, gxz + Vector3.new(0, 0.8, 4.4), Vector3.new(0, 0, -1))
-	Kit.bench(model, gxz + Vector3.new(0, 0.8, -4.4), Vector3.new(0, 0, 1))
+	Kit.drum(model, "GazeboRoof", centre.X, centre.Z, W + 7.4, W + 10.6, 16, Kit.Style.Plaster)
+	Kit.ellipsoid(model, "GazeboDome", centre + Vector3.new(0, 10.6, 0), Vector3.new(15, 6.4, 15), Kit.Style.Copper)
+	Kit.bench(model, centre + Vector3.new(0, 0.8, 4.4), Vector3.new(0, 0, -1))
+	Kit.bench(model, centre + Vector3.new(0, 0.8, -4.4), Vector3.new(0, 0, 1))
+	-- A round table between the benches and a lantern hanging from the roof.
+	local wood = Materials.Wood.Walnut
+	Parts.cylinder(
+		model,
+		"GazeboTableFoot",
+		centre + Vector3.new(0, 0.8, 0),
+		centre + Vector3.new(0, 3.5, 0),
+		0.6,
+		Parts.detail(wood)
+	)
+	Parts.cylinder(model, "GazeboTable", centre + Vector3.new(0, 3.5, 0), centre + Vector3.new(0, 3.75, 0), 4, wood)
+	Parts.cylinder(
+		model,
+		"GazeboLanternChain",
+		centre + Vector3.new(0, 6.9, 0),
+		centre + Vector3.new(0, 7.5, 0),
+		0.12,
+		Parts.detail(Materials.Metal.Iron)
+	)
+	local glass = Parts.box(
+		model,
+		"GazeboLantern",
+		centre.X - 0.5,
+		W + 6,
+		centre.Z - 0.5,
+		centre.X + 0.5,
+		W + 6.9,
+		centre.Z + 0.5,
+		{
+			Material = Enum.Material.Glass,
+			Color = Color3.fromRGB(250, 238, 200),
+			CastShadow = false,
+			CanCollide = false,
+		}
+	)
+	glass:SetAttribute("RoNationLamp", true)
+	local light = Instance.new("PointLight")
+	light:SetAttribute("RoNationStreetLight", true)
+	light.Enabled = false
+	light.Range = 16
+	light.Brightness = 1.2
+	light.Color = Color3.fromRGB(255, 224, 180)
+	light.Parent = glass
 
-	model:SetAttribute("Height", R + 11 - G)
+	model:SetAttribute("Height", R + roofHeight + 3.5 - G)
 	return report
 end
 

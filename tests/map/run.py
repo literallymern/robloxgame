@@ -26,11 +26,13 @@ MODULES = {
     "StudioTools/CheckEnvironment": "src/studio/CheckEnvironment.luau",
     "StudioTools/UpgradeKagundali": "src/studio/UpgradeKagundali.luau",
     "StudioTools/UseCreatorStoreAssets": "src/studio/UseCreatorStoreAssets.luau",
+    "Server/Services/DoorService": "src/server/Services/DoorService.luau",
 }
 for folder, prefix in (
     ("src/studio/Map", "StudioTools/Map"),
     ("src/studio/Map/Builders", "StudioTools/Map/Builders"),
     ("src/studio/Gundiville", "StudioTools/Gundiville"),
+    ("src/studio/Architecture", "StudioTools/Architecture"),
     ("src/shared/Environment", "ReplicatedStorage/Shared/Environment"),
 ):
     for file in sorted(os.listdir(os.path.join(ROOT, folder))):

@@ -2,9 +2,9 @@
 
 Run by Justin in Roblox Studio on his PC. Claude cannot run this test (no Studio access). A German step-by-step version is in the project files (`game/milestone-3/Studio-Test-Meilenstein-3.md`), together with the preview image.
 
-This checklist covers the Gundiville government district (district version `district-1`, [02-map-plan.md](../02-map-plan.md), section 14). It does not touch terrain; terrain work stays with Codex.
+This checklist covers the Gundiville government district (district version `district-2`, [02-map-plan.md](../02-map-plan.md), section 14). It does not touch terrain; terrain work stays with Codex.
 
-Result of the last run: **first build on 2026-10-28** (Justin): 3,309 parts, avatar loaded, flags visible. Found: the statue came out tiny with one accessory floating away, and the saved terrain (about Y 61.5 to 62) covered the streets and lawns. Both fixed in revision 1 (statue posed from its joints and attachments, now gold and 50 studs; district measured onto the terrain). Steps 2, 3, 5, 7 and 8 below are updated for revision 1.
+Result of the last run: **first build on 2026-10-28** (Justin): 3,309 parts, avatar loaded, flags visible. Found: the statue came out tiny with one accessory floating away, and the saved terrain (about Y 61.5 to 62) covered the streets and lawns. Both fixed in revision 1 (statue posed from its joints and attachments, now gold and 50 studs; district measured onto the terrain). Steps 2, 3, 5, 7 and 8 below are updated for revision 1. Revision 2 (building overhaul) has its own steps R1–R8 below; not run in Studio yet.
 
 ## What was tested before this checklist (cloud session, not Studio)
 
@@ -20,7 +20,7 @@ Result of the last run: **first build on 2026-10-28** (Justin): 3,309 parts, ava
 
 ## Before you start
 
-- GitHub Desktop has pulled the default branch, `rojo serve` is running and the Rojo plugin is connected. Explorer shows `ServerStorage > StudioTools > BuildGundiville` and `StudioTools > Gundiville` (9 modules), and `ReplicatedStorage > Shared > Config > GovernmentDistrict`.
+- GitHub Desktop has pulled the default branch, `rojo serve` is running and the Rojo plugin is connected. Explorer shows `ServerStorage > StudioTools > BuildGundiville`, `StudioTools > Gundiville` (9 modules) and `StudioTools > Architecture` (9 modules), `ServerScriptService > Server > Services > DoorService`, and `ReplicatedStorage > Shared > Config > GovernmentDistrict`.
 - **Back up the place first:** *File → Save to File As…* → `Ro-Nation-before-M3.rbxl` outside the Git folder.
 - Codex is not working on the place at the same time.
 
@@ -29,7 +29,7 @@ Result of the last run: **first build on 2026-10-28** (Justin): 3,309 parts, ava
 | # | Step | Expected result | Checks |
 |---|---|---|---|
 | 1 | *Optional, for Roblox's own trees and street lamps:* in **edit mode** run `require(game.ServerStorage.StudioTools.Map.CreatorAssets).install()` | Output: `[Ro-Nation:Assets] Forest Pack (6432306802): … templates selected.` and the same for the City Props Pack; `ServerStorage > RoNationCreatorAssets` exists. This only adds a folder to ServerStorage; it changes no terrain. If it prints an error, skip it: the district then uses its own trees and lamps | A27, store assets |
-| 2 | In **edit mode** (Play stopped) with *View → Output* open, run `require(game.ServerStorage.StudioTools.BuildGundiville).run()` in the command bar | Output: `District version district-1. Building streets, square, buildings and the statue...`, then a `Ground:` line with the measured terrain height and the lift (for example `Ground: saved terrain under the district at Y 61.5 to 62.0; district raised by 1.95 studs to stand on it.`), `Removed 6 placeholder blocks that the district replaces.`, `Built … parts (…)`, `Statue: avatar of user 2595858454, finish Gold, figure 50.0 studs high.`, `Done in … s`. A line `Statue: 1 accessory of the avatar fit nowhere on the body and were left out.` is information, not an error | Builder runs in Studio, A33 |
+| 2 | In **edit mode** (Play stopped) with *View → Output* open, run `require(game.ServerStorage.StudioTools.BuildGundiville).run()` in the command bar | Output: `District version district-2. Building streets, square, buildings and the statue...`, then a `Ground:` line with the measured terrain height and the lift (for example `Ground: saved terrain under the district at Y 61.5 to 62.0; district raised by 1.95 studs to stand on it.`), `Removed 6 placeholder blocks that the district replaces.`, `Built … parts (…)`, `Statue: avatar of user 2595858454, finish Gold, figure 50.0 studs high.`, `Done in … s`. A line `Statue: 1 accessory of the avatar fit nowhere on the body and were left out.` is information, not an error | Builder runs in Studio, A33 |
 | 3 | Look for yellow warnings with `[Ro-Nation:BuildGundiville]` | None. If the statue warning appears (`Statue avatar could not be loaded`), see *If something goes wrong*. If a warning says the terrain reaches higher than the maximum lift, send a screenshot of that area | A29, A33 |
 | 4 | The camera has moved over the square (or run `….BuildGundiville).focus()`). Fly around | The six grey placeholder blocks are gone. Square with stalls, the statue in the middle, the Congress with its green dome at the north end, the Hausali (red roof) east, the bank west, the residence behind walls to the north-east | Layout |
 | 5 | Avenue south of the square | Two carriageways with dashed lines, a planted median with trees and double lamps, sidewalks with kerbs, zebra crossings, street name signs "Avenue du 12 Mai" at both ends. Asphalt, sidewalks and lawns lie on top of the terrain, nowhere under it. At its south end the avenue ramps gently onto N5, and the main street onto N4 at its east end, without a step | Streets, A33 |
@@ -45,6 +45,23 @@ Result of the last run: **first build on 2026-10-28** (Justin): 3,309 parts, ava
 | 15 | Press **Play**, walk from the bus terminal up the avenue to the square and into each walkable room | You can walk through every door listed above without getting stuck; the stalls, benches and statue block you, the doorways do not. Movement stays smooth | Walkability, A31 |
 | 16 | Night: in Play switch the command bar to **Server** (Home tab: *Client/Server* button) and run `require(game.ServerScriptService.Server.Services.EnvironmentService).setClockTime(21)` | Street lamps, gate lanterns and the statue floodlights near you light up | Night lights |
 | 17 | Stop Play. *File → Save to Roblox* (or Publish), then *File → Save to File As…* → `Ro-Nation-M3.rbxl` outside the Git folder | Place saved, backup exists | |
+
+## Revision 2 — building overhaul (after steps 1–17)
+
+The four buildings were rebuilt with furnished rooms behind every window and working doors (district version `district-2`, [MILESTONES.md](../MILESTONES.md), Milestone 3, revision 2). Tested before this checklist, in the cloud session only: `tests/map/architecture.spec.luau` (71 checks) and the whole `test_all.py`; offline floor plans and 3D views. Nothing of revision 2 has been seen in Roblox Studio yet. The build now makes about 28,000 parts, so `run()` takes longer than before.
+
+| # | Step | Expected result | Checks |
+|---|---|---|---|
+| R1 | Step 2 again (`….BuildGundiville).run()` in edit mode) | `District version district-2…`, `Built …` with about 28,000 parts. No yellow `[Ro-Nation:Plan] … cannot be reached` warning and no `over the district budget` warning | Build |
+| R2 | Fly round each building | Window frames with mullions and sills; shutters on the villa and the Hausali; gutters and downpipes on the Hausali and the villa; AC units on the back and side walls of the Hausali, the bank and the villa; condensers, vents and hatches on the flat roofs of the Congress and the bank. Behind every window you see a furnished room, a corridor or a stair with a ceiling light, never an empty box or a wall | Windows have rooms |
+| R3 | Press **Play**. Walk to a closed door inside a building and press **E** at the prompt *Open* | The door swings open in about half a second; the prompt now says *Close*; pressing again closes it. The main portals and the villa's front door start open | DoorService |
+| R4 | Walk through every storey of the Congress, the Hausali and the bank by the stairs | Corridors connect the rooms; every door leads somewhere; you walk up the stairs without jumping; rooms have desks, chairs, shelves, plants, lamps that fit the room | Floor plans, stairs |
+| R5 | Residence: guard posts at the gate, then the villa | Each guard post: door that opens, window, glazed counter, desk with computer and chair. Villa ground floor: hall with stair, salon, music room with a piano, dining room, kitchen, library, aide-de-camp's office, the Leader's office (desk with nameplate, chair you can sit on, conference table). Upstairs: upper hall onto the balcony, bedrooms, bathrooms, dressing room, guest suite | Residence |
+| R6 | Square | Each stall: striped awning, counter with crates, shelves of goods, baskets, a stool and a sign (FRUIT, VEGETABLES, SPICES, COFFEE & TEA, TEXTILES) | Stalls |
+| R7 | In Play open *View → Stats* or press **Shift+F5**, stand in the Congress hall, on the square and in the villa | Note the frame rate in each place. Below about 40 FPS on your PC, send a screenshot of the numbers | Performance (20–25 players) |
+| R8 | Stop Play. Save as in step 17 | Place saved | |
+
+If a room looks wrong, a door does not open, or a window shows no room, send a screenshot with the building and storey, and the Output lines.
 
 ## If something goes wrong
 

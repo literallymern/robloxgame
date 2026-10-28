@@ -5,7 +5,8 @@
 2. The property plots in MapLayout match the economy bot's GENESIS_PROPERTIES (name, city, type).
 3. tests/map/landscape.spec.luau (river cascades, lakes, fields, road details, vegetation).
 4. tests/map/builders.spec.luau: the real BuildMap script against a Roblox stand-in (about a minute).
-The other specs in the list below (among them gundiville.spec.luau, Milestone 3) run between 3 and 4.
+The other specs in the list below (among them gundiville.spec.luau, Milestone 3, and
+architecture.spec.luau, the building overhaul) run between 3 and 4.
 
 Usage: python3 tests/map/test_all.py [--quick]     (needs `luau` on PATH or $LUAU; --quick skips 4)
 """
@@ -77,7 +78,7 @@ def main():
         "river-detail", "roads-realism", "vegetation-builders", "canopy",
         "highland-relief", "soil-refinement", "original-parity", "terrain-upgrade", "infrastructure-v3",
         "bridge-ground", "road-ground", "kagundali", "kagundali-terrain", "junction-markings", "creator-assets", "upgrade-entry", "environment-inspection",
-        "gundiville",
+        "gundiville", "architecture",
     ):
         result = subprocess.run(
             [sys.executable, os.path.join(HERE, "run.py"), os.path.join(HERE, spec + ".spec.luau")],

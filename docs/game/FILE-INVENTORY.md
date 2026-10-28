@@ -2,7 +2,7 @@
 
 Every file and folder of the project, what it is for and which milestone owns it. Updated at the end of every milestone.
 
-Last update: 2026-10-28 (Milestone 3: Gundiville government district).
+Last update: 2026-10-28 (Milestone 3 revision 2: building overhaul).
 
 ## Repository root
 
@@ -32,12 +32,13 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/shared/Util/Log.luau` | `…Shared.Util.Log` | Tagged logger `[Ro-Nation:Tag]` | 1 |
 | `src/shared/Util/Signal.luau` | `…Shared.Util.Signal` | Small event helper | 1 |
 | `src/shared/Util/Format.luau` | `…Shared.Util.Format` | KGD amounts and local times for display | 1 |
-| `src/server/Main.server.luau` | `ServerScriptService.Server.Main` | Server entry point; loads services in a fixed order (5 since rev. 3) | 1 |
+| `src/server/Main.server.luau` | `ServerScriptService.Server.Main` | Server entry point; loads services in a fixed order (5 since rev. 3, 6 with `DoorService` since Milestone 3 rev. 2) | 1, 3 |
 | `src/server/Config/BridgeConfig.luau` | `…Server.Config.BridgeConfig` | Bridge address, secret name, timeouts, retries (server only, no secret values) | 1 |
 | `src/server/Services/PermissionService.luau` | `…Server.Services.PermissionService` | Owner and staff from the group rank | 1 |
 | `src/server/Services/RemoteService.luau` | `…Server.Services.RemoteService` | Creates remotes, rate limits, safe replies, notifications | 1 |
 | `src/server/Services/EconomyGateway.luau` | `…Server.Services.EconomyGateway` | Only connection to the economy bridge: secret header, retries, operation IDs, pending store, health | 1 |
 | `src/server/Services/AccountLinkService.luau` | `…Server.Services.AccountLinkService` | Account view, link code, transactions, staff test transfer | 1 |
+| `src/server/Services/DoorService.luau` | `…Server.Services.DoorService` | Swings the tagged building doors on their prompt (server tween of a hinge part; no remotes) | 3 (rev. 2) |
 | `src/client/Main.client.luau` | `StarterPlayer.StarterPlayerScripts.Client.Main` | Client entry point; loads controllers (5 since rev. 3) | 1 |
 | `src/client/Util/Ui.luau` | `…Client.Util.Ui` | UI building helpers and colours | 1 |
 | `src/client/Controllers/NotificationController.luau` | `…Client.Controllers.NotificationController` | Toast notifications | 1 |
@@ -96,16 +97,25 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/Map/Builders/JunctionMarkings.luau` | `…Map.Builders.JunctionMarkings` | Restores road markings on the saved road surface at the junction | 2 (rev. 4) |
 | `src/shared/Config/GovernmentDistrict.luau` | `ReplicatedStorage.Shared.Config.GovernmentDistrict` | Government district: streets, square, buildings, residence, statue (user, size, finish, inscription), part budget (single source) | 3 |
 | `src/studio/BuildGundiville.luau` | `ServerStorage.StudioTools.BuildGundiville` | Commands: `run()`, `statue({ Finish = … })`, `focus()`, `remove()` (edit mode, one undo step each) | 3 |
-| `src/studio/Gundiville/Kit.luau` | `…StudioTools.Gundiville.Kit` | Building kit: walls with openings, windows, shutters, columns, pediments, roofs, dome, flags, emblem, inscriptions, lamps, trees, furniture; part counter | 3 |
+| `src/studio/Gundiville/Kit.luau` | `…StudioTools.Gundiville.Kit` | Building kit: walls with openings, windows, shutters, columns, pediments, roofs, dome, flags, emblem, inscriptions, lamps, trees, furniture (part counter moved to `Architecture.Parts` in rev. 2) | 3 |
 | `src/studio/Gundiville/District.luau` | `…Gundiville.District` | Builds the whole district into one folder and reports parts per builder | 3 |
 | `src/studio/Gundiville/Ground.luau` | `…Gundiville.Ground` | Measures the saved terrain under the district (raycasts, terrain only read) and the roads the avenue and main street meet; the district is raised onto it with footings and end ramps | 3 |
 | `src/studio/Gundiville/Streets.luau` | `…Gundiville.Streets` | Carriageways, sidewalks, avenue median with trees and lights, centre lines, zebra crossings, street name signs | 3 |
-| `src/studio/Gundiville/Square.luau` | `…Gundiville.Square` | Main square: paving, 16 market stalls, flags, lamps, benches, trees | 3 |
-| `src/studio/Gundiville/Congress.luau` | `…Gundiville.Congress` | General People's Congress with dome, entrance hall and assembly chamber | 3 |
-| `src/studio/Gundiville/Hausali.luau` | `…Gundiville.Hausali` | Hausali with lobby, balcony and garden | 3 |
-| `src/studio/Gundiville/CentralBank.luau` | `…Gundiville.CentralBank` | Central Bank with banking hall (no money functions) | 3 |
-| `src/studio/Gundiville/Residence.luau` | `…Gundiville.Residence` | Leader's residence: walls, gate, guard posts, villa with hall and office, gardens | 3 |
+| `src/studio/Gundiville/Square.luau` | `…Gundiville.Square` | Main square: paving, 16 market stalls (awning, counter, goods, stool, trade sign), flags, lamps, benches, trees | 3 (rev. 2) |
+| `src/studio/Gundiville/Congress.luau` | `…Gundiville.Congress` | General People's Congress with dome: facades, space plan of all storeys (entrance hall, chamber with 50 seats, offices, committee rooms, press room) | 3 (rev. 2) |
+| `src/studio/Gundiville/Hausali.luau` | `…Gundiville.Hausali` | Hausali: facades, risalit, balcony, garden and the space plan of all storeys (lobby, offices, cabinet room, salons) | 3 (rev. 2) |
+| `src/studio/Gundiville/CentralBank.luau` | `…Gundiville.CentralBank` | Central Bank: facades and space plan (banking hall with five tellers, vault, offices; no money functions) | 3 (rev. 2) |
+| `src/studio/Gundiville/Residence.luau` | `…Gundiville.Residence` | Leader's residence: walls, gate, furnished guard posts, two-storey villa with 17 rooms (Leader's office, salon, music room, private rooms), gardens, gazebo | 3 (rev. 2) |
 | `src/studio/Gundiville/Statue.luau` | `…Gundiville.Statue` | Statue of Dr. Justin Wachmann: loads the Owner's avatar, poses it from its joints and accessory attachments, finishes (gold by default), pedestal, plaques, floodlights; stand-in fallback | 3 |
+| `src/studio/Architecture/Parts.luau` | `…StudioTools.Architecture.Parts` | Counted, anchored part creation shared by the kit and the architecture modules; footings | 3 (rev. 2) |
+| `src/studio/Architecture/Materials.luau` | `…Architecture.Materials` | Material and colour presets (plaster, stone, tiles, wood, fabric, metal, glass) with small variations | 3 (rev. 2) |
+| `src/studio/Architecture/Openings.luau` | `…Architecture.Openings` | Windows (frame, mullions, sills, surrounds, shutters) and doors (frames, leaves, handles, prompt, `RoNationDoor` tag) in real wall openings | 3 (rev. 2) |
+| `src/studio/Architecture/Shell.luau` | `…Architecture.Shell` | Facade wall runs with openings, storey by storey; maps every window to the room behind it | 3 (rev. 2) |
+| `src/studio/Architecture/Plan.luau` | `…Architecture.Plan` | Space plans: partitions with doors, floor slabs, finishes, ceiling lights, door signs, stairs; window and reachability report | 3 (rev. 2) |
+| `src/studio/Architecture/Stairs.luau` | `…Architecture.Stairs` | Switchback staircases with landings and handrails | 3 (rev. 2) |
+| `src/studio/Architecture/Rooms.luau` | `…Architecture.Rooms` | 44 furnishing recipes by room type; placement that keeps doors and windows clear | 3 (rev. 2) |
+| `src/studio/Architecture/Furniture.luau` | `…Architecture.Furniture` | 52 furniture pieces and fittings (seats are `Seat` parts, lamps, chandeliers, piano) | 3 (rev. 2) |
+| `src/studio/Architecture/Exterior.luau` | `…Architecture.Exterior` | Gutters, downpipes, AC units, rooftop condensers, vents, roof hatches | 3 (rev. 2) |
 
 Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src/client/UI` (Milestone 4/8). See [01-architecture.md](01-architecture.md), section 3.
 
@@ -118,8 +128,9 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `tests/map/heightfield.spec.luau` | Checks of the layout and the terrain calculations | 2 |
 | `tests/map/landscape.spec.luau` | Checks of river cascades, lakes, fields, road details and vegetation | 2 (rev. 2) |
 | `tests/map/builders.spec.luau` | Runs the real `BuildMap` against the Roblox stand-in and checks the result | 2 |
-| `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use (since 3 also seats, decals, lights, humanoid characters, `Players`, `ChangeHistoryService`) | 2, 3 |
+| `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use (since 3 also seats, decals, lights, humanoid characters, `Players`, `ChangeHistoryService`; since rev. 2 signals, tags, prompts, `TweenService`) | 2, 3 |
 | `tests/map/gundiville.spec.luau` | 177 checks of the government district build (plan, budget, buildings, flags, rooms, statue, reruns, store assets) | 3 |
+| `tests/map/architecture.spec.luau` | 71 checks of the four buildings: every window has a room, rooms reachable, budgets, doors, furniture, stairs, DoorService | 3 (rev. 2) |
 | `tests/map/preview.luau`, `tests/map/preview.py` | Renders the map preview image (needs Pillow and numpy) | 2 |
 | `tests/map/*.spec.luau` (17 more: river detail, roads realism, vegetation builders, canopy, highland relief, soil, original parity, terrain upgrade, infrastructure, bridge and road ground, Kagundali, Kagundali terrain, junction markings, creator assets, upgrade entry, environment inspection) | Checks of the environment overhaul and the junction benchmark; all run by `test_all.py` | 2 (rev. 3/4) |
 | `tests/map/preview-canopies.luau`, `tests/map/preview-junction.luau` | Geometry data for the tree previews in `tools/` | 2 (rev. 3/4) |

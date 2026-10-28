@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Util = require(script.Parent.Parent.Map.Builders.Util)
 local CreatorAssets = require(script.Parent.Parent.Map.CreatorAssets)
+local Parts = require(script.Parent.Parent.Architecture.Parts)
 
 local Kit = {}
 
@@ -80,50 +81,14 @@ function Kit.model(parent: Instance, name: string, building: string): Model
 	return model
 end
 
-local count = 0
-local footingGround: number? = nil
-local footingY: number? = nil
-
+-- The part counter and boxes live in Architecture.Parts (one counter for the whole district).
 -- When the district stands above its planned ground (see Ground.luau), boxes that reach down to
--- the ground continue down to `footing`, so no gap shows where the terrain is lower. Call with
--- nil to switch it off.
-function Kit.setFooting(ground: number?, footing: number?)
-	footingGround, footingY = ground, footing
-end
-
--- Number of BaseParts built since the last reset (the district budget is checked with it).
-function Kit.resetCount()
-	count = 0
-end
-function Kit.partCount(): number
-	return count
-end
-function Kit.add(n: number)
-	count += n
-end
-
--- Axis-aligned box between two corners.
-function Kit.box(
-	parent: Instance,
-	name: string,
-	x0: number,
-	y0: number,
-	z0: number,
-	x1: number,
-	y1: number,
-	z1: number,
-	options: Options?
-): Part
-	local lo = Vector3.new(math.min(x0, x1), math.min(y0, y1), math.min(z0, z1))
-	local hi = Vector3.new(math.max(x0, x1), math.max(y0, y1), math.max(z0, z1))
-	if footingGround and footingY and lo.Y <= footingGround + 1e-3 and lo.Y > footingY then
-		lo = Vector3.new(lo.X, footingY, lo.Z)
-	end
-	local size = hi - lo
-	assert(size.X > 0 and size.Y > 0 and size.Z > 0, `Kit.box {name}: empty box`)
-	count += 1
-	return Util.part(parent, name, CFrame.new((lo + hi) / 2), size, options)
-end
+-- the ground continue down to the footing, so no gap shows where the terrain is lower.
+Kit.setFooting = Parts.setFooting
+Kit.resetCount = Parts.reset
+Kit.partCount = Parts.count
+Kit.add = Parts.add
+Kit.box = Parts.box
 
 function Kit.slab(parent: Instance, name: string, r: Rect, y0: number, y1: number, options: Options?): Part
 	return Kit.box(parent, name, r.MinX, y0, r.MinZ, r.MaxX, y1, r.MaxZ, options)
@@ -329,7 +294,7 @@ function Kit.column(
 	local o = options or Kit.Style.Marble
 	local b = diameter * 0.65
 	Kit.box(parent, "ColumnBase", x - b, y0, z - b, x + b, y0 + 1, z + b, o)
-	count += 1
+	Parts.add(1)
 	Util.cylinder(parent, "Column", Vector3.new(x, y0 + 1, z), Vector3.new(x, y1 - 1.2, z), diameter, o)
 	local c = diameter * 0.7
 	Kit.box(parent, "Capital", x - c, y1 - 1.2, z - c, x + c, y1, z + c, o)
@@ -361,7 +326,7 @@ function Kit.pediment(
 			else Vector3.new(p, y + height / 2, centreS)
 		local look = if face.Axis == "Z" then Vector3.new(side, 0, 0) else Vector3.new(0, 0, side)
 		Util.wedge(parent, "Pediment", CFrame.lookAt(centre, centre + look), Vector3.new(depth, height, half), options)
-		count += 1
+		Parts.add(1)
 	end
 	return 2
 end
@@ -400,7 +365,7 @@ function Kit.gableRoof(
 				options
 			)
 		end
-		count += 1
+		Parts.add(1)
 	end
 	return 2
 end
@@ -475,13 +440,13 @@ end
 
 -- A vertical cylinder (axis up) from y0 to y1.
 function Kit.drum(parent: Instance, name: string, x: number, z: number, y0: number, y1: number, d: number, o: Options?)
-	count += 1
+	Parts.add(1)
 	return Util.cylinder(parent, name, Vector3.new(x, y0, z), Vector3.new(x, y1, z), d, o)
 end
 
 -- An ellipsoid (sphere mesh) centred at `centre`.
 function Kit.ellipsoid(parent: Instance, name: string, centre: Vector3, size: Vector3, o: Options?): Part
-	count += 1
+	Parts.add(1)
 	return Util.ellipsoid(parent, name, CFrame.new(centre), size, o)
 end
 
@@ -505,7 +470,7 @@ function Kit.image(
 		Vector3.new(width, height, 0.1),
 		{ Transparency = 1, Decoration = true }
 	)
-	count += 1
+	Parts.add(1)
 	local decal = Instance.new("Decal")
 	decal.Texture = image
 	decal.Face = Enum.NormalId.Front
@@ -520,7 +485,7 @@ function Kit.flagpole(parent: Instance, base: Vector3, height: number, flagWidth
 	local pole = Kit.Style.Iron
 	Util.cylinder(parent, "Flagpole", base, base + Vector3.new(0, height, 0), math.max(0.35, height / 90), pole)
 	Kit.ellipsoid(parent, "Finial", base + Vector3.new(0, height + 0.3, 0), Vector3.new(0.9, 0.9, 0.9), Kit.Style.Gold)
-	count += 1
+	Parts.add(1)
 	local flagHeight = flagWidth * FLAG_PIXELS.Y / FLAG_PIXELS.X
 	local dir = Vector3.new(out.X, 0, out.Z).Unit
 	local centre = base + Vector3.new(0, height - 0.6 - flagHeight / 2, 0) + dir * (flagWidth / 2 + 0.3)
@@ -597,14 +562,14 @@ function Kit.lamp(parent: Instance, base: Vector3, height: number, arms: { Vecto
 					built += 1
 				end
 			end
-			count += built
+			Parts.add(built)
 			return built
 		end
 	end
 	local metal = Kit.Style.Iron
 	Util.cylinder(parent, "LampPost", base - Vector3.new(0, 0.5, 0), base + Vector3.new(0, height, 0), 0.7, metal)
 	Kit.box(parent, "LampFoot", base.X - 0.8, base.Y, base.Z - 0.8, base.X + 0.8, base.Y + 1.6, base.Z + 0.8, metal)
-	count += 1
+	Parts.add(1)
 	local built = 2
 	for _, arm in arms do
 		local dir = Vector3.new(arm.X, 0, arm.Z).Unit
@@ -629,7 +594,7 @@ function Kit.lamp(parent: Instance, base: Vector3, height: number, arms: { Vecto
 		light.Color = rgb(255, 224, 180)
 		light.Shadows = false
 		light.Parent = head
-		count += 2
+		Parts.add(2)
 		built += 2
 	end
 	return built
@@ -647,7 +612,7 @@ function Kit.tree(parent: Instance, base: Vector3, height: number, variant: numb
 					built += 1
 				end
 			end
-			count += built
+			Parts.add(built)
 			return built
 		end
 	end
@@ -669,7 +634,7 @@ function Kit.tree(parent: Instance, base: Vector3, height: number, variant: numb
 		Vector3.new(crown * 0.7, crown * 0.6, crown * 0.7),
 		green
 	)
-	count += 1
+	Parts.add(1)
 	return 3
 end
 
@@ -698,7 +663,7 @@ function Kit.bench(parent: Instance, base: Vector3, facing: Vector3): number
 	for _, side in { -2.1, 2.1 } do
 		Util.part(parent, "BenchLeg", frame * CFrame.new(side, 0.7, 0.1), Vector3.new(0.3, 1.4, 1.6), Kit.Style.Iron)
 	end
-	count += 4
+	Parts.add(4)
 	return 4
 end
 
