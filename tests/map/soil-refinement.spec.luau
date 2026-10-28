@@ -1,8 +1,9 @@
 --!strict
--- Reference-driven material coverage and saved highland-3 baseline checks, outside Studio.
+-- Historical highland-3/4 material regressions, needed to recognize saved terrain exactly.
+-- The active habitat/grass changes are covered by realism.spec.luau.
 local Heightfield = load("StudioTools/Map/Heightfield")
 local Layout = load("ReplicatedStorage/Shared/Config/MapLayout")
-local hf = Heightfield.new(Layout)
+local hf = Heightfield.new(Layout).highland4
 local failures, checks = 0, 0
 local function check(name: string, ok: boolean)
 	checks += 1

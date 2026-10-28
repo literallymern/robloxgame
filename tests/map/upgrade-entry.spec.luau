@@ -144,7 +144,7 @@ check(
 )
 check(
 	"full upgrade reports applied revision and actual terrain counters",
-	report.Geometry.Revision == "highland-4"
+	report.Geometry.Revision == BuildMap.EnvironmentRevision
 		and report.Geometry.TerrainRebuilt
 		and report.Terrain.ChangedColumns == 7
 		and map:GetAttribute("EnvironmentTerrainChangedColumns") == 7

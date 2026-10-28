@@ -94,6 +94,31 @@ check(
 	"complete imported vegetation bypasses procedural CSG preparation"
 )
 local parent = Instance.new("Folder")
+local globalParent = Instance.new("Folder")
+local globalCount = load("StudioTools/Map/Builders/Vegetation").tree(globalParent, {
+	Kind = "Broadleaf",
+	X = 100,
+	Y = 30,
+	Z = 200,
+	Size = 28,
+	Yaw = 0.4,
+	Seed = 0.35,
+	Slope = 0.1,
+}, function()
+	return 30
+end)
+local globalTree = globalParent:GetChildren()[1]
+check(
+	globalCount == 3
+		and globalTree:GetAttribute("SourceAssetId") == Assets.Packs[1].Id
+		and globalTree:GetAttribute("RootEmbedDepth") > 1
+		and globalTree.TrunkCollision.CanCollide,
+	"the shared map-wide builder reuses the saved official broadleaf tree with grounded roots"
+)
+check(
+	Assets.place("Tree", 1, globalParent, Vector3.new(0, 30, 0), 28, 0, nil, "Pine") == nil,
+	"missing imported species use the native fallback rather than changing the biome's trees"
+)
 local placed = Assets.place("Tree", 1, parent, Vector3.new(100, 30, 200), 28, 0)
 local low, high = math.huge, -math.huge
 for _, p in placed:GetChildren() do
@@ -102,14 +127,14 @@ for _, p in placed:GetChildren() do
 	end
 end
 check(
-	math.abs(low - 29.3) < 1e-6 and math.abs(high - 57.3) < 1e-6 and placed.TrunkCollision.CanCollide,
+	math.abs(low - 28.46) < 1e-6 and math.abs(high - 56.46) < 1e-6 and placed.TrunkCollision.CanCollide,
 	"tree keeps source proportions while its root tips are embedded and trunk collision stays grounded"
 )
 local sloped = Trees.plant(library, parent, "Broadleaf", 1, Vector3.new(100, 30, 200), 28, 0.7, function(x, _z)
 	return 30 + (x - 100) * 0.5
 end)
 check(
-	math.abs(sloped:GetAttribute("RootEmbedDepth") - 1.82) < 1e-6
+	math.abs(sloped:GetAttribute("RootEmbedDepth") - 2.66) < 1e-6
 		and (sloped:GetAttribute("GroundPosition") - Vector3.new(100, 30, 200)).Magnitude < 1e-6
 		and sloped.Trunk.CFrame.UpVector.Y == 1,
 	"planting samples downhill ground around the roots without tilting the trunk or moving its ground reference"
@@ -121,7 +146,7 @@ local unknown = Assets.place("Tree", 1, parent, Vector3.new(0, 30, 0), 28, 0, fu
 	return nil
 end)
 check(
-	cliff:GetAttribute("RootEmbedDepth") == 3 and math.abs(unknown:GetAttribute("RootEmbedDepth") - 0.7) < 1e-6,
+	cliff:GetAttribute("RootEmbedDepth") == 4.5 and math.abs(unknown:GetAttribute("RootEmbedDepth") - 1.54) < 1e-6,
 	"root embedding is bounded at abrupt drops and missing neighbour probes keep the conservative base depth"
 )
 local lamp = Assets.place("Lamp", 1, parent, Vector3.new(10, 20, 30), 17, math.pi / 2)

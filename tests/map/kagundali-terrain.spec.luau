@@ -41,6 +41,9 @@ local function exercise(baseline, bounds, editedX, editedZ, minimum)
 		end
 	end
 	local top = math.ceil(columns[editedX][editedZ].Height / 4)
+	while saved[editedX][editedZ][2][top] < 0.05 do
+		top -= 1
+	end -- paint an occupied voxel, not quantized air
 	saved[editedX][editedZ][1][top] = Enum.Material.Slate -- a manually painted surface must survive
 	local writes = 0
 	local backend = {}
@@ -109,17 +112,24 @@ local function exercise(baseline, bounds, editedX, editedZ, minimum)
 end
 exercise(hf, { MinX = 192, MaxX = 256, MinZ = 3392, MaxZ = 3456 }, 1, 1, 100)
 exercise(
-	load("StudioTools/Map/JunctionLandscape").decorateV1(hf, Layout),
+	load("StudioTools/Map/JunctionLandscape").decorateV1(hf.highland4, Layout),
 	{ MinX = 192, MaxX = 256, MinZ = 3328, MaxZ = 3392 },
 	14,
 	3,
 	20
 )
 exercise(
-	load("StudioTools/Map/JunctionLandscape").decorateV2(hf, Layout),
+	load("StudioTools/Map/JunctionLandscape").decorateV2(hf.highland4, Layout),
 	{ MinX = 320, MaxX = 384, MinZ = 3264, MaxZ = 3328 },
 	6,
 	15,
+	10
+)
+exercise(
+	load("StudioTools/Map/JunctionLandscape").decorateV4(hf.highland4, Layout),
+	{ MinX = 128, MaxX = 192, MinZ = 3072, MaxZ = 3136 },
+	6,
+	8,
 	10
 )
 print(`ALL CHECKS PASSED ({passed} Kagundali terrain checks)`)

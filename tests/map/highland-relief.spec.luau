@@ -1,9 +1,10 @@
 --!strict
--- Quantitative terrain/protection checks only; not a Roblox Studio visual acceptance test.
+-- Frozen highland-3/4 relief remains exact for saved-map migration. The active rework is
+-- covered by realism.spec.luau. Neither suite establishes Roblox Studio visual acceptance.
 local Heightfield = load("StudioTools/Map/Heightfield")
 local Layout = load("ReplicatedStorage/Shared/Config/MapLayout")
 local Config = load("StudioTools/Map/LandscapeConfig")
-local hf = Heightfield.new(Layout)
+local hf = Heightfield.new(Layout).highland4
 local failures = 0
 local function check(name: string, ok: boolean, detail: string?)
 	print(if ok then "PASS" else "FAIL", name, detail or "")
@@ -139,7 +140,7 @@ check(
 	tostring(materialChanges)
 )
 
-local again = Heightfield.new(Layout)
+local again = Heightfield.new(Layout).highland4
 local deterministic = true
 for _, p in { { -2110, -1700 }, { 1450, 2210 }, { 3900, -3710 }, { 4000, 3900 }, { -3700, 2800 } } do
 	local a, m, w = hf.surface(p[1], p[2])

@@ -209,7 +209,7 @@ return function(): Report
 	check(
 		"grass",
 		nil,
-		"Manually check Workspace > Terrain > Decoration in Properties and save. Roblox does not expose this setting to scripts."
+		"In Terrain Properties set GrassLength to 0.25, keep Decoration enabled, then save. Both properties are NotScriptable; the material update controls where taller grass can grow."
 	)
 	check(
 		"acceptance",

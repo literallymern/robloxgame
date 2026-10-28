@@ -396,6 +396,30 @@ check(
 	"highland-3 migration is idempotent",
 	fourthAgain.Complete and fourthAgain.ChangedColumns == 0 and fourthApi.Writes == 1
 )
+-- An additional exact saved generator (highland-4 or a regional patch) can be the only match.
+local fifth = table.clone(fourth)
+fifth.additionalBaselines = { { Surface = fixture.legacySurface, Material = fixture.legacyNaturalMaterial } }
+fifth.previousSurface, fifth.previousNaturalMaterial = fourth.originalSurface, fourth.originalNaturalMaterial
+local fifthApi = backend()
+local fifthDry = Upgrade.apply(fifth, layout, log, options(fifthApi, true))
+check(
+	"extra saved generator dry run performs no writes",
+	fifthDry.Complete and fifthDry.EligibleColumns == 253 and fifthApi.Writes == 0
+)
+local fifthResult = Upgrade.apply(fifth, layout, log, options(fifthApi))
+check(
+	"an extra exact baseline migrates the saved chunk",
+	fifthResult.Complete and fifthResult.ChangedColumns == 253 and fifthResult.PreviousColumns == 253
+)
+check(
+	"extra baseline matching preserves paint, sculpting and water",
+	fifthResult.PreservedColumns == 3 and fifthApi.Data[key(2, 9, 0)][1] == Enum.Material.Slate
+)
+local fifthAgain = Upgrade.apply(fifth, layout, log, options(fifthApi))
+check(
+	"extra baseline migration is idempotent",
+	fifthAgain.Complete and fifthAgain.ChangedColumns == 0 and fifthApi.Writes == 1
+)
 local invalidPrevious = table.clone(fixture)
 invalidPrevious.previousSurface = fixture.surface
 local incompletePreviousApi = backend()

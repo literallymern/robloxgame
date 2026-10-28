@@ -8,7 +8,7 @@ local Util = require(script.Parent.Util)
 local RoadDetailsBuilder = {}
 
 local UP = Vector3.new(0, 1, 0)
-local LINE_WHITE = Color3.fromRGB(236, 236, 228)
+local LINE_WHITE = Color3.fromRGB(216, 213, 198)
 
 local function markings(details: any, parent: Instance): number
 	local folder = Instance.new("Folder")
@@ -22,7 +22,7 @@ local function markings(details: any, parent: Instance): number
 		local a = Vector3.new(m.AX, m.AY, m.AZ)
 		local b = Vector3.new(m.BX, m.BY, m.BZ)
 		if (b - a).Magnitude > 0.2 then
-			Util.strip(folder, m.Kind, a, b, m.Width, 0.1, options)
+			Util.strip(folder, m.Kind, a, b, m.Width, 0.035, options)
 		end
 		Util.yield()
 	end
@@ -46,7 +46,14 @@ local function delineators(details: any, parent: Instance): number
 		local rotation = look - look.Position
 		Util.part(folder, "Post", CFrame.new(p.X, p.Y + 1.2, p.Z) * rotation, Vector3.new(0.45, 3.6, 0.3), white)
 		Util.part(folder, "Band", CFrame.new(p.X, p.Y + 2.4, p.Z) * rotation, Vector3.new(0.5, 0.7, 0.34), band)
-		count += 2
+		Util.part(
+			folder,
+			"Reflector",
+			CFrame.new(p.X, p.Y + 2.4, p.Z) * rotation * CFrame.new(0, 0, -0.18),
+			Vector3.new(0.16, 0.24, 0.035),
+			{ Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(225, 210, 156), Decoration = true }
+		)
+		count += 3
 		Util.yield()
 	end
 	folder.Parent = parent
@@ -162,8 +169,8 @@ local function powerLines(details: any, parent: Instance): number
 	local count = 0
 	for k, p in details.poles do
 		local foot = Vector3.new(p.X, p.Y, p.Z)
-		local height = 20
-		Util.cylinder(folder, "Pole", foot - UP * 2, foot + UP * height, 0.8, wood)
+		local height = 24
+		Util.cylinder(folder, "Pole", foot - UP * 2, foot + UP * height, 0.68, wood)
 		local top = foot + UP * (height - 1)
 		-- The cross arm runs across the line.
 		local across = Vector3.new(-p.DirZ, 0, p.DirX)
@@ -184,6 +191,22 @@ local function powerLines(details: any, parent: Instance): number
 	for _, pair in details.wires do
 		local a, b = arms[pair[1]], arms[pair[2]]
 		local span = (a.Position - b.Position).Magnitude
+		local sag, supported = math.min(4.5, span * 0.045), true
+		if details.wireGround then
+			for station = 1, 7 do
+				local t = station / 8
+				local p = a.Position:Lerp(b.Position, t)
+				local ground = details.wireGround(p.X, p.Z)
+				if not ground or p.Y - ground < 12 then
+					supported = false
+					break
+				end
+				sag = math.min(sag, (p.Y - ground - 12) / (4 * t * (1 - t)))
+			end
+		end
+		if not supported then
+			continue
+		end
 		for _, name in { "WireA", "WireB" } do
 			local beam = Instance.new("Beam")
 			beam.Name = "Wire"
@@ -195,8 +218,8 @@ local function powerLines(details: any, parent: Instance): number
 			beam.LightInfluence = 1
 			beam.FaceCamera = true
 			beam.Segments = 12
-			beam.CurveSize0 = span * 0.035
-			beam.CurveSize1 = -span * 0.035
+			beam.CurveSize0 = sag * 4 / 3
+			beam.CurveSize1 = -sag * 4 / 3
 			beam.Parent = a
 		end
 	end

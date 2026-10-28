@@ -26,6 +26,8 @@ export type Vegetation = {
 	trees: { Plant },
 	bushes: { Plant },
 	rocks: { Plant },
+	floor: { Plant },
+	sample: any,
 }
 
 local TREE_CELL = 18 -- studs; at most one tree per cell
@@ -178,6 +180,10 @@ function Vegetation.new(
 			end
 			local roll = Hash.unit(ix, iz, 3)
 			local cover = biomes.forest(x, z)
+			-- Connected stands and openings interrupt the fine candidate lattice without
+			-- adding trees to the global density budget. Crop hedges keep their authored rows.
+			local stand = math.clamp(0.7 + math.noise(x / 95 + 0.17, z / 180 + 0.41, 118.3), 0.25, 1)
+			cover *= stand
 			local riverDistance = waterEdge(x, z)
 			local isRiverside = false
 			if riverDistance < riverside.Width then
@@ -456,10 +462,39 @@ function Vegetation.new(
 		end
 	end
 
+	local floor: { Plant } = {}
+	for index, tree in trees do
+		if index % 3 ~= 0 or biomes.forest(tree.X, tree.Z) < 0.2 then
+			continue
+		end
+		local angle = tree.Yaw + 1.3
+		local radius = 2.5 + tree.Size * 0.13
+		local x, z = tree.X + math.cos(angle) * radius, tree.Z + math.sin(angle) * radius
+		if not clearOfWorks(x, z, 9) or waterEdge(x, z) < river.bankWidth + 3 then
+			continue
+		end
+		local y, slope = ground(x, z)
+		if not y or slope > 0.45 then
+			continue
+		end
+		local moist = math.noise(x / 135 + 0.23, z / 290 + 0.59, 112.7)
+		table.insert(floor, {
+			Kind = if moist < -0.07 then "Fern" elseif tree.Seed < 0.55 then "Deadwood" else "Litter",
+			X = x,
+			Y = y,
+			Z = z,
+			Size = if moist < -0.07 then 0.65 + tree.Seed * 0.65 else 1.2 + tree.Seed * 1.8,
+			Yaw = angle,
+			Seed = tree.Seed,
+			Slope = slope,
+		})
+	end
 	return {
 		trees = trees,
 		bushes = bushes,
 		rocks = rocks,
+		floor = floor,
+		sample = ground,
 	}
 end
 

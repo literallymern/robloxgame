@@ -56,6 +56,7 @@ export type RoadDetails = {
 	signs: { Sign },
 	poles: { Pole },
 	wires: { { number } }, -- pairs of pole indices (into `poles`) joined by wires
+	wireGround: (number, number) -> number?,
 }
 
 local LIFT = 0.05 -- markings stand this far above the road surface
@@ -174,6 +175,30 @@ function RoadDetails.new(
 		end
 		return false
 	end
+	local stops: { [number]: { S: number, Inward: number } } = {}
+	for _, j in roads.junctions do
+		local minor = roads.roads[j.Minor]
+		local s = if j.AtStart then 0 else minor.line.length
+		local inward = if j.AtStart then 1 else -1
+		for _ = 1, 40 do
+			local f = frameAt(minor, s)
+			if roads.otherDistance(f.x, f.z, j.Minor) >= 2.5 then
+				break
+			end
+			s += inward * 2
+		end
+		-- Roads can meet another road at either end; keep both approach limits.
+		stops[j.Minor * 2 + (if j.AtStart then 0 else 1)] = { S = s, Inward = inward }
+	end
+	local function beforeStop(r: number, s: number): boolean
+		for _, endIndex in { 0, 1 } do
+			local stop = stops[r * 2 + endIndex]
+			if stop and (s - stop.S) * stop.Inward < 2 then
+				return false
+			end
+		end
+		return true
+	end
 
 	-- Walks every straight run of road r and emits marking strips at lateral offset `offset`
 	-- where include(s, x, z) holds, split wherever it changes.
@@ -243,15 +268,15 @@ function RoadDetails.new(
 
 		if class.EdgeLines then
 			for side = -1, 1, 2 do
-				strips(r, side * (halfWidth - 1.2), 0.6, "Edge", function(_s, x, z)
-					return roads.otherDistance(x, z, r) > 2 and placeAt(x, z, 0) == nil
+				strips(r, side * (halfWidth - 1.2), 0.38, "Edge", function(s, x, z)
+					return beforeStop(r, s) and roads.otherDistance(x, z, r) > 3.5 and placeAt(x, z, 0) == nil
 				end)
 			end
 		end
 
 		if class.CentreLine then
-			strips(r, 0, 0.6, "Centre", function(s, x, z)
-				if roads.otherDistance(x, z, r) < 1 or placeAt(x, z, 0) ~= nil then
+			strips(r, 0, 0.42, "Centre", function(s, x, z)
+				if not beforeStop(r, s) or roads.otherDistance(x, z, r) < 1 or placeAt(x, z, 0) ~= nil then
 					return false
 				end
 				local f = frameAt(road, s)
@@ -270,17 +295,9 @@ function RoadDetails.new(
 	for _, j in roads.junctions do
 		local minor = roads.roads[j.Minor]
 		local major = roads.roads[j.Major]
-		local minorLength = minor.line.length
 		-- Walk from the junction into the minor road until it leaves the major road's surface.
-		local sStop = if j.AtStart then 0 else minorLength
+		local sStop = stops[j.Minor * 2 + (if j.AtStart then 0 else 1)].S
 		local inward = if j.AtStart then 1 else -1
-		for _ = 1, 40 do
-			local f = frameAt(minor, sStop)
-			if roads.otherDistance(f.x, f.z, j.Minor) >= 1.5 then
-				break
-			end
-			sStop += inward * 2
-		end
 		-- Arriving traffic drives towards the junction.
 		local f = frameAt(minor, sStop)
 		local hx, hz = f.dx * -inward, f.dz * -inward
@@ -294,7 +311,7 @@ function RoadDetails.new(
 			BX = f.x + rx * a2,
 			BY = f.y + LIFT + 0.01,
 			BZ = f.z + rz * a2,
-			Width = 1.2,
+			Width = 0.85,
 			Kind = "Stop",
 		})
 		-- The stop sign stands on the right, moved back where a slanted junction puts the major
@@ -741,6 +758,7 @@ function RoadDetails.new(
 		signs = signs,
 		poles = poles,
 		wires = wires,
+		wireGround = supportY,
 	}
 end
 

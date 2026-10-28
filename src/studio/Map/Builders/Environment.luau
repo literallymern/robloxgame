@@ -11,8 +11,8 @@ local function rgb(r: number, g: number, b: number): Color3
 end
 
 Environment.MaterialColours = {
-	Grass = rgb(91, 117, 65),
-	LeafyGrass = rgb(67, 96, 55),
+	Grass = rgb(99, 117, 70),
+	LeafyGrass = rgb(83, 105, 61),
 	Ground = rgb(130, 88, 62), -- damp lateritic highland soil
 	Mud = rgb(88, 68, 51),
 	Rock = rgb(115, 112, 103),

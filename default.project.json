@@ -36,37 +36,37 @@
       "$properties": {
         "ClockTime": 9.5,
         "GeographicLatitude": -2,
-        "Brightness": 2.25,
+        "Brightness": 2.162,
         "Ambient": [
-          0.185,
-          0.195,
-          0.21000000000000002
+          0.24,
+          0.25,
+          0.27
         ],
         "OutdoorAmbient": [
-          0.3134,
-          0.324,
-          0.3296
+          0.34340000000000004,
+          0.354,
+          0.36460000000000004
         ],
         "ColorShift_Top": [
           0.0,
           0.0,
           0.0
         ],
-        "EnvironmentDiffuseScale": 0.85,
-        "EnvironmentSpecularScale": 0.8,
+        "EnvironmentDiffuseScale": 0.9,
+        "EnvironmentSpecularScale": 0.72,
         "GlobalShadows": true,
-        "ShadowSoftness": 0.24,
+        "ShadowSoftness": 0.3,
         "ColorShift_Bottom": [
           0,
           0,
           0
         ],
-        "ExposureCompensation": -0.1296
+        "ExposureCompensation": -0.0696
       },
       "RoNationAtmosphere": {
         "$className": "Atmosphere",
         "$properties": {
-          "Density": 0.15855045166071408,
+          "Density": 0.1349504516607141,
           "Offset": 0.15,
           "Color": [
             0.88,
@@ -79,7 +79,7 @@
             0.58
           ],
           "Glare": 0.0704,
-          "Haze": 0.5070443359428553
+          "Haze": 0.4030443359428553
         }
       },
       "RoNationBloom": {
@@ -93,7 +93,7 @@
       "RoNationSunRays": {
         "$className": "SunRaysEffect",
         "$properties": {
-          "Intensity": 0.022,
+          "Intensity": 0.022000000000000002,
           "Spread": 0.7
         }
       },
@@ -101,7 +101,7 @@
         "$className": "ColorCorrectionEffect",
         "$properties": {
           "Brightness": 0,
-          "Contrast": 0.052,
+          "Contrast": 0.0282,
           "Saturation": -0.0698,
           "TintColor": [
             1.0,

@@ -270,11 +270,25 @@ function Assets.place(
 	position: Vector3,
 	height: number,
 	yaw: number,
-	groundSample: ((number, number) -> number?)?
+	groundSample: ((number, number) -> number?)?,
+	species: string?
 ): Model?
 	local library = Assets.get()
 	local folder = if library then library:FindFirstChild(kind) else nil
 	local choices: { Instance } = if folder then folder:GetChildren() else {}
+	if kind == "Tree" and species then
+		local matching = {}
+		for _, template in choices do
+			local name = string.lower(tostring(template:GetAttribute("SourceName") or template.Name))
+			local matches = if species == "Broadleaf"
+				then not name:find("pine") and not name:find("eucalyptus") and not name:find("acacia")
+				else name:find(string.lower(species)) ~= nil
+			if matches then
+				table.insert(matching, template)
+			end
+		end
+		choices = matching -- preserve regional species; use the existing native tree if absent
+	end
 	if kind == "Lamp" then
 		-- The city pack also contains short decorative fixtures. Prefer its road light
 		-- over alphabetically earlier lamp posts when replacing a carriageway light.
@@ -303,7 +317,7 @@ function Assets.place(
 	-- account for nearby downhill ground without tilting the trunk or stretching it.
 	local embed = 0
 	if kind == "Tree" then
-		embed = math.clamp(height * 0.025, 0.5, 1.25)
+		embed = math.clamp(height * 0.055, 1, 2.8)
 		if groundSample then
 			local lowest = position.Y
 			local radius = math.clamp(height * 0.08, 1.5, 4)
@@ -315,7 +329,7 @@ function Assets.place(
 					lowest = math.min(lowest, ground)
 				end
 			end
-			embed = math.min(3, embed + position.Y - lowest)
+			embed = math.min(4.5, embed + position.Y - lowest)
 		end
 	end
 	local frame = CFrame.new(position - Vector3.new(0, embed, 0)) * CFrame.Angles(0, yaw, 0)

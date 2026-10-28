@@ -59,7 +59,7 @@ export type RefreshOptions = {
 }
 
 local BuildMap = {}
-BuildMap.EnvironmentRevision = "highland-4"
+BuildMap.EnvironmentRevision = "highland-5"
 
 local function log(text: string)
 	print(`[Ro-Nation:BuildMap] {text}`)
@@ -115,7 +115,7 @@ local function refreshEnvironment(options: RefreshOptions?, context: any?): any
 		hf = if context then context.Heightfield else Heightfield.new(layout, Util.yield)
 		local sampler = if context then context.GroundSampler else savedGroundSampler()
 		if selected.Roads then
-			report.RoadParts = Roads.build(hf, layout, staging)
+			report.RoadParts = Roads.build(hf, layout, staging, sampler)
 			report.BridgeParts = Bridges.build(hf, staging, sampler)
 		end
 		if selected.RoadDetails or selected.Vegetation then

@@ -7,6 +7,7 @@
 local Biomes = require(script.Parent.Biomes)
 local Fields = require(script.Parent.Fields)
 local Geometry = require(script.Parent.Geometry)
+local GroundCover = require(script.Parent.GroundCover)
 local Lakes = require(script.Parent.Lakes)
 local Land = require(script.Parent.Land)
 local LandscapeConfig = require(script.Parent.LandscapeConfig)
@@ -39,6 +40,8 @@ export type Heightfield = {
 	-- Editor diagnostics: spatial weight and proposed relief before the world-floor taper.
 	reliefMask: (x: number, z: number) -> number,
 	relief: (x: number, z: number) -> number,
+	highland4: any, -- exact saved pre-rework generator, including its material model
+	additionalBaselines: { any },
 }
 
 local Heightfield = {}
@@ -270,7 +273,7 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 	end
 	local function protect(rect: Geometry.Rect, clear: number, fade: number)
 		local item = { Rect = rect, Clear = clear, Fade = fade }
-		local reach = clear + fade
+		local reach = clear + fade * 4 -- include the wider mountain reconstruction transition
 		for cx = math.floor((rect.MinX - reach) / CELL), math.floor((rect.MaxX + reach) / CELL) do
 			for cz = math.floor((rect.MinZ - reach) / CELL), math.floor((rect.MaxZ + reach) / CELL) do
 				local cell = key(cx, cz)
@@ -292,12 +295,44 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 	for _, zone in materialZones do
 		protect(zone.rect, config.FieldProtection, config.FieldFade)
 	end
+	-- RoadNetwork.nearest intentionally stops at 200 studs. Reusing it for a wider
+	-- mountain fade would jump abruptly from partial protection to no protection there.
+	local mountainRoadGrid = SegmentGrid.new(256)
+	local mountainRoadSegments: { any } = {}
+	for _, road in roads.roads do
+		for _, run in road.runs do
+			local i, j = run.First, run.Last
+			local segment = { road.line.xs[i], road.line.zs[i], road.line.xs[j], road.line.zs[j], road.Width / 2 }
+			local id = #mountainRoadSegments + 1
+			mountainRoadSegments[id] = segment
+			SegmentGrid.insert(
+				mountainRoadGrid,
+				id,
+				segment[1],
+				segment[2],
+				segment[3],
+				segment[4],
+				segment[5] + config.RoadProtection + config.RoadFade * 4
+			)
+		end
+	end
+	local function mountainRoadDistance(x: number, z: number): number
+		local best = math.huge
+		local ids = SegmentGrid.query(mountainRoadGrid, x, z)
+		if ids then
+			for _, id in ids do
+				local s = mountainRoadSegments[id]
+				best = math.min(best, Geometry.segmentDistance(s[1], s[2], s[3], s[4], x, z) - s[5])
+			end
+		end
+		return best
+	end
 	-- River.nearest() is intentionally indexed only through its 260-stud carving reach.
 	-- Relief fades farther out, so it needs its own expanded index: using the carving
 	-- index there would make a discontinuity where an adjacent spatial cell has no ids.
 	local riverLine = river.line
 	local riverProtectionGrid = SegmentGrid.new(128)
-	local riverProtectionReach = river.reach + config.RiverProtection + config.RiverFade
+	local riverProtectionReach = river.reach + config.RiverProtection + config.RiverFade * 4
 	for i = 1, #riverLine.xs - 1 do
 		SegmentGrid.insert(
 			riverProtectionGrid,
@@ -327,45 +362,49 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		end
 		return best
 	end
-	local function lakeProtectionMask(x: number, z: number): number
+	local function lakeProtectionMask(x: number, z: number, fadeScale: number?): number
 		-- Lake.shoreDistance is also reach-limited. Protect each complete existing basin,
 		-- then fade outside its conservative circular bound instead of jumping to infinity
 		-- when the old shoreline query leaves its search radius.
 		local mask = 1
+		local fade = config.LakeFade * (fadeScale or 1)
 		for _, lake in lakes.list do
 			local radius = math.max(lake.Reach, math.max(lake.Rx, lake.Rz) + config.LakeProtection)
 			local dx, dz = x - lake.X, z - lake.Z
-			if math.abs(dx) < radius + config.LakeFade and math.abs(dz) < radius + config.LakeFade then
+			if math.abs(dx) < radius + fade and math.abs(dz) < radius + fade then
 				local distance = math.sqrt(dx * dx + dz * dz) - radius
-				mask = math.min(mask, Geometry.smoothstep(distance / config.LakeFade))
+				mask = math.min(mask, Geometry.smoothstep(distance / fade))
 			end
 		end
 		return mask
 	end
 
-	local function reliefMask(x: number, z: number): number
+	local function reliefMask(x: number, z: number, includeBoundary: boolean?): number
 		if not config.Enabled then
 			return 0
 		end
-		local mask = Geometry.smoothstep(
-			(layout.Bounds.Half - math.max(math.abs(x), math.abs(z)) - config.EdgeProtection) / config.EdgeFade
-		)
+		local mask = if includeBoundary
+			then 1
+			else Geometry.smoothstep(
+				(layout.Bounds.Half - math.max(math.abs(x), math.abs(z)) - config.EdgeProtection) / config.EdgeFade
+			)
 		if mask == 0 then
 			return 0
 		end
+		local fadeScale = if includeBoundary then 4 else 1
 		local list = protected[key(math.floor(x / CELL), math.floor(z / CELL))]
 		if list then
 			for _, item in list do
 				local distance = Geometry.rectDistance(item.Rect, x, z)
-				mask = math.min(mask, Geometry.smoothstep((distance - item.Clear) / item.Fade))
+				mask = math.min(mask, Geometry.smoothstep((distance - item.Clear) / (item.Fade * fadeScale)))
 				if mask == 0 then
 					return 0
 				end
 			end
 		end
-		local edge = nearestRoad(x, z)
+		local edge = if includeBoundary then mountainRoadDistance(x, z) else nearestRoad(x, z)
 		if edge then
-			mask = math.min(mask, Geometry.smoothstep((edge - config.RoadProtection) / config.RoadFade))
+			mask = math.min(mask, Geometry.smoothstep((edge - config.RoadProtection) / (config.RoadFade * fadeScale)))
 			if mask == 0 then
 				return 0
 			end
@@ -373,8 +412,8 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		local riverDistance = riverProtectionDistance(x, z)
 		mask = math.min(
 			mask,
-			Geometry.smoothstep((riverDistance - river.reach - config.RiverProtection) / config.RiverFade),
-			lakeProtectionMask(x, z)
+			Geometry.smoothstep((riverDistance - river.reach - config.RiverProtection) / (config.RiverFade * fadeScale)),
+			lakeProtectionMask(x, z, fadeScale)
 		)
 		return mask
 	end
@@ -475,7 +514,7 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		fields = fields,
 		biomes = biomes,
 	}, Heightfield.Materials)
-	return {
+	local result: any = {
 		land = land,
 		river = river,
 		roads = roads,
@@ -493,6 +532,36 @@ function Heightfield.new(layout: any, yieldEvery: (() -> ())?): Heightfield
 		reliefMask = reliefMask,
 		relief = relief,
 	}
+	-- Freeze all historical closures before replacing the active surface. In particular,
+	-- neither a road's original vertical profile nor a saved terrain baseline is recalculated.
+	result.highland4 = table.clone(result)
+	result.additionalBaselines = { { Surface = surface, Material = naturalMaterial } }
+	local weathered = Land.new(layout, yieldEvery, true)
+	local mountainStart = layout.Bounds.Playable - layout.Mountains.StartInside - 620
+	result.surface = function(x: number, z: number): (number, number, number?)
+		local h, code, water = surface(x, z)
+		if water ~= nil or code > 0 then
+			return h, code, water
+		end
+		local mountain = 0
+		if math.max(math.abs(x), math.abs(z)) > mountainStart then
+			local mask = reliefMask(x, z, true)
+			if mask > 0 then
+				mountain = (weathered.height(x, z) - landHeight(x, z)) * mask
+			end
+		end
+		local folds = 8 * reliefShape(x, z) * reliefMask(x, z)
+		local floor = Geometry.smoothstep((h - layout.Bounds.FloorY - config.FloorProtection) / config.FloorFade)
+		return math.max(layout.Bounds.FloorY, h + (mountain + folds) * floor), code, nil
+	end
+	result.naturalMaterial = function(h: number, slope: number, x: number, z: number, hint: number?): number
+		-- Crop rows, fixed settlements and engineered road beds retain their authored surfaces.
+		if reliefMask(x, z) < 0.08 or fields.cropAt(x, z) ~= nil then
+			return naturalMaterial(h, slope, x, z, hint)
+		end
+		return GroundCover.material(forestAt(x, z), drynessAt(x, z), slope, x, z, hint == Heightfield.WATERSIDE)
+	end
+	return result
 end
 
 return Heightfield

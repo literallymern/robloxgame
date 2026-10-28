@@ -2,14 +2,26 @@
 -- The first art benchmark is the existing R3/N5 junction, not a new road or city location.
 -- Keep highland-4 as the immutable source outside this bounded, independently versioned area.
 local Geometry = require(script.Parent.Geometry)
+local GroundCover = require(script.Parent.GroundCover)
 
 local Junction = {}
-Junction.Revision = "kagundali-junction-5"
-Junction.LightingRevision = "neutral-highland-1"
+Junction.Revision = "kagundali-junction-6"
+Junction.LightingRevision = "neutral-highland-2"
 Junction.Bounds = table.freeze({ MinX = 64, MaxX = 832, MinZ = 2944, MaxZ = 3648 })
 Junction.Centre = Vector3.new(453.2403817191586, 55.695266970006095, 3298.6057257873795)
 Junction.Yard = table.freeze({ X = 245, Z = 3430, Width = 86, Depth = 70 })
 Junction.MaxParts = 1600
+Junction.Groves =
+	{ { 220, 3090, "Broadleaf" }, { 670, 3100, "Eucalyptus" }, { 710, 3480, "Broadleaf" }, { 190, 3570, "Acacia" } }
+
+function Junction.forest(x: number, z: number): number
+	local cover = 0
+	for _, centre in Junction.Groves do
+		local radius = math.sqrt(((x - centre[1]) / 100) ^ 2 + ((z - centre[2]) / 78) ^ 2)
+		cover = math.max(cover, 1 - Geometry.smoothstep((radius - 0.45) / 0.65))
+	end
+	return cover
+end
 
 function Junction.contains(x: number, z: number, inset: number?): boolean
 	local b, m = Junction.Bounds, inset or 0
@@ -153,7 +165,7 @@ function Junction.drains(hf: any): any
 	return paths
 end
 
-function Junction.decorate(hf: any, layout: any): any
+function Junction.decorateV4(hf: any, layout: any): any
 	local previous = Junction.decorateV2(hf, layout)
 	local first = Junction.decorateV1(hf, layout)
 	local result = table.clone(previous)
@@ -183,6 +195,82 @@ function Junction.decorate(hf: any, layout: any): any
 	result.legacySurface, result.legacyNaturalMaterial = previous.surface, previous.naturalMaterial
 	result.previousSurface, result.previousNaturalMaterial = first.surface, first.naturalMaterial
 	result.originalSurface, result.originalNaturalMaterial = hf.surface, hf.naturalMaterial
+	return result
+end
+
+-- Concrete is reserved for the driveway crossing and genuinely erosive grades.
+-- Elsewhere the existing shallow terrain swale drains the verge without continuous walls.
+function Junction.engineeredDrains(hf: any): any
+	local result = {}
+	local accessA, accessB = Junction.access(hf)
+	for _, path in Junction.drains(hf) do
+		local mid = (path.A + path.B) / 2
+		local grade = math.abs(path.B.Y - path.A.Y) / math.max(1, (path.B - path.A).Magnitude)
+		local crossing = accessB
+			and Geometry.segmentDistance(accessA.X, accessA.Z, accessB.X, accessB.Z, mid.X, mid.Z) < 26
+		if grade > 0.045 or crossing then
+			table.insert(result, path)
+		end
+	end
+	return result
+end
+
+function Junction.decorate(hf: any, layout: any): any
+	local result = Junction.decorateV4(hf, layout)
+	local oldGlobal = hf.highland4 or hf
+	local old = Junction.decorateV4(oldGlobal, layout)
+	local paths = Junction.engineeredDrains(hf)
+	local accessA, accessB = Junction.access(hf)
+	result.naturalMaterial = function(y: number, slope: number, x: number, z: number, hint: number?): number
+		local _, code, water = hf.surface(x, z)
+		if
+			not Junction.contains(x, z)
+			or Junction.weight(x, z) < 0.1
+			or water
+			or code > 0
+			or hf.fields.cropAt(x, z) ~= nil
+		then
+			return hf.naturalMaterial(y, slope, x, z, hint)
+		end
+		local yard = Junction.Yard
+		if math.abs(x - yard.X) < yard.Width / 2 + 4 and math.abs(z - yard.Z) < yard.Depth / 2 + 4 then
+			return old.naturalMaterial(y, slope, x, z, hint)
+		end
+		if accessB and Geometry.segmentDistance(accessA.X, accessA.Z, accessB.X, accessB.Z, x, z) < 7 then
+			return 4
+		end
+		for _, place in layout.Places do
+			if Geometry.rectDistance(place.Rect, x, z) < 12 then
+				return hf.naturalMaterial(y, slope, x, z, hint)
+			end
+		end
+		local edge = hf.roads.nearest(x, z) or math.huge
+		if edge < 7 then
+			return hf.naturalMaterial(y, slope, x, z, hint)
+		end
+		for _, path in paths do
+			if Geometry.segmentDistance(path.A.X, path.A.Z, path.B.X, path.B.Z, x, z) < 4 then
+				return 4
+			end
+		end
+		if edge > 10 and edge < 17 and slope < 0.45 then
+			return 5
+		end
+		return GroundCover.material(
+			math.max(hf.biomes.forest(x, z), Junction.forest(x, z)),
+			hf.biomes.dryness(x, z),
+			slope,
+			x,
+			z
+		)
+	end
+	result.additionalBaselines = {
+		{ Surface = old.surface, Material = old.naturalMaterial },
+		{ Surface = oldGlobal.surface, Material = oldGlobal.naturalMaterial },
+	}
+	local v1, v2 = Junction.decorateV1(oldGlobal, layout), Junction.decorateV2(oldGlobal, layout)
+	result.legacySurface, result.legacyNaturalMaterial = v2.surface, v2.naturalMaterial
+	result.previousSurface, result.previousNaturalMaterial = v1.surface, v1.naturalMaterial
 	return result
 end
 

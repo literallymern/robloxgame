@@ -56,7 +56,7 @@ function Roads.buildRuns(parent: Instance, road: RoadInfo, o: RunOptions): numbe
 				local colour = options.Color
 				-- Broad maintenance/age differences, kept deliberately subtle so seams do not read
 				-- as alternating tiles. Roblox's Asphalt material supplies the surface grain.
-				local factor = 1 + 0.035 * math.noise((s0 + s1) / 700, road.line.xs[run.First] / 1800, 18.7)
+				local factor = 1 + 0.09 * math.noise((s0 + s1) / 700, road.line.xs[run.First] / 1800, 18.7)
 				runOptions = table.clone(options)
 				runOptions.Color = Color3.new(colour.R * factor, colour.G * factor, colour.B * factor)
 			end
@@ -107,7 +107,7 @@ end
 -- Gravel is placed on the existing road bed, rather than scattered across the countryside.
 -- All three probes must be clear of junctions, settlements and bridge approaches. The outer
 -- shoulder and drainage swale remain terrain, avoiding a second layer of roadside parts.
-local function roadside(hf: Heightfield.Heightfield, layout: any, r: number, parent: Instance): number
+local function roadside(hf: Heightfield.Heightfield, layout: any, r: number, parent: Instance, sample: any?): number
 	local road = hf.roads.roads[r]
 	local folder = Instance.new("Folder")
 	folder.Name = "SurfaceDetails"
@@ -147,10 +147,20 @@ local function roadside(hf: Heightfield.Heightfield, layout: any, r: number, par
 		end
 		local across = Vector3.new(-flat.Z, 0, flat.X).Unit
 		for side = -1, 1, 2 do
-			local offset = across * (road.Width / 2 + 0.9) * side - Vector3.new(0, 0.08, 0)
+			local width = 1.8 + 0.28 * math.noise(a.X / 140, a.Z / 140, 91 + side)
+			local offset = across * (road.Width / 2 + width / 2) * side - Vector3.new(0, 0.08, 0)
 			local pa, pb = a + offset, b + offset
-			if clear(pa) and clear(pb) and clear((pa + pb) / 2) then
-				Util.strip(folder, "GravelShoulder", pa, pb, 1.8, 0.65, gravel)
+			local supported = true
+			if sample then
+				for _, p in { pa, (pa + pb) / 2, pb } do
+					local y = sample(p.X, p.Z)
+					if not y or math.abs(y - p.Y) > 1.5 then
+						supported = false
+					end
+				end
+			end
+			if supported and clear(pa) and clear(pb) and clear((pa + pb) / 2) then
+				Util.strip(folder, "GravelShoulder", pa, pb, width, 0.65, gravel)
 				count += 1
 			end
 		end
@@ -200,7 +210,7 @@ function Roads.junctionCuts(hf: Heightfield.Heightfield, r: number): (number?, n
 	return lowerBefore, lowerAfter
 end
 
-function Roads.build(hf: Heightfield.Heightfield, layout: any, parent: Instance): number
+function Roads.build(hf: Heightfield.Heightfield, layout: any, parent: Instance, sample: any?): number
 	local folder = Util.folder(parent, "Roads")
 	local total = 0
 	for r, road in hf.roads.roads do
@@ -214,6 +224,9 @@ function Roads.build(hf: Heightfield.Heightfield, layout: any, parent: Instance)
 			Material = (Enum.Material :: any)[class.PartMaterial],
 			Color = Util.rgb(class.Color),
 		}
+		if class.PartMaterial == "Asphalt" then
+			options.Color = if road.Class == "National" then Color3.fromRGB(57, 56, 53) else Color3.fromRGB(64, 62, 58)
+		end
 		local lowerBefore, lowerAfter = Roads.junctionCuts(hf, r)
 		total += Roads.buildRuns(roadFolder, road, {
 			Bridge = false,
@@ -224,7 +237,7 @@ function Roads.build(hf: Heightfield.Heightfield, layout: any, parent: Instance)
 			Weathering = class.PartMaterial == "Asphalt",
 		})
 		if class.PartMaterial == "Asphalt" then
-			total += roadside(hf, layout, r, roadFolder)
+			total += roadside(hf, layout, r, roadFolder, sample)
 		end
 		Util.yield()
 	end

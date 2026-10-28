@@ -7,6 +7,9 @@ local CELL = 128
 local function generated(instance: Instance): boolean
 	local current: Instance? = instance
 	while current and current ~= workspace do
+		if current.Name == "KagundaliTransportWorkshop" then
+			return false -- saved architecture is protected even inside a generated region
+		end
 		if current:GetAttribute("GeneratedBy") == "BuildMap" then
 			return true
 		end

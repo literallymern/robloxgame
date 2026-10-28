@@ -178,6 +178,13 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 		"Original terrain matching requires both surface and material functions"
 	)
 	local hasPrevious = hf.previousSurface ~= nil or hf.previousNaturalMaterial ~= nil
+	local additional: { any } = hf.additionalBaselines or {}
+	for _, baseline in additional do
+		assert(
+			type(baseline.Surface) == "function" and type(baseline.Material) == "function",
+			"Incomplete saved terrain baseline"
+		)
+	end
 	assert(
 		not hasPrevious or (type(hf.previousSurface) == "function" and type(hf.previousNaturalMaterial) == "function"),
 		"Previous terrain matching requires both surface and material functions"
@@ -238,6 +245,10 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 					then new
 					else strip(hf.previousSurface, bounds.MinX, bounds.MaxX, z0, yieldEvery))
 				else nil
+			local extraGrids = {}
+			for index, baseline in additional do
+				extraGrids[index] = strip(baseline.Surface, bounds.MinX, bounds.MaxX, z0, yieldEvery)
+			end
 			for chunk = 0, chunkColumns - 1 do
 				local x0 = bounds.MinX + chunk * CHUNK
 				local oldLow, newLow, originalLow, previousLow, highest =
@@ -265,8 +276,23 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 				local previousBottom = if previous
 					then math.max(floor, math.floor((previousLow - 8) / RES) * RES)
 					else oldBottom
+				local extraBottoms = {}
+				for index, grid in extraGrids do
+					local low = math.huge
+					for z = 1, COLS do
+						for x = 1, COLS do
+							local i = z * grid.Width + chunk * COLS + x + 1
+							low = math.min(low, grid.Heights[i])
+							highest = math.max(highest, grid.Heights[i], grid.Waters[i])
+						end
+					end
+					extraBottoms[index] = math.max(floor, math.floor((low - 8) / RES) * RES)
+				end
 				local bottom, top =
 					math.min(oldBottom, newBottom, originalBottom, previousBottom), math.ceil((highest + 8) / RES) * RES
+				for _, extraBottom in extraBottoms do
+					bottom = math.min(bottom, extraBottom)
+				end
 				assert(
 					top > bottom and top - bottom <= 2048,
 					"Terrain patch band is too large; stopped without replacing this chunk"
@@ -284,6 +310,17 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 						local prior = if previous
 							then sample(previous, i, px, pz, hf.previousNaturalMaterial, enumByCode, previousBottom)
 							else nil
+						local extraColumns = {}
+						local extraSame = true
+						for index, grid in extraGrids do
+							extraColumns[index] =
+								sample(grid, i, px, pz, additional[index].Material, enumByCode, extraBottoms[index])
+							local extra = extraColumns[index]
+							extraSame = extraSame
+								and math.abs(extra.Height - after.Height) < 1e-7
+								and extra.Material == after.Material
+								and extra.Water == after.Water
+						end
 						if opts.Protected and opts.Protected(px, pz) then
 							report.PreservedColumns += 1
 						elseif
@@ -296,6 +333,7 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 						elseif
 							math.abs(before.Height - after.Height) < 1e-7
 							and before.Material == after.Material
+							and extraSame
 							and (prior == nil or (math.abs(prior.Height - after.Height) < 1e-7 and prior.Material == after.Material))
 							and (
 								first == nil
@@ -304,10 +342,15 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 						then
 							report.UnchangedColumns += 1
 						else
-							table.insert(
-								changes,
-								{ X = x, Z = z, Before = before, After = after, Original = first, Previous = prior }
-							)
+							table.insert(changes, {
+								X = x,
+								Z = z,
+								Before = before,
+								After = after,
+								Original = first,
+								Previous = prior,
+								Additional = extraColumns,
+							})
 						end
 					end
 				end
@@ -333,6 +376,12 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 						previousMat, previousOcc = Upgrade.voxelize(change.Previous, bottom, top)
 					end
 					local wasOld, isNew, wasOriginal, wasPrevious = true, true, originalMat ~= nil, previousMat ~= nil
+					local extraVoxels = {}
+					for index, column in change.Additional do
+						local m, o = Upgrade.voxelize(column, bottom, top)
+						extraVoxels[index] =
+							{ Materials = m, Occupancy = o, Match = column.Water == change.After.Water }
+					end
 					for y = 1, #oldMat do
 						local actualMat, actualOcc = mats[x][y][z], occupancy[x][y][z]
 						assert(
@@ -349,14 +398,22 @@ function Upgrade.apply(hf: any, layout: any, log: (string) -> (), options: Optio
 							wasOriginal = wasOriginal
 								and sameVoxel(actualMat, actualOcc, originalMat[y], originalOcc[y])
 						end
+						for _, extra in extraVoxels do
+							extra.Match = extra.Match
+								and sameVoxel(actualMat, actualOcc, extra.Materials[y], extra.Occupancy[y])
+						end
+					end
+					local knownExtra = false
+					for _, extra in extraVoxels do
+						knownExtra = knownExtra or extra.Match
 					end
 					if isNew then
 						report.AlreadyCurrentColumns += 1
-					elseif not wasOld and not wasOriginal and not wasPrevious then
+					elseif not wasOld and not wasOriginal and not wasPrevious and not knownExtra then
 						report.PreservedColumns += 1
 					else
 						eligible += 1
-						if wasPrevious and not wasOld and not wasOriginal then
+						if (wasPrevious or knownExtra) and not wasOld and not wasOriginal then
 							previousEligible += 1
 						end
 						if wasOriginal and not wasOld then

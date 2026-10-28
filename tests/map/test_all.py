@@ -76,7 +76,7 @@ def main():
 
     for spec in (
         "river-detail", "roads-realism", "vegetation-builders", "canopy",
-        "highland-relief", "soil-refinement", "original-parity", "terrain-upgrade", "infrastructure-v3",
+        "highland-relief", "soil-refinement", "realism", "original-parity", "terrain-upgrade", "infrastructure-v3",
         "bridge-ground", "road-ground", "kagundali", "kagundali-terrain", "junction-markings", "creator-assets", "upgrade-entry", "environment-inspection",
         "gundiville", "architecture",
     ):

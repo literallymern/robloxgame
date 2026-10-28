@@ -19,7 +19,7 @@ local LATTICE = 16 -- studs between lattice points
 local Land = {}
 
 -- `yieldEvery` is called now and then during the slow part, so Studio can stay responsive.
-function Land.new(layout: any, yieldEvery: (() -> ())?): Land
+function Land.new(layout: any, yieldEvery: (() -> ())?, refinedMountains: boolean?): Land
 	local half: number = layout.Bounds.Half
 	local smoothstep = Geometry.smoothstep
 
@@ -99,6 +99,7 @@ function Land.new(layout: any, yieldEvery: (() -> ())?): Land
 	local inner0: number = layout.Bounds.Playable - mountains.StartInside
 	local span: number = mountains.StartInside + mountains.FullOutside
 	local passes = mountains.Passes
+	local boundaryEdges = { "East", "West", "South", "North" }
 	local function passOpen(edge: string, along: number): number
 		local open = 0
 		for _, pass in passes do
@@ -111,6 +112,42 @@ function Land.new(layout: any, yieldEvery: (() -> ())?): Land
 		return open
 	end
 	local function addMountains(x: number, z: number, h: number): number
+		if refinedMountains then
+			-- Broad weathered spurs, with an independent ridge line along each boundary.
+			-- Keep the old profile below immutable: roads and saved-voxel recognition use it.
+			local ring, summit = 0, h
+			for _, edge in boundaryEdges do
+				local outward = if edge == "East"
+					then x
+					elseif edge == "West" then -x
+					elseif edge == "South" then z
+					else -z
+				local along = if edge == "East" or edge == "West" then z else x
+				local seed = if edge == "East"
+					then 101
+					elseif edge == "West" then 103
+					elseif edge == "South" then 107
+					else 109
+				local bend = 180 * math.noise(along / 1250 + 0.37, seed)
+				local foot = inner0 - 440 + bend
+				local open = passOpen(edge, along)
+				local rise = smoothstep((outward - foot) / (span + 560)) * (1 - open)
+				if rise <= 0 then
+					continue
+				end
+				local ridge = math.noise(along / 1050 + 0.71, seed + 0.2)
+				local spur = math.noise(along / 390 + outward / 1600, seed + 0.6)
+				local top = mountains.MinPeak * 0.88 + mountains.ExtraPeak * (0.38 + 0.38 * ridge + 0.2 * spur)
+				-- Drainage grooves widen downhill; their modest amplitude avoids serrated peaks.
+				local gully = math.abs(math.noise(along / 210 + outward / 680, seed + 0.9))
+				local height = h + (top - h) * rise - 26 * gully * rise * (1 - rise)
+				if height > summit then
+					summit = height
+				end
+				ring = math.max(ring, rise)
+			end
+			return if ring > 0 then summit else h
+		end
 		local foot = inner0 + 200 * math.noise(x / 760 + 0.67, z / 760 + 0.29, 12.1)
 		local ring = 0
 		if x > foot then

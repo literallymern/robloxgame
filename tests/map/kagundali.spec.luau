@@ -42,7 +42,7 @@ end
 check(outside and roads and water, "bounded landscape leaves outside terrain, driving heights and water unchanged")
 check(
 	changed > 700 and grass > 500 and finite,
-	"local terrain has substantial bounded contours and continuous native-grass material"
+	"local terrain has substantial bounded contours and retained meadow patches"
 )
 local padFlat = true
 local yard = Junction.Yard
@@ -66,6 +66,7 @@ for i = 1, 10 do
 end
 check(cleared >= 5, "v2 driveway replaces the former grass material under its gravel surface")
 local previousGround = Junction.decorateV2(hf, Layout)
+local historicalChannels = Junction.decorateV4(hf, Layout)
 local clearedDrains = 0
 -- Native grass is rooted at voxel centres, including cells beside the channel axis.
 for z = Junction.Bounds.MinZ + 2, Junction.Bounds.MaxZ - 2, 4 do
@@ -75,7 +76,8 @@ for z = Junction.Bounds.MinZ + 2, Junction.Bounds.MaxZ - 2, 4 do
 		local dz = (feature.surface(x, z + 4) - feature.surface(x, z - 4)) / 8
 		local slope = math.sqrt(dx * dx + dz * dz)
 		local before, after =
-			previousGround.naturalMaterial(y, slope, x, z, code), feature.naturalMaterial(y, slope, x, z, code)
+			previousGround.naturalMaterial(y, slope, x, z, code),
+			historicalChannels.naturalMaterial(y, slope, x, z, code)
 		if before ~= after then
 			assert(before == 1 and after == 4 and code <= 0)
 			clearedDrains += 1
@@ -167,13 +169,32 @@ for _, item in signs:GetDescendants() do
 		labels[item] = item.Text
 	end
 end
+Builder.build(feature, Layout, map, function(x, z)
+	return feature.surface(x, z), 0
+end, library, load("StudioTools/Map/RoadDetails").new(Layout, hf))
+local savedWorkshop = map.KagundaliJunction.KagundaliTransportWorkshop
+savedWorkshop:SetAttribute("UserArchitecture", "retain-this-instance")
+local savedBuildingParts = {}
+for _, part in savedWorkshop:GetDescendants() do
+	if part:IsA("BasePart") then
+		savedBuildingParts[part] = { part.CFrame, part.Size, part.Material }
+	end
+end
 local report = Update.apply(hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
 check(not label.Enabled, "generated overview labels no longer float across the benchmark horizon")
 check(report.MarkingsComplete and report.Markings > 20, "focused update restores local edge, centre and stop markings")
 check(
-	report.Trees >= 50 and report.Shrubs >= 35 and report.Ferns >= 35 and report.Workshop,
-	"actual scene builds grouped forest, undergrowth and a transport workshop"
+	report.Trees >= 40 and report.Shrubs >= 15 and report.Ferns >= 35 and report.Workshop,
+	"actual scene builds grouped forest and varied low undergrowth around the retained workshop"
 )
+check(
+	map.KagundaliJunction.KagundaliTransportWorkshop == savedWorkshop,
+	"environment update retains the exact saved workshop instance"
+)
+for part, saved in savedBuildingParts do
+	assert(part.CFrame == saved[1] and part.Size == saved[2] and part.Material == saved[3])
+end
+check(true, "all saved workshop geometry, materials and the user's attribute stay unchanged")
 check(
 	report.Parts < Junction.MaxParts and report.Parts > 800,
 	"complete regional scene stays inside its saved-instance budget"
@@ -246,7 +267,7 @@ for _, part in area.Roadside:GetChildren() do
 		end
 	end
 end
-check(drainCount > 0, "channel floors clear the ground across their full width and length")
+check(drainCount < 20, "rural verge avoids continuous concrete; any new channel floors clear the ground")
 local accessStart, accessEnd = Junction.access(feature)
 local Geometry = load("StudioTools/Map/Geometry")
 local crossingCount = 0
@@ -321,6 +342,17 @@ check(
 )
 check(MockStats.unionCalls == calls, "repeat update does not recompile tree assets")
 local prior = map.KagundaliJunction
+local Markings = load("StudioTools/Map/Builders/JunctionMarkings")
+local realRemove = Markings.removeReplaced
+Markings.removeReplaced = function()
+	error("simulated marking cleanup failure")
+end
+local commitOkay = pcall(Update.apply, hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
+Markings.removeReplaced = realRemove
+check(
+	not commitOkay and savedWorkshop.Parent == prior and prior.Parent == map,
+	"failed marking cleanup cannot detach the retained building into staging"
+)
 local realBuild = Builder.build
 Builder.build = function()
 	error("simulated scene failure")

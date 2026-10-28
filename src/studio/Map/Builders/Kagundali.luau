@@ -7,6 +7,7 @@ local Geometry = require(script.Parent.Parent.Geometry)
 local Trees = require(script.Parent.JunctionTrees)
 local CreatorAssets = require(script.Parent.Parent.CreatorAssets)
 local Util = require(script.Parent.Util)
+local VegetationBuilder = require(script.Parent.Vegetation)
 local Builder = {}
 local UP = Vector3.new(0, 1, 0)
 local function rgb(r: number, g: number, b: number): Color3
@@ -326,14 +327,21 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 	return true
 end
 
-function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, library: Folder, details: any): any
+function Builder.build(
+	hf: any,
+	_layout: any,
+	parent: Instance,
+	sample: any,
+	library: Folder,
+	details: any,
+	preserveWorkshop: boolean?
+): any
 	local root = Util.folder(parent, "KagundaliJunction")
 	root:SetAttribute("Revision", Junction.Revision)
 	local plants = Util.folder(root, "Planting")
 	local infrastructure = Util.folder(root, "Roadside")
 	local report = { Trees = 0, Shrubs = 0, Ferns = 0, Rocks = 0, Parts = 0, Workshop = false }
-	local centres: { { any } } =
-		{ { 220, 3090, "Broadleaf" }, { 670, 3100, "Eucalyptus" }, { 710, 3480, "Broadleaf" }, { 190, 3570, "Acacia" } }
+	local centres = Junction.Groves
 	local occupied: { Vector3 } = {}
 	local function suitable(x: number, z: number, tree: boolean): (number?, number)
 		if not Junction.contains(x, z, 20) then
@@ -373,8 +381,8 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 	for cluster, centre in centres do
 		local placed = 0
 		for candidate = 1, 24 do
-			local angle = candidate * 2.399963 + cluster
-			local radius = 10 + math.sqrt(candidate / 24) * 76
+			local angle = Hash.unit(cluster, candidate, 819) * math.pi * 2
+			local radius = 9 + math.sqrt(Hash.unit(cluster, candidate, 820)) * 82
 			local x = centre[1] + math.cos(angle) * radius + Hash.range(cluster, candidate, 801, -7, 7)
 			local z = centre[2] + math.sin(angle) * radius * 0.68
 			local y = suitable(x, z, true)
@@ -386,6 +394,21 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 				table.insert(occupied, Vector3.new(x, y, z))
 				report.Trees += 1
 				placed += 1
+				if candidate % 3 == 0 then
+					local fx, fz = x + math.cos(angle) * 4, z + math.sin(angle) * 4
+					local fy, slope = suitable(fx, fz, false)
+					if fy and slope < 0.45 then
+						VegetationBuilder.floor(plants, {
+							Kind = if candidate % 2 == 0 then "Deadwood" else "Litter",
+							X = fx,
+							Y = fy,
+							Z = fz,
+							Size = 1.6,
+							Yaw = angle,
+							Seed = Hash.unit(cluster, candidate, 821),
+						})
+					end
+				end
 			end
 		end
 		for candidate = 1, 25 do
@@ -394,7 +417,7 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 			local x, z = centre[1] + math.cos(angle) * radius, centre[2] + math.sin(angle) * radius * 0.7
 			local y = suitable(x, z, false)
 			if y then
-				local fern = candidate % 2 == 0
+				local fern = Hash.unit(cluster, candidate, 822) < 0.65
 				Trees.plant(
 					library,
 					plants,
@@ -402,8 +425,8 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 					1 + candidate % 3,
 					Vector3.new(x, y, z),
 					if fern
-						then 1.8 + Hash.unit(cluster, candidate, 803) * 1.4
-						else 3.8 + Hash.unit(cluster, candidate, 804) * 2,
+						then 0.8 + Hash.unit(cluster, candidate, 803) * 0.9
+						else 2.2 + Hash.unit(cluster, candidate, 804) * 1.3,
 					angle
 				)
 				if fern then
@@ -485,9 +508,10 @@ function Builder.build(hf: any, _layout: any, parent: Instance, sample: any, lib
 			end
 		end
 	end
-	report.Workshop = workshop(root, sample, hf)
+	-- The environment refresh must not recreate the user's existing roadside building.
+	report.Workshop = preserveWorkshop == true or workshop(root, sample, hf)
 	local accessStart, accessEnd = Junction.access(hf)
-	for _, path in Junction.drains(hf) do
+	for _, path in Junction.engineeredDrains(hf) do
 		for _, span in
 			outsideAccess(
 				path.A,

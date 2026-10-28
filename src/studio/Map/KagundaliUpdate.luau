@@ -22,10 +22,12 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	)
 	local opts = options or {}
 	local previous: { Instance } = {}
+	local workshop: Instance? = nil
 	for _, child in map:GetChildren() do
 		if child.Name == "KagundaliJunction" then
 			assert(Util.isGenerated(child), "KagundaliJunction contains custom content; update stopped")
 			table.insert(previous, child)
+			workshop = workshop or child:FindFirstChild("KagundaliTransportWorkshop")
 		end
 	end
 	local protected = Existing.protection()
@@ -65,7 +67,7 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	local staging = Util.detachedFolder("KagundaliStaging")
 	local okay, report = pcall(function()
 		local details = Details.new(layout, hf, sample)
-		local built = Builder.build(feature, layout, staging, sample, library, details)
+		local built = Builder.build(feature, layout, staging, sample, library, details, true)
 		local junction = staging:FindFirstChild("KagundaliJunction") :: Folder
 		local paintSample: (Vector3) -> Vector3? = if opts.GeneratedTerrain
 			then function(p: Vector3): Vector3
@@ -100,6 +102,13 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 		end
 		built.Markings = built.RestoredMarkings + built.RetainedMarkings
 		built.Parts += built.Markings
+		if workshop then
+			for _, part in workshop:GetDescendants() do
+				if part:IsA("BasePart") then
+					built.Parts += 1
+				end
+			end
+		end
 		assert(built.Parts <= Junction.MaxParts, "Junction markings exceeded the regional part budget")
 		junction:SetAttribute("PartCount", built.Parts)
 		return built
@@ -109,6 +118,7 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 		error(`Kagundali staging failed; previous geometry retained: {tostring(report)}`)
 	end
 	local replacement = staging:FindFirstChild("KagundaliJunction") :: Folder
+	report.Workshop = workshop ~= nil
 	Markings.removeReplaced(map, report.PaintCoverage)
 	if not report.MarkingsComplete then
 		log(
@@ -122,11 +132,16 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	if report.ImportedLamps > 0 then
 		Builder.removeOldLamps(map, report.ReplacedLampPositions)
 	end
+	-- Attach first and transfer architecture at the final swap, so a failed marking or
+	-- vegetation cleanup cannot detach the saved building from its existing live region.
+	replacement.Parent = map
+	if workshop then
+		workshop.Parent = replacement
+	end
 	for _, old in previous do
 		old:Destroy()
 	end
 	report.ReplacedRegions = #previous
-	replacement.Parent = map
 	staging:Destroy()
 	report.RefinedSigns = Builder.refineSigns(map)
 	local places = map:FindFirstChild("Places")

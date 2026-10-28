@@ -104,73 +104,49 @@ require(game.ServerStorage.StudioTools.BuildMap).run()
 
 Das ersetzt das ganze Gelände und baut Straßen, Brücken, Flughafen, Grenzübergänge, Grundstücke, den Spawn und die Landschaft (Bäume, Büsche, Felsen, Felder, Zäune, Markierungen, Schilder, Laternen, Strommasten) neu. Es ist der vollständige Neubau für einen neuen Place. Danach speichern. Genaue Schritte: [`docs/game/testing/m2-map-checklist.md`](docs/game/testing/m2-map-checklist.md).
 
-## Current update: Kagundali junction R3/N5
+## Current environment update: highland-5
 
-Current code: **`kagundali-junction-5`**. The latest six Studio screenshots show
-textured trees, the slender imported street light, visible paint and largely grass-free
-channels. This follow-up embeds exposed roots using nearby ground samples, grounds the
-shorter concrete sections and leaves the workshop driveway clear with a concrete crossing.
-The new placement and geometry still need a Studio comparison.
+This map-wide rework addresses the six latest screenshots: broader weathered mountain
+ridges, slope-based rock exposure, lower woodland cover, mixed meadow grass, embedded
+roots, compatible saved Creator Store vegetation across the map, thinner road markings,
+less continuous concrete drainage, and balanced daylight beneath trees. The existing
+workshop is retained as the same instance. Buildings and interiors are not rebuilt.
 
-Pull the default branch **`claude/project-thread-5krwdh`**, back up the place and stop Play.
-Sync Rojo, save, restart Studio, then reconnect Rojo. In **View > Command Bar**:
-
-```lua
-require(game.ServerStorage.StudioTools.UpgradeKagundali)()
-```
-
-The command reuses the saved Creator Store library and focuses the camera on the junction.
-Save the place afterwards. Its terrain patch is restricted to Kagundali; the Gundiville
-government district is outside the patch and `BuildGundiville` is not invoked.
-
-For a place without the imported library, install Roblox's **Forest Pack** and
-**City Props Pack** and apply the regional update with:
-
-```lua
-require(game.ServerStorage.StudioTools.UseCreatorStoreAssets)()
-```
-
-Demo scripts are removed; suitable mesh templates supply trees, undergrowth, rocks and
-lamps. Missing optional categories use the existing original templates. The latest fixes
-still need visual verification in Studio. Details: [screenshot fixes](docs/game/08-kagundali-screenshot-fixes.md)
-and [Creator Store integration](docs/game/09-creator-store-assets.md).
-
-## Globale Grundlage highland-4
-
-Die vier Referenzbilder sind in dieses Update eingeflossen: weniger kahle Flecken auf sanften Hängen, größere Laub- und Eukalyptuskronen sowie Fundamente, Laternen und Strommasten, die dem gespeicherten Boden folgen. Das vorhandene natürliche Licht bleibt erhalten.
-
-Den Hauptbranch `claude/project-thread-5krwdh` aktualisieren und per Rojo mit Studio synchronisieren. Den Place sichern und Play stoppen. Falls du `BuildMap` vorher schon in der Command Bar geladen hast, nach dem Sync speichern, Studio neu starten und Rojo erneut verbinden, damit kein alter Modulstand im Cache bleibt.
-
-Für das Gelände-, Vegetations- und Infrastruktur-Update in die Command Bar:
+Pull the updated project, stop Play and back up the place. Sync Rojo, save, restart
+Studio and reconnect Rojo, then run in the edit-mode Command Bar:
 
 ```lua
 require(game.ServerStorage.StudioTools.BuildMap).upgradeEnvironment()
 ```
 
-Das erzeugt wiederverwendbare Blattkronen, aktualisiert erkennbares generiertes Gelände einschließlich highland-3 und ersetzt die erzeugten Straßen-, Brücken- und Vegetationsgruppen. Eigene Geländeänderungen und geschützte Bauwerksflächen bleiben bei abweichenden oder unbekannten Geländespalten erhalten. Pflanzen, Brückenfundamente und Straßenobjekte richten sich nach dem tatsächlich gespeicherten Boden. Orte, Grundstücke, Spawn und vorhandene Schilder bleiben erhalten. Den Fortschritt im Output verfolgen und danach speichern. Ein abgebrochener Geländelauf kann bereits einige Abschnitte geändert haben; deshalb vorher eine Place-Sicherung anlegen.
-
-Anschließend den gespeicherten Stand prüfen:
-
-```lua
-require(game.ServerStorage.StudioTools.CheckEnvironment)()
-```
-
-Die Prüfung zeigt Versionsstände, vorhandene Geometrie, Lichtkonflikte und fehlende Audio-IDs an, ohne etwas zu verändern. Sie ersetzt keine Sicht- oder Leistungskontrolle in Play.
-
-Optional zuerst nur die Geländeänderungen prüfen, ohne etwas zu schreiben:
+This conservatively patches recognized saved terrain and regenerates environment
+geometry across the map, including **kagundali-junction-6** at R3/N5. Custom terrain,
+construction footprints, road elevations, signs, city locations and crop fields are
+preserved. An optional preview performs no terrain writes:
 
 ```lua
 require(game.ServerStorage.StudioTools.BuildMap).upgradeEnvironment({ DryRun = true })
 ```
 
-Weitere Varianten für die Command Bar:
+In **Workspace → Terrain → Properties**, set **GrassLength = 0.25** and keep
+**Decoration** enabled, then save. Roblox marks both settings `NotScriptable`;
+the code changes where native grass grows, but cannot shorten its blades itself.
 
-- Nur erzeugte Umgebungsgeometrie und Licht aktualisieren, ohne Geländespalten zu ändern: `require(game.ServerStorage.StudioTools.BuildMap).refreshEnvironment()`
-- Nur die Teile neu bauen, Gelände bleibt: `require(game.ServerStorage.StudioTools.BuildMap).run({ Terrain = false })`
-- Ohne Bäume, Büsche und Felsen (schneller, zum Testen): `require(game.ServerStorage.StudioTools.BuildMap).run({ Vegetation = false })`
-- Weniger Bäume: in `src/shared/Config/MapLayout.luau` bei `Vegetation` den Wert `Density = 1` kleiner machen (z. B. `0.6`) und neu bauen.
+Check saved geometry and revisions with:
 
-Natürliches Licht mit dezentem Morgendunst, fünf dynamische Wetterlagen, Tag/Nacht und automatische Straßenlaternen starten beim Spielen. Regen- und Donner-Audio bleibt stumm, bis die mitgelieferten WAV-Dateien auf Roblox hochgeladen und ihre freigegebenen IDs konfiguriert sind. Anleitung, Geometrievorschau, Testumfang und ausstehende Studio-Prüfungen: [`Environment overhaul`](docs/game/06-environment-overhaul.md).
+```lua
+require(game.ServerStorage.StudioTools.CheckEnvironment)()
+```
+
+The saved official Forest Pack / City Props Pack library is reused where compatible.
+No new asset IDs or paid resources are required. `UpgradeKagundali()` updates only
+the regional benchmark; **use `upgradeEnvironment()` for the complete rework**.
+`BuildMap.run()` is the initial full rebuild and clears generated terrain.
+
+The offline tests and generator profile plots do not establish rendered appearance.
+The six locations still require visual comparison in Roblox Studio, plus Play tests
+for driving, streaming, weather and performance. See the [implementation, changed systems,
+preservation rules and Studio checklist](docs/game/10-terrain-realism-rework.md).
 
 ## Häufige Probleme
 

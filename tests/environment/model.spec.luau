@@ -40,6 +40,10 @@ check(
 	"daylight atmosphere stays neutral instead of adding a blue mountain veil"
 )
 local night = Model.lighting(0, clear, 140, Config.Altitude)
+check(
+	noon.Ambient[1] >= 0.23 and noon.OutdoorAmbient[1] > noon.Ambient[1] and noon.Contrast <= 0.035,
+	"daylight raises canopy fill without removing directional shadows or adding heavy contrast"
+)
 local cloudy = Model.lighting(12, Config.Profiles.Overcast, 140, Config.Altitude)
 local cloudyEvening = Model.lighting(18, Config.Profiles.Overcast, 140, Config.Altitude)
 check(

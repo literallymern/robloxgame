@@ -6,6 +6,7 @@
 -- Each tree is 4–5 parts, streamed as one model. Foliage and upper branches never collide.
 
 local CanopyLibrary = require(script.Parent.CanopyLibrary)
+local CreatorAssets = require(script.Parent.Parent.CreatorAssets)
 local Hash = require(script.Parent.Parent.Hash)
 local Util = require(script.Parent.Util)
 
@@ -48,7 +49,26 @@ end
 
 -- One tree: the same template vocabulary, varied deterministically by position and species.
 -- Four parts for an open crown or pine, five for a fuller mature broadleaf crown.
-function VegetationBuilder.tree(parent: Instance, plant: any): number
+function VegetationBuilder.tree(parent: Instance, plant: any, sample: any?): number
+	local imported = CreatorAssets.place(
+		"Tree",
+		1 + math.floor(plant.Seed * 101),
+		parent,
+		Vector3.new(plant.X, plant.Y, plant.Z),
+		plant.Size,
+		plant.Yaw,
+		sample,
+		plant.Kind
+	)
+	if imported then
+		local count = 0
+		for _, part in imported:GetDescendants() do
+			if part:IsA("BasePart") then
+				count += 1
+			end
+		end
+		return count
+	end
 	local h: number = plant.Size
 	local fx, fz = math.floor(plant.X), math.floor(plant.Z)
 	local function r(k: number): number
@@ -138,6 +158,17 @@ function VegetationBuilder.tree(parent: Instance, plant: any): number
 end
 
 function VegetationBuilder.bush(parent: Instance, plant: any): number
+	local imported = CreatorAssets.place(
+		"Shrub",
+		1 + math.floor(plant.Seed * 101),
+		parent,
+		Vector3.new(plant.X, plant.Y, plant.Z),
+		math.min(3.6, plant.Size * 0.4),
+		plant.Yaw
+	)
+	if imported then
+		return #imported:GetChildren()
+	end
 	local w: number = plant.Size
 	local fx, fz = math.floor(plant.X), math.floor(plant.Z)
 	local colour = vary(pick(CROWNS.Bush, plant.Seed), Hash.unit(fx, fz, 111))
@@ -171,6 +202,17 @@ function VegetationBuilder.bush(parent: Instance, plant: any): number
 end
 
 function VegetationBuilder.rock(parent: Instance, plant: any): number
+	local imported = CreatorAssets.place(
+		"Rock",
+		1 + math.floor(plant.Seed * 101),
+		parent,
+		Vector3.new(plant.X, plant.Y - plant.Size * 0.28, plant.Z),
+		plant.Size,
+		plant.Yaw
+	)
+	if imported then
+		return #imported:GetChildren()
+	end
 	local s: number = plant.Size
 	local fx, fz = math.floor(plant.X), math.floor(plant.Z)
 	local function r(k: number): number
@@ -188,6 +230,47 @@ function VegetationBuilder.rock(parent: Instance, plant: any): number
 		Util.ellipsoid(parent, "Rock", frame, size, options)
 	else
 		Util.part(parent, "Rock", frame, size, options)
+	end
+	return 1
+end
+
+-- A few low plants and grounded debris in shaded stands, streamed with nearby vegetation.
+-- No collision, lights, per-frame animation or global carpet of extra instances.
+function VegetationBuilder.floor(parent: Instance, plant: any): number
+	if plant.Kind == "Fern" then
+		local imported = CreatorAssets.place(
+			"Fern",
+			1 + math.floor(plant.Seed * 101),
+			parent,
+			Vector3.new(plant.X, plant.Y - 0.08, plant.Z),
+			plant.Size,
+			plant.Yaw
+		)
+		if imported then
+			return #imported:GetChildren()
+		end
+		local low = table.clone(plant)
+		low.Size = plant.Size * 1.6
+		return VegetationBuilder.bush(parent, low)
+	end
+	local base = CFrame.new(plant.X, plant.Y + 0.04, plant.Z) * CFrame.Angles(0, plant.Yaw, 0)
+	if plant.Kind == "Deadwood" then
+		Util.cylinder(
+			parent,
+			"ForestDeadwood",
+			(base * CFrame.new(0, 0.04, -plant.Size / 2)).Position,
+			(base * CFrame.new(0, 0.04, plant.Size / 2)).Position,
+			0.12 + plant.Seed * 0.14,
+			{ Material = Enum.Material.Wood, Color = rgb(91, 77, 57), Decoration = true }
+		)
+	else
+		Util.ellipsoid(
+			parent,
+			"ForestLitter",
+			base,
+			Vector3.new(plant.Size, 0.07, plant.Size * 0.48),
+			{ Material = Enum.Material.Ground, Color = rgb(105, 91, 64), Decoration = true }
+		)
 	end
 	return 1
 end
@@ -210,7 +293,7 @@ function VegetationBuilder.build(vegetation: any, parent: Instance): number
 	end
 	local total = 0
 	for _, plant in vegetation.trees do
-		total += VegetationBuilder.tree(cellFolder(plant.X, plant.Z), plant)
+		total += VegetationBuilder.tree(cellFolder(plant.X, plant.Z), plant, vegetation.sample)
 		Util.yield()
 	end
 	for _, plant in vegetation.bushes do
@@ -219,6 +302,10 @@ function VegetationBuilder.build(vegetation: any, parent: Instance): number
 	end
 	for _, plant in vegetation.rocks do
 		total += VegetationBuilder.rock(cellFolder(plant.X, plant.Z), plant)
+		Util.yield()
+	end
+	for _, plant in vegetation.floor or {} do
+		total += VegetationBuilder.floor(cellFolder(plant.X, plant.Z), plant)
 		Util.yield()
 	end
 	root.Parent = parent
