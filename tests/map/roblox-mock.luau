@@ -486,6 +486,15 @@ local CLASSES = {
 		isA = { "SpotLight", "Light" },
 	},
 	Attachment = { props = { CFrame = "CFrame" }, isA = { "Attachment" } },
+	Motor6D = {
+		props = { Part0 = "any", Part1 = "any", C0 = "CFrame", C1 = "CFrame", Enabled = "boolean" },
+		isA = { "Motor6D", "Motor", "JointInstance" },
+	},
+	Weld = {
+		props = { Part0 = "any", Part1 = "any", C0 = "CFrame", C1 = "CFrame", Enabled = "boolean" },
+		isA = { "Weld", "JointInstance" },
+	},
+	WeldConstraint = { props = { Part0 = "any", Part1 = "any", Enabled = "boolean" }, isA = { "WeldConstraint" } },
 	Beam = {
 		props = {
 			Attachment0 = "any",
@@ -611,8 +620,9 @@ end
 function METHODS.GetAttribute(self, name)
 	return self.__attributes[name]
 end
-function METHODS.Clone(self)
+local function cloneTree(self, copies)
 	local copy = newInstance(self.__class, CLASSES[self.__class] == nil)
+	copies[self] = copy
 	for key, value in self.__props do
 		copy.__props[key] = value
 	end
@@ -624,8 +634,21 @@ function METHODS.Clone(self)
 		rawset(copy, "__extentSize", rawget(self, "__extentSize"))
 	end
 	for _, child in self.__children do
-		local cloned = METHODS.Clone(child)
+		local cloned = cloneTree(child, copies)
 		cloned.Parent = copy
+	end
+	return copy
+end
+-- Like Roblox, references inside the cloned tree (PrimaryPart, joint parts) point to the copies.
+function METHODS.Clone(self)
+	local copies = {}
+	local copy = cloneTree(self, copies)
+	for _, cloned in copies do
+		for key, value in cloned.__props do
+			if key ~= "Parent" and type(value) == "table" and copies[value] then
+				cloned.__props[key] = copies[value]
+			end
+		end
 	end
 	return copy
 end
@@ -680,6 +703,16 @@ function METHODS.IsDescendantOf(self, ancestor)
 		current = rawget(current, "__parent")
 	end
 	return false
+end
+function METHODS.FindFirstAncestorWhichIsA(self, className)
+	local current = rawget(self, "__parent")
+	while current do
+		if METHODS.IsA(current, className) then
+			return current
+		end
+		current = rawget(current, "__parent")
+	end
+	return nil
 end
 function METHODS.IsA(self, className)
 	if className == "Instance" or className == self.__class then
@@ -982,7 +1015,10 @@ rawget(workspace, "__props").CurrentCamera = camera
 camera.Parent = workspace
 
 -- A small R6-style character standing at the origin and facing +X (so turning it is tested),
--- with clothing, a face, a hat and a script, like a real avatar model.
+-- with clothing, a face, a hat and a script, like a real avatar model. As with
+-- CreateHumanoidModelFromUserId in edit mode, not everything is in place yet: the head waits for
+-- its neck joint, the hat lies where it was made until it is fitted to the head attachment, and
+-- a second accessory has an attachment the body does not have.
 function MockMakeCharacter()
 	local model = newInstance("Model", false)
 	model.Name = "Character"
@@ -999,8 +1035,24 @@ function MockMakeCharacter()
 	end
 	local root = part("HumanoidRootPart", 0, 3, 0, 2, 2, 1)
 	root.Transparency = 1
-	part("Torso", 0, 3, 0, 2, 2, 1)
-	local head = part("Head", 0, 4.5, 0, 2, 1, 1)
+	local torso = part("Torso", 0, 3, 0, 2, 2, 1)
+	local head = part("Head", 0, 40, 0, 2, 1, 1) -- placed by the neck joint at (0, 4.5, 0)
+	local function joint(className, name, p0, p1, c0, c1)
+		local j = newInstance(className, false)
+		j.Name = name
+		j.Part0 = p0
+		j.Part1 = p1
+		j.C0 = c0
+		j.C1 = c1
+		j.Parent = p0
+		return j
+	end
+	joint("Motor6D", "RootJoint", root, torso, CFrame.new(), CFrame.new())
+	joint("Motor6D", "Neck", torso, head, CFrame.new(0, 1, 0), CFrame.new(0, -0.5, 0))
+	local hatPoint = newInstance("Attachment", false)
+	hatPoint.Name = "HatAttachment"
+	hatPoint.CFrame = CFrame.new(0, 0.5, 0)
+	hatPoint.Parent = head
 	part("Left Arm", -1.5, 3, 0, 1, 2, 1)
 	part("Right Arm", 1.5, 3, 0, 1, 2, 1)
 	part("Left Leg", -0.5, 1, 0, 1, 2, 1)
@@ -1011,12 +1063,26 @@ function MockMakeCharacter()
 	face.Texture = "rbxassetid://2"
 	face.Parent = head
 	local hat = newInstance("Accessory", false)
+	hat.Name = "Hat"
 	hat.Parent = model
-	local handle = part("Handle", 0, 5.3, 0, 1.6, 0.6, 1.6)
+	local handle = part("Handle", 200, -80, 30, 1.6, 0.6, 1.6) -- fitted onto the head at y 5.3
 	handle.Parent = hat
 	local mesh = newInstance("SpecialMesh", false)
 	mesh.TextureId = "rbxassetid://3"
 	mesh.Parent = handle
+	local hatGrip = newInstance("Attachment", false)
+	hatGrip.Name = "HatAttachment"
+	hatGrip.CFrame = CFrame.new(0, -0.3, 0)
+	hatGrip.Parent = handle
+	local stray = newInstance("Accessory", false)
+	stray.Name = "Stray"
+	stray.Parent = model
+	local strayHandle = part("Handle", 0, 300, 0, 1, 1, 1)
+	strayHandle.Parent = stray
+	local strayGrip = newInstance("Attachment", false)
+	strayGrip.Name = "TailAttachment"
+	strayGrip.CFrame = CFrame.new()
+	strayGrip.Parent = strayHandle
 	for _, className in { "Shirt", "Pants", "BodyColors", "Humanoid" } do
 		newInstance(className, false).Parent = model
 	end

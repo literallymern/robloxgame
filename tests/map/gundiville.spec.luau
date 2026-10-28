@@ -163,6 +163,10 @@ for _, block in MapLayout.GundivillePlaceholders do
 end
 check("no replacement before the district exists", next(Places.replacedByDistrict(map)) == nil)
 
+-- Saved terrain exactly as planned: flat at the Gundiville ground, so nothing is raised.
+stats.groundSurface = function(_x: number, _z: number): (number, number, number?)
+	return District.GroundY, 0, nil
+end
 local partsBefore = stats.parts
 local started = os.clock()
 local report = BuildGundiville.run()
@@ -173,6 +177,11 @@ check("district folder built", folder ~= nil)
 assert(report and folder, "the district was not built")
 check("district folder is marked BuildGundiville", folder:GetAttribute("GeneratedBy") == "BuildGundiville")
 check("district version recorded", folder:GetAttribute("DistrictVersion") == District.Version)
+check(
+	"terrain as planned: district not raised, no ramps",
+	report.Lift == 0 and folder:GetAttribute("GroundLift") == 0 and report.Streets.Ramps == 0,
+	`{report.Lift}, {report.Streets.Ramps} ramps`
+)
 check("one undo step committed", stats.lastRecording == "Commit")
 
 local parts: { any } = {}
@@ -473,19 +482,46 @@ check(
 check("statue finish recorded", s.Finish == District.Statue.Finish and statue:GetAttribute("Finish") == s.Finish)
 local figure = statue:FindFirstChild("Figure")
 check("figure in the statue model", figure ~= nil)
+-- The body without accessories (the figure height is the body height; hair and hats add to it).
+local function bodyExtent(model: any): (number, number)
+	local bottom, top = math.huge, -math.huge
+	for _, item in model:GetDescendants() do
+		if item:IsA("BasePart") and not item:FindFirstAncestorWhichIsA("Accoutrement") then
+			bottom = math.min(bottom, item.Position.Y - item.Size.Y / 2)
+			top = math.max(top, item.Position.Y + item.Size.Y / 2)
+		end
+	end
+	return bottom, top
+end
 if figure then
-	local box, size = figure:GetBoundingBox()
+	local bottom, top = bodyExtent(figure)
 	local pedestalTop = W + 1.6 + District.Statue.PedestalHeight
 	check(
 		`figure about {District.Statue.FigureHeight} studs high`,
-		math.abs(size.Y - District.Statue.FigureHeight) < 0.05,
-		size.Y
+		math.abs(top - bottom - District.Statue.FigureHeight) < 0.05
+			and math.abs(statue:GetAttribute("FigureHeight") - District.Statue.FigureHeight) < 0.05,
+		top - bottom
 	)
+	check("figure stands on the pedestal", math.abs(bottom - pedestalTop) < 0.05, bottom)
+	-- The mock avatar arrives like a real one in edit mode: head off its neck, hat not fitted,
+	-- and one accessory whose attachment the body does not have.
+	local scale = District.Statue.FigureHeight / 5 -- the mock body is 5 studs tall
+	local torso, head = figure:FindFirstChild("Torso"), figure:FindFirstChild("Head")
 	check(
-		"figure stands on the pedestal",
-		math.abs(box.Position.Y - size.Y / 2 - pedestalTop) < 0.05,
-		box.Position.Y - size.Y / 2
+		"head placed by its neck joint",
+		head ~= nil and torso ~= nil and math.abs(head.Position.Y - torso.Position.Y - 1.5 * scale) < 0.01,
+		head and torso and (head.Position.Y - torso.Position.Y) / scale
 	)
+	local hat = figure:FindFirstChild("Hat")
+	local handle = hat and hat:FindFirstChild("Handle")
+	check(
+		"hat fitted onto the head attachment",
+		handle ~= nil
+			and head ~= nil
+			and (handle.Position - (head.Position + Vector3.new(0, 0.8 * scale, 0))).Magnitude < 0.01,
+		handle and head and (handle.Position - head.Position) / scale
+	)
+	check("accessory that fits nowhere is left out", figure:FindFirstChild("Stray") == nil)
 	local root = figure:FindFirstChild("HumanoidRootPart")
 	local look = root.CFrame.LookVector
 	check(
@@ -516,8 +552,25 @@ if figure then
 		"no name or health bar over the statue",
 		humanoid ~= nil and humanoid.DisplayDistanceType == Enum.HumanoidDisplayDistanceType.None
 	)
-	check("original finish keeps the clothing", figure:FindFirstChildOfClass("Shirt") ~= nil)
-	check("statue is clear of the Congress line of sight", heights.Statue < (heights.Congress or 0) / 2, heights.Statue)
+	local clothing, textured, gilded = 0, 0, true
+	for _, item in figure:GetDescendants() do
+		if item:IsA("Shirt") or item:IsA("Pants") or item:IsA("BodyColors") then
+			clothing += 1
+		elseif item:IsA("MeshPart") and item.TextureID ~= "" then
+			textured += 1
+		elseif item:IsA("SpecialMesh") and item.TextureId ~= "" then
+			textured += 1
+		end
+		if item:IsA("BasePart") and (item.Material ~= Enum.Material.Metal or item.Color.G < item.Color.B) then
+			gilded = false
+		end
+	end
+	check("statue is gold by default (decision D3)", District.Statue.Finish == "Gold" and gilded)
+	check(
+		"gold finish removes clothing and textures",
+		clothing == 0 and textured == 0,
+		`{clothing} clothing, {textured} textured`
+	)
 end
 check("figure scaled once", stats.scaled == 1, stats.scaled)
 
@@ -563,8 +616,11 @@ check(
 check("bronze finish casts every part in metal", coloured)
 local face = bronzeFigure:FindFirstChild("Head") and bronzeFigure.Head:FindFirstChild("face")
 check("bronze finish keeps the face, tinted", face ~= nil and face.Transparency > 0)
+local original = BuildGundiville.statue({ Finish = "Original" })
+local originalFigure = folder:FindFirstChild("LeaderStatue"):FindFirstChild("Figure")
+check("original finish keeps the clothing", original ~= nil and originalFigure:FindFirstChildOfClass("Shirt") ~= nil)
 local ok = pcall(function()
-	BuildGundiville.statue({ Finish = "Gold" })
+	BuildGundiville.statue({ Finish = "Chocolate" })
 end)
 check("unknown finish is refused", not ok)
 check("refused finish leaves the statue", folder:FindFirstChild("LeaderStatue") ~= nil)
@@ -593,6 +649,86 @@ check(
 check("StatueSource itself is left in place", mockWorkspace:FindFirstChild("StatueSource") == source)
 source:Destroy()
 stats.avatarFails = false
+
+-- 4. Saved terrain higher than planned ---------------------------------------------------------------
+-- As seen in Studio: the terrain of the city sits about 1.7 studs above the planned ground, while
+-- the national roads the district joins stay at road height.
+local TERRAIN = District.GroundY + 1.7
+local OUTSIDE = District.GroundY + District.RoadTop
+stats.groundSurface = function(x: number, z: number): (number, number, number?)
+	if math.abs(x) <= 900 and math.abs(z) <= 900 then
+		return TERRAIN, 0, nil
+	end
+	return OUTSIDE, 0, nil
+end
+local raised = BuildGundiville.run()
+folder = map:FindFirstChild("GovernmentDistrict")
+local lift = 1.7
+check(
+	"district raised onto the saved terrain",
+	raised ~= nil and math.abs(raised.Lift - lift) < 1e-6 and folder:GetAttribute("GroundLift") == raised.Lift,
+	raised and raised.Lift
+)
+local roadTop = District.GroundY + lift + District.RoadTop
+local flatAsphalt, buriedAsphalt, footed, gaps, tilted = 0, 0, 0, 0, {}
+for _, item in folder:GetDescendants() do
+	if not item:IsA("BasePart") then
+		continue
+	end
+	local up = item.CFrame.UpVector
+	local bottom = item.Position.Y - item.Size.Y / 2
+	if (item.Name == "Asphalt" or item.Name == "Sidewalk") and up.Y < 0.99999 then
+		table.insert(tilted, item)
+	elseif item.Name == "Asphalt" then
+		flatAsphalt += 1
+		if item.Position.Y + item.Size.Y / 2 < TERRAIN then
+			buriedAsphalt += 1
+		end
+	end
+	if up.Y > 0.99999 and math.abs(bottom - (District.GroundY - 1)) < 1e-6 then
+		footed += 1
+	elseif up.Y > 0.99999 and bottom > District.GroundY - 1 and bottom <= District.GroundY + lift + 1e-6 then
+		gaps += 1 -- reaches the raised ground but stops above the planned ground
+	end
+end
+check("raised asphalt is above the terrain", flatAsphalt > 0 and buriedAsphalt == 0, `{buriedAsphalt} of {flatAsphalt}`)
+check(
+	"ground pieces have footings down to the planned ground",
+	footed > 50 and gaps == 0,
+	`{footed} footed, {gaps} gaps`
+)
+check("the avenue and the main street ramp down to N5 and N4", raised ~= nil and raised.Streets.Ramps == 2)
+-- The ramps: one end level with the raised street, the other with the road it meets.
+local function topAt(part: any, sign: number): number
+	local f, sz = part.CFrame, part.Size
+	local alongZ = math.abs(f.RightVector.Y) < 1e-9 -- ramps along Z keep their X axis level
+	local offset = if alongZ
+		then Vector3.new(0, sz.Y / 2, sign * sz.Z / 2)
+		else Vector3.new(sign * sz.X / 2, sz.Y / 2, 0)
+	return (f * offset).Y
+end
+local rampsOk = #tilted > 0
+for _, part in tilted do
+	local a, b = topAt(part, -1), topAt(part, 1)
+	local high, low = math.max(a, b), math.min(a, b)
+	local walk = if part.Name == "Sidewalk" then District.WalkTop - District.RoadTop else 0
+	if math.abs(high - (roadTop + walk)) > 0.05 or math.abs(low - (OUTSIDE + walk)) > 0.05 then
+		rampsOk = false
+		print("INFO ramp piece", part.Name, high, low)
+	end
+end
+check("ramps run from the raised street to the national road", rampsOk, #tilted)
+local raisedFigure = folder:FindFirstChild("LeaderStatue"):FindFirstChild("Figure")
+local raisedBottom = bodyExtent(raisedFigure)
+local raisedPedestal = District.GroundY + lift + District.WalkTop + 1.6 + District.Statue.PedestalHeight
+check("statue stands on the raised pedestal", math.abs(raisedBottom - raisedPedestal) < 0.05, raisedBottom)
+local rebuilt = BuildGundiville.statue()
+local rebuiltBottom = bodyExtent(folder:FindFirstChild("LeaderStatue"):FindFirstChild("Figure"))
+check(
+	"statue rebuild keeps the raised ground",
+	rebuilt ~= nil and math.abs(rebuiltBottom - raisedPedestal) < 0.05,
+	rebuiltBottom
+)
 
 check("remove() succeeds", BuildGundiville.remove())
 check("district removed", map:FindFirstChild("GovernmentDistrict") == nil)

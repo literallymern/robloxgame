@@ -19,6 +19,7 @@ District.FolderName = "GovernmentDistrict"
 
 export type Report = {
 	Parts: number,
+	Lift: number, -- studs above the planned ground (Ground.luau)
 	PartsBy: { [string]: number },
 	Streets: { [string]: number },
 	Square: { [string]: number },
@@ -38,8 +39,10 @@ function District.newFolder(config: any): Folder
 	return folder
 end
 
+-- `config` is the plan (GovernmentDistrict), or the plan on surveyed ground (Ground.apply).
 function District.build(config: any, folder: Instance, options: Statue.Options?): Report
 	Kit.resetCount()
+	Kit.setFooting(if config.FootingY then config.GroundY else nil, config.FootingY)
 	local partsBy: { [string]: number } = {}
 	local function step<T>(name: string, build: () -> T): T
 		local before = Kit.partCount()
@@ -69,8 +72,10 @@ function District.build(config: any, folder: Instance, options: Statue.Options?)
 	local statue = step("Statue", function()
 		return Statue.build(config, folder, options)
 	end)
+	Kit.setFooting(nil, nil)
 	return {
 		Parts = Kit.partCount(),
+		Lift = config.Lift or 0,
 		PartsBy = partsBy,
 		Streets = streets,
 		Square = square,

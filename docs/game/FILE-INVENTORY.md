@@ -98,13 +98,14 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/BuildGundiville.luau` | `ServerStorage.StudioTools.BuildGundiville` | Commands: `run()`, `statue({ Finish = … })`, `focus()`, `remove()` (edit mode, one undo step each) | 3 |
 | `src/studio/Gundiville/Kit.luau` | `…StudioTools.Gundiville.Kit` | Building kit: walls with openings, windows, shutters, columns, pediments, roofs, dome, flags, emblem, inscriptions, lamps, trees, furniture; part counter | 3 |
 | `src/studio/Gundiville/District.luau` | `…Gundiville.District` | Builds the whole district into one folder and reports parts per builder | 3 |
+| `src/studio/Gundiville/Ground.luau` | `…Gundiville.Ground` | Measures the saved terrain under the district (raycasts, terrain only read) and the roads the avenue and main street meet; the district is raised onto it with footings and end ramps | 3 |
 | `src/studio/Gundiville/Streets.luau` | `…Gundiville.Streets` | Carriageways, sidewalks, avenue median with trees and lights, centre lines, zebra crossings, street name signs | 3 |
 | `src/studio/Gundiville/Square.luau` | `…Gundiville.Square` | Main square: paving, 16 market stalls, flags, lamps, benches, trees | 3 |
 | `src/studio/Gundiville/Congress.luau` | `…Gundiville.Congress` | General People's Congress with dome, entrance hall and assembly chamber | 3 |
 | `src/studio/Gundiville/Hausali.luau` | `…Gundiville.Hausali` | Hausali with lobby, balcony and garden | 3 |
 | `src/studio/Gundiville/CentralBank.luau` | `…Gundiville.CentralBank` | Central Bank with banking hall (no money functions) | 3 |
 | `src/studio/Gundiville/Residence.luau` | `…Gundiville.Residence` | Leader's residence: walls, gate, guard posts, villa with hall and office, gardens | 3 |
-| `src/studio/Gundiville/Statue.luau` | `…Gundiville.Statue` | Statue of Dr. Justin Wachmann: loads the Owner's avatar, finishes, pedestal, plaques, floodlights; stand-in fallback | 3 |
+| `src/studio/Gundiville/Statue.luau` | `…Gundiville.Statue` | Statue of Dr. Justin Wachmann: loads the Owner's avatar, poses it from its joints and accessory attachments, finishes (gold by default), pedestal, plaques, floodlights; stand-in fallback | 3 |
 
 Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src/client/UI` (Milestone 4/8). See [01-architecture.md](01-architecture.md), section 3.
 

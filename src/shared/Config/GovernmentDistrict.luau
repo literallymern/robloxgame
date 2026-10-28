@@ -19,6 +19,12 @@ local function frozenList<T>(list: { T }): { T }
 	return table.freeze(list)
 end
 
+export type Join = { Edge: "MaxX" | "MaxZ", Length: number }
+
+local function join(edge: "MaxX" | "MaxZ", length: number): Join
+	return table.freeze({ Edge = edge, Length = length })
+end
+
 export type Street = {
 	Id: string,
 	Name: string?, -- street name sign text (proposal, not canon; nil = no name sign)
@@ -28,6 +34,9 @@ export type Street = {
 	Median: Rect?, -- planted median (avenue only)
 	CentreLines: { number }, -- coordinates (across the street) of dashed lines
 	Crosswalks: { number }, -- coordinates along the street where a zebra crossing is painted
+	-- The street's end meets a national road: its last `Length` studs ramp to the height of that
+	-- road when the district had to be raised above the saved terrain (Gundiville/Ground.luau).
+	Join: Join?,
 }
 
 local District = {}
@@ -52,6 +61,7 @@ District.Streets = frozenList({
 		Median = rect(-12, 12, 20, 860),
 		CentreLines = frozenList({ -26, 26 }),
 		Crosswalks = frozenList({ 26, 86, 144 }),
+		Join = join("MaxZ", 40), -- N5
 	} :: Street,
 	{
 		Id = "MainStreet",
@@ -61,6 +71,7 @@ District.Streets = frozenList({
 		Carriageways = frozenList({ rect(-153, 900, 103, 127) }),
 		CentreLines = frozenList({ 115 }),
 		Crosswalks = frozenList({ -56, 56 }),
+		Join = join("MaxX", 40), -- N4
 	} :: Street,
 	{
 		Id = "WestStreet",
@@ -148,12 +159,14 @@ District.Residence = table.freeze({
 District.Statue = table.freeze({
 	UserId = 2595858454, -- Roblox user of the Owner (Dr. Justin Wachmann)
 	Position = table.freeze({ 0, -130 }),
-	FigureHeight = 30,
-	PedestalHeight = 14,
+	-- Height of the body (accessories such as hair and hats come on top). Owner's wish of
+	-- 2026-10-28: "in gold und viel größer" (was 30 on a 14-stud pedestal).
+	FigureHeight = 50,
+	PedestalHeight = 20,
 	Facing = "North", -- towards the General People's Congress
-	-- "Original" keeps the avatar's colours and clothing (P5); "Bronze" and "Stone" are the
-	-- single-material alternatives of decision D3.
-	Finish = "Original",
+	-- Decision D3 (Owner, 2026-10-28): gold. "Original" keeps the avatar's colours and
+	-- clothing; "Bronze" and "Stone" remain as alternatives.
+	Finish = "Gold",
 	Inscription = table.freeze({
 		"DR. JUSTIN WACHMANN",
 		"LEADER OF THE REVOLUTION",

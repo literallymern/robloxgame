@@ -81,6 +81,16 @@ function Kit.model(parent: Instance, name: string, building: string): Model
 end
 
 local count = 0
+local footingGround: number? = nil
+local footingY: number? = nil
+
+-- When the district stands above its planned ground (see Ground.luau), boxes that reach down to
+-- the ground continue down to `footing`, so no gap shows where the terrain is lower. Call with
+-- nil to switch it off.
+function Kit.setFooting(ground: number?, footing: number?)
+	footingGround, footingY = ground, footing
+end
+
 -- Number of BaseParts built since the last reset (the district budget is checked with it).
 function Kit.resetCount()
 	count = 0
@@ -106,6 +116,9 @@ function Kit.box(
 ): Part
 	local lo = Vector3.new(math.min(x0, x1), math.min(y0, y1), math.min(z0, z1))
 	local hi = Vector3.new(math.max(x0, x1), math.max(y0, y1), math.max(z0, z1))
+	if footingGround and footingY and lo.Y <= footingGround + 1e-3 and lo.Y > footingY then
+		lo = Vector3.new(lo.X, footingY, lo.Z)
+	end
 	local size = hi - lo
 	assert(size.X > 0 and size.Y > 0 and size.Z > 0, `Kit.box {name}: empty box`)
 	count += 1
@@ -117,6 +130,16 @@ function Kit.slab(parent: Instance, name: string, r: Rect, y0: number, y1: numbe
 end
 
 function Kit.rect(minX: number, maxX: number, minZ: number, maxZ: number): Rect
+	return { MinX = minX, MaxX = maxX, MinZ = minZ, MaxZ = maxZ }
+end
+
+-- The overlap of two rectangles, or nil when they only touch or do not meet.
+function Kit.intersect(a: Rect, b: Rect): Rect?
+	local minX, maxX = math.max(a.MinX, b.MinX), math.min(a.MaxX, b.MaxX)
+	local minZ, maxZ = math.max(a.MinZ, b.MinZ), math.min(a.MaxZ, b.MaxZ)
+	if maxX - minX < 0.01 or maxZ - minZ < 0.01 then
+		return nil
+	end
 	return { MinX = minX, MaxX = maxX, MinZ = minZ, MaxZ = maxZ }
 end
 
