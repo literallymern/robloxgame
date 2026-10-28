@@ -4,7 +4,7 @@
 local Geometry = require(script.Parent.Geometry)
 
 local Junction = {}
-Junction.Revision = "kagundali-junction-1"
+Junction.Revision = "kagundali-junction-2"
 Junction.LightingRevision = "neutral-highland-1"
 Junction.Bounds = table.freeze({ MinX = 64, MaxX = 832, MinZ = 2944, MaxZ = 3648 })
 Junction.Centre = Vector3.new(453.2403817191586, 55.695266970006095, 3298.6057257873795)
@@ -21,8 +21,9 @@ function Junction.weight(x: number, z: number): number
 	return Geometry.smoothstep(math.min(x - b.MinX, b.MaxX - x, z - b.MinZ, b.MaxZ - z) / 52)
 end
 
--- Feature landscape used both for new maps and conservative local saved-voxel migration.
-function Junction.decorate(hf: any, layout: any): any
+-- Immutable junction-1 baseline for recognizing the user's already-saved voxel columns.
+-- Add later appearance changes in decorate(), rather than editing these old functions.
+function Junction.decorateV1(hf: any, layout: any): any
 	local result = table.clone(hf)
 	local yard = Junction.Yard
 	local yardY = hf.surface(yard.X, yard.Z)
@@ -79,6 +80,41 @@ function Junction.decorate(hf: any, layout: any): any
 		return 1 -- Grass supports native Decoration; LeafyGrass left the old meadow visibly bare
 	end
 	result.legacySurface, result.legacyNaturalMaterial = hf.surface, hf.naturalMaterial
+	return result
+end
+
+-- Shared by the gravel geometry and its grass-free terrain corridor.
+function Junction.access(hf: any): (Vector3, Vector3?)
+	local yard, closest, finish = Junction.Yard, math.huge, nil
+	for _, road in hf.roads.roads do
+		if road.Id == "R3" then
+			for i, x in road.line.xs do
+				if math.abs(x - yard.X) < closest then
+					closest = math.abs(x - yard.X)
+					finish = Vector3.new(x, road.profile[i], road.line.zs[i] + road.Width / 2)
+				end
+			end
+		end
+	end
+	return Vector3.new(yard.X, hf.surface(yard.X, yard.Z), yard.Z - 32), finish
+end
+
+function Junction.decorate(hf: any, layout: any): any
+	local previous = Junction.decorateV1(hf, layout)
+	local result = table.clone(previous)
+	local a, b = Junction.access(hf)
+	result.naturalMaterial = function(y: number, slope: number, x: number, z: number, hint: number?): number
+		if b and Geometry.segmentDistance(a.X, a.Z, b.X, b.Z, x, z) < 7 then
+			local _, code, water = hf.surface(x, z)
+			if water == nil and (code <= 0 or code == 4 or code == 5) and hf.fields.cropAt(x, z) == nil then
+				return 4 -- Ground: native grass must not protrude through the gravel driveway.
+			end
+		end
+		return previous.naturalMaterial(y, slope, x, z, hint)
+	end
+	-- Recognize both the user's already-applied junction-1 and the global highland-4 baseline.
+	result.legacySurface, result.legacyNaturalMaterial = previous.surface, previous.naturalMaterial
+	result.previousSurface, result.previousNaturalMaterial = hf.surface, hf.naturalMaterial
 	return result
 end
 

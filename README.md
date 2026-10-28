@@ -125,6 +125,11 @@ nicht erforderlich. **Die visuelle Studio-Abnahme ist noch offen.** Anleitung,
 Ursachendiagnose, Testgrenzen und Quellgeometrievorschau:
 [`Kagundali R3/N5`](docs/game/07-kagundali-junction.md).
 
+**Korrektur nach deinen Studio-Bildern:** `kagundali-junction-2` behebt die kugeligen
+Blattformen, befreit die Werkstattzufahrt von Gras und stellt lokale Straßenmarkierungen
+wieder her. Den gleichen Update-Befehl nach Sync und Studio-Neustart erneut ausführen.
+Details: [Screenshot-Auswertung und Korrekturen](docs/game/08-kagundali-screenshot-fixes.md).
+
 ## Globale Grundlage highland-4
 
 Die vier Referenzbilder sind in dieses Update eingeflossen: weniger kahle Flecken auf sanften Hängen, größere Laub- und Eukalyptuskronen sowie Fundamente, Laternen und Strommasten, die dem gespeicherten Boden folgen. Das vorhandene natürliche Licht bleibt erhalten.

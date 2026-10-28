@@ -5,7 +5,7 @@
 local Hash = require(script.Parent.Parent.Hash)
 local Util = require(script.Parent.Util)
 local Trees = {}
-Trees.Version = "kagundali-trees-1"
+Trees.Version = "kagundali-trees-2"
 Trees.Kinds = { "Broadleaf", "Acacia", "Eucalyptus", "Shrub", "Fern" }
 Trees.Variants = 3
 local NAME = "RoNationJunctionTrees"
@@ -185,6 +185,7 @@ function Trees.prepare(): Folder
 	library:SetAttribute("ManagedBy", NAME)
 	library:SetAttribute("AssetVersion", Trees.Version)
 	local inputs: { BasePart } = {}
+	local ellipsoid: BasePart? = nil
 	local function clear()
 		for _, part in inputs do
 			part:Destroy()
@@ -193,6 +194,29 @@ function Trees.prepare(): Folder
 	end
 	local ok, err = pcall(function()
 		local geometry = game:GetService("GeometryService")
+		-- A Part with Shape=Ball always renders a sphere with diameter min(Size).
+		-- Bake ONE uniform sphere into solid geometry first. A PartOperation can then
+		-- be stretched into a real ellipsoid before the foliage unions are assembled.
+		local ball = Instance.new("Part")
+		ball.Shape, ball.Size, ball.CFrame = Enum.PartType.Ball, Vector3.new(1, 1, 1), CFrame.new()
+		ball.Anchored, ball.Material, ball.Color = true, Enum.Material.SmoothPlastic, PALETTE[2]
+		table.insert(inputs, ball)
+		local core = Instance.new("Part")
+		core.Size, core.CFrame, core.Anchored = Vector3.new(0.05, 0.05, 0.05), CFrame.new(), true
+		table.insert(inputs, core)
+		local baked = geometry:UnionAsync(ball, { core }, {
+			SplitApart = false,
+			CollisionFidelity = Enum.CollisionFidelity.Box,
+			RenderFidelity = Enum.RenderFidelity.Automatic,
+		})
+		if #baked ~= 1 or not baked[1]:IsA("PartOperation") then
+			for _, item in baked do
+				item:Destroy()
+			end
+			error("Could not bake the solid leaf prototype")
+		end
+		ellipsoid = baked[1]
+		clear()
 		for _, kind in Trees.Kinds do
 			for variant = 1, Trees.Variants do
 				local model = Instance.new("Model")
@@ -207,8 +231,14 @@ function Trees.prepare(): Folder
 					origin.CFrame, origin.Size, origin.Anchored = CFrame.new(), Vector3.new(0.05, 0.05, 0.05), true
 					table.insert(inputs, origin)
 					for _, item in shapes do
-						local part = Instance.new("Part")
-						part.Shape = (Enum.PartType :: any)[item.Form]
+						local part: BasePart
+						if item.Form == "Ball" then
+							part = (ellipsoid :: BasePart):Clone()
+						else
+							local primitive = Instance.new("Part")
+							primitive.Shape = (Enum.PartType :: any)[item.Form]
+							part = primitive
+						end
 						part.Anchored, part.CFrame, part.Size = true, item.Frame, item.Size
 						table.insert(inputs, part)
 					end
@@ -217,7 +247,7 @@ function Trees.prepare(): Folder
 					local result = geometry:UnionAsync(origin, others, {
 						SplitApart = false,
 						CollisionFidelity = Enum.CollisionFidelity.Box,
-						RenderFidelity = Enum.RenderFidelity.Performance,
+						RenderFidelity = Enum.RenderFidelity.Automatic,
 					})
 					if #result ~= 1 or not result[1]:IsA("PartOperation") then
 						for _, item in result do
@@ -251,6 +281,9 @@ function Trees.prepare(): Folder
 		end
 	end)
 	clear()
+	if ellipsoid then
+		ellipsoid:Destroy()
+	end
 	if not ok then
 		library:Destroy()
 		error(`Junction trees failed before map replacement: {tostring(err)}`)

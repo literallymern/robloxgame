@@ -1,5 +1,10 @@
 # Kagundali R3/N5: erster visueller Referenzbereich
 
+> **Aktueller Stand: junction-2.** Drei neue Nutzerbilder bestätigen die Anwendung
+> von junction-1, zeigen aber einen Fehler in der Blattgeometrie. Diagnose, Korrekturen
+> und Update-Aufruf: [Studio-Screenshot-Korrekturen](08-kagundali-screenshot-fixes.md).
+> Die Zahlen und Umsetzungsbeschreibung unten dokumentieren den ersten Stand.
+
 **Stand: `kagundali-junction-1`, Licht `neutral-highland-1`.** Der Code und der
 Offline-Testaufbau sind umgesetzt. Die visuelle Abnahme in Roblox Studio ist offen:
 in der Ausführungsumgebung stehen weder Studio noch ein Renderer für den Place zur
@@ -128,9 +133,11 @@ Eigene Handarbeit außerhalb der erzeugten Ordner behalten; erzeugte Ordner sind
 `Ro-Nation_2026-10-27_223933.jpg` (Blattplatten), sowie `224001`, `224005` und `224100`.
 Sie wurden als Problemdokumentation ausgewertet, nicht als gewünschter Stil.
 
-**NACHHER: noch nicht vorhanden.** Kein Zugriff auf Roblox Studio, den laufenden Place,
-native CSG-Ausführung oder einen Spielrenderer. Es wurden daher keine tatsächlichen
-Spielbilder nach dem Update aufgenommen und keine sichtbaren Ergebnisse behauptet.
+**NACHHER des ersten Stands: inzwischen vom Nutzer geliefert.** Die drei Aufnahmen
+`083507`, `083519` und `083533` vom 28. Oktober zeigen Werkstatt, Gras und neue Bäume,
+aber auch kugelige Kronen und nicht erkennbare Straßenmarkierungen. Die
+[Auswertung und Korrektur](08-kagundali-screenshot-fixes.md) dokumentiert diese Befunde.
+Für junction-2 liegt noch kein Studio-Nachherbild vor; eigener Studio-Zugriff fehlt weiterhin.
 
 ![Softwarevorschau der Baum-Quellgeometrie, kein Roblox-Render und kein Nachherbild](kagundali-tree-sources.png)
 

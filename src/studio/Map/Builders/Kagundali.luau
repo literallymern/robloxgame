@@ -30,18 +30,7 @@ local function workshop(root: Instance, sample: any, hf: any): boolean
 	model.Name, model.Parent = "KagundaliTransportWorkshop", root
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	-- A short gravel driveway meets the existing R3 edge; the through carriageway is untouched.
-	local entry: Vector3? = nil
-	local closest = math.huge
-	for _, road in hf.roads.roads do
-		if road.Id == "R3" then
-			for i, x in road.line.xs do
-				if math.abs(x - yard.X) < closest then
-					closest = math.abs(x - yard.X)
-					entry = Vector3.new(x, road.profile[i], road.line.zs[i] + road.Width / 2)
-				end
-			end
-		end
-	end
+	local _, entry = Junction.access(hf)
 	if entry then
 		local start = Vector3.new(yard.X, y + 0.08, yard.Z - 32)
 		local points: { Vector3 } = { start }
@@ -390,7 +379,9 @@ function Builder.refineSigns(map: Instance): number
 	local signs = if details then details:FindFirstChild("Signs") else nil
 	local count = 0
 	for _, model in if signs then signs:GetChildren() else {} do
-		if not model:IsA("Model") or model:GetAttribute("JunctionConstruction") == Junction.Revision then
+		-- Construction revision is independent of vegetation/terrain. Do not move the
+		-- retained signposts a second time when upgrading junction-1 to junction-2.
+		if not model:IsA("Model") or model:GetAttribute("JunctionConstruction") ~= nil then
 			continue
 		end
 		local board = model.PrimaryPart

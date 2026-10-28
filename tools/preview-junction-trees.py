@@ -39,6 +39,8 @@ def main():
         tag, kind, group, form, *values = line.split()
         assert tag == "SOURCE"
         values = np.array(list(map(float, values)))
+        # Ball blueprints describe ellipsoids. Since trees-2 the engine builds them
+        # from scaled baked PartOperations; raw Roblox Ball Parts remain spherical.
         p, faces = sphere() if form == "Ball" else preview.cylinder()
         frame = values[6:15].reshape(3, 3).T
         points = (p * values[3:6]) @ frame.T + values[:3]

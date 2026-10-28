@@ -4,6 +4,7 @@
 local Junction = require(script.Parent.JunctionLandscape)
 local Trees = require(script.Parent.Builders.JunctionTrees)
 local Builder = require(script.Parent.Builders.Kagundali)
+local Markings = require(script.Parent.Builders.JunctionMarkings)
 local Upgrade = require(script.Parent.Builders.TerrainUpgrade)
 local Existing = require(script.Parent.ExistingTerrain)
 local Details = require(script.Parent.RoadDetails)
@@ -58,13 +59,33 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	local staging = Util.detachedFolder("KagundaliStaging")
 	local okay, report = pcall(function()
 		local details = Details.new(layout, hf, sample)
-		return Builder.build(feature, layout, staging, sample, library, details)
+		local built = Builder.build(feature, layout, staging, sample, library, details)
+		local paintSample = if opts.GeneratedTerrain
+			then function(p: Vector3): Vector3
+				return p
+			end
+			else Markings.surface(map)
+		built.Markings, built.MarkingsComplete = Markings.build(details, staging.KagundaliJunction, paintSample)
+		if not built.MarkingsComplete and old and old:FindFirstChild("Markings") then
+			local retained = old.Markings:Clone()
+			retained.Parent = staging.KagundaliJunction
+			built.Markings = #retained:GetChildren()
+		end
+		built.Parts += built.Markings
+		assert(built.Parts <= Junction.MaxParts, "Junction markings exceeded the regional part budget")
+		staging.KagundaliJunction:SetAttribute("PartCount", built.Parts)
+		return built
 	end)
 	if not okay then
 		staging:Destroy()
 		error(`Kagundali staging failed; previous geometry retained: {tostring(report)}`)
 	end
 	local replacement = staging:FindFirstChild("KagundaliJunction") :: Folder
+	if report.MarkingsComplete then
+		Markings.removeReplaced(map)
+	else
+		log("Road marking probes incomplete: existing paint retained. Inspect the saved Roads/Bridges surfaces.")
+	end
 	report.RemovedOldPlants = Builder.removeOldVegetation(map)
 	if old then
 		old:Destroy()
@@ -73,12 +94,13 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 	staging:Destroy()
 	report.RefinedSigns = Builder.refineSigns(map)
 	local places = map:FindFirstChild("Places")
-	local city = if places and Util.isGenerated(places) then places:FindFirstChild("Kagundali") else nil
-	local marker = if city then city:FindFirstChild("NameMarker") else nil
-	if marker then
-		for _, gui in marker:GetChildren() do
-			if gui:IsA("BillboardGui") then
-				gui.Enabled = false
+	for _, place in if places and Util.isGenerated(places) then places:GetChildren() else {} do
+		local marker = place:FindFirstChild("NameMarker")
+		if marker then
+			for _, gui in marker:GetChildren() do
+				if gui:IsA("BillboardGui") then
+					gui.Enabled = false
+				end
 			end
 		end
 	end
@@ -97,7 +119,7 @@ function Update.apply(hf: any, layout: any, map: Instance, options: any?): any
 		`{Junction.Revision}: {report.Trees} new trees, {report.Shrubs} shrubs, {report.Ferns} ferns; {report.Parts}/{Junction.MaxParts} parts. Workshop: {report.Workshop}.`
 	)
 	log(
-		`Removed {report.RemovedOldPlants} old plants; refined {report.RefinedSigns} signs. Save the place. Visual acceptance remains a Studio comparison at R3/N5.`
+		`Removed {report.RemovedOldPlants} old plants; refined {report.RefinedSigns} signs; restored {report.Markings} marking parts. Save the place. Visual acceptance remains a Studio comparison at R3/N5.`
 	)
 	return report
 end

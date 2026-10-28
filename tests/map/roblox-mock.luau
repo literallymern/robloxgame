@@ -826,6 +826,13 @@ local geometry = service("GeometryService", {
 				"CSG requires actual solid primitives"
 			)
 			local frame, size = part.CFrame, part.Size
+			if part:IsA("Part") and part.Shape == Enum.PartType.Ball then
+				local diameter = math.min(size.X, size.Y, size.Z)
+				size = Vector3.new(diameter, diameter, diameter)
+				MockStats.ballInputs = (MockStats.ballInputs or 0) + 1
+			elseif part:IsA("PartOperation") then
+				MockStats.solidInputs = (MockStats.solidInputs or 0) + 1
+			end
 			for x = -1, 1, 2 do
 				for y = -1, 1, 2 do
 					for z = -1, 1, 2 do

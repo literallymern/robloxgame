@@ -53,6 +53,18 @@ for _, x in { -40, 0, 40 } do
 	end
 end
 check(padFlat, "workshop pad is level and joined to the existing rural ground")
+local oldFeature = Junction.decorateV1(hf, Layout)
+local start, finish = Junction.access(hf)
+local cleared = 0
+for i = 1, 10 do
+	local p = start:Lerp(finish, i / 12)
+	local y, code = feature.surface(p.X, p.Z)
+	if oldFeature.naturalMaterial(y, 0.1, p.X, p.Z, code) == 1 then
+		assert(feature.naturalMaterial(y, 0.1, p.X, p.Z, code) == 4)
+		cleared += 1
+	end
+end
+check(cleared >= 5, "v2 driveway replaces the former grass material under its gravel surface")
 local smallLeaves, branchCount, shapes = true, 0, 0
 for _, kind in Trees.Kinds do
 	for variant = 1, Trees.Variants do
@@ -76,8 +88,12 @@ check(
 local library = Trees.prepare()
 local calls = MockStats.unionCalls
 check(
-	#library:GetChildren() == 15 and calls == 60,
+	#library:GetChildren() == 15 and calls == 61,
 	"five species with three variants compile to four reusable CSG parts each"
+)
+check(
+	MockStats.ballInputs == 1 and MockStats.solidInputs > 4000,
+	"foliage uses scaled baked solids instead of nonuniform Ball parts that Roblox keeps spherical"
 )
 check(
 	Trees.prepare() == library and MockStats.unionCalls == calls,
@@ -91,6 +107,12 @@ oldPlant.Parent = vegetation
 Util.part(oldPlant, "Trunk", CFrame.new(210, 50, 3100), Vector3.new(1, 20, 1))
 local farPlant = Util.part(vegetation, "OutsideArea", CFrame.new(-1000, 55, 3300), Vector3.new(1, 20, 1))
 local rd = Util.folder(map, "RoadDetails")
+local places = Util.folder(map, "Places")
+local label = Instance.new("BillboardGui")
+local place = Instance.new("Model")
+place.Name, place.Parent = "SouthBorder", places
+local marker = Util.part(place, "NameMarker", CFrame.new(), Vector3.new(1, 1, 1), { Decoration = true })
+label.Parent = marker
 local signs = Instance.new("Folder")
 signs.Name, signs.Parent = "Signs", rd
 local sourceSigns = load("StudioTools/Map/RoadDetails").new(Layout, hf).signs
@@ -106,6 +128,8 @@ for _, item in signs:GetDescendants() do
 	end
 end
 local report = Update.apply(hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
+check(not label.Enabled, "generated overview labels no longer float across the benchmark horizon")
+check(report.MarkingsComplete and report.Markings > 20, "focused update restores local edge, centre and stop markings")
 check(
 	report.Trees >= 50 and report.Shrubs >= 35 and report.Ferns >= 35 and report.Workshop,
 	"actual scene builds grouped forest, undergrowth and a transport workshop"
@@ -176,6 +200,11 @@ end
 check(arrowCount == 6 and safeMarking, "turn arrow stays on the existing carriageway without adding collision")
 local first = area
 local signsBefore = #signs:GetDescendants()
+for _, sign in signs:GetChildren() do
+	if sign:IsA("Model") then
+		sign:SetAttribute("JunctionConstruction", "kagundali-junction-1")
+	end
+end
 local again = Update.apply(hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
 check(
 	first.Parent == nil and again.Parts == report.Parts and #signs:GetDescendants() == signsBefore,
@@ -205,6 +234,12 @@ check(
 prior:SetAttribute("GeneratedBy", nil)
 okay = pcall(Update.apply, hf, Layout, map, { Terrain = false, GeneratedTerrain = true })
 check(not okay and map.KagundaliJunction == prior, "custom content occupying the benchmark folder blocks replacement")
+library:SetAttribute("AssetVersion", "kagundali-trees-1")
+local updatedLibrary = Trees.prepare()
+check(
+	updatedLibrary ~= library and library.Parent == nil and updatedLibrary:GetAttribute("AssetVersion") == Trees.Version,
+	"saved tree-1 library is replaced so old spherical assets cannot survive the v2 upgrade"
+)
 print(
 	`INFO Kagundali: {report.Trees} trees, {report.Shrubs} shrubs, {report.Ferns} ferns, {report.Rocks} rocks, {report.Parts} parts; {changed} changed height samples`
 )
