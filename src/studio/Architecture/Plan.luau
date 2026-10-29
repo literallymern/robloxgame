@@ -163,6 +163,7 @@ export type WindowRecord = {
 	Top: number,
 	Glass: BasePart?,
 	Shuttered: boolean?,
+	At: number?, -- passages: the line of the wall they open (may lie inside the space)
 }
 
 export type Plan = {

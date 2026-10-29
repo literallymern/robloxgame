@@ -414,13 +414,22 @@ end
 function Furniture.hoseCabinet(parent: Instance, wall: CFrame)
 	piece(parent, "HoseCabinet", wall, 0, 0, -0.4, v(2.6, 2.6, 0.8), Materials.Plastic.Red)
 	piece(parent, "HoseCabinetGlass", wall, 0, 0.15, -0.82, v(2.1, 2, 0.04), Parts.detail(Materials.Glass.Interior))
-	local sign = Furniture.sign(parent, wall * CFrame.new(0, 1.85, 0), 1.6, 0.6, { "FIRE HOSE" }, Materials.Plastic.Red, Color3.new(1, 1, 1))
+	local sign = Furniture.sign(
+		parent,
+		wall * CFrame.new(0, 1.85, 0),
+		1.6,
+		0.6,
+		{ "FIRE HOSE" },
+		Materials.Plastic.Red,
+		Color3.new(1, 1, 1)
+	)
 	sign.Name = "HoseSign"
 end
 
 -- Manual fire alarm call point (small red box at shoulder height).
 function Furniture.callPoint(parent: Instance, wall: CFrame)
-	local part = piece(parent, "FireCallPoint", wall, 0, 0, -0.12, v(0.7, 0.7, 0.24), Parts.detail(Materials.Plastic.Red))
+	local part =
+		piece(parent, "FireCallPoint", wall, 0, 0, -0.12, v(0.7, 0.7, 0.24), Parts.detail(Materials.Plastic.Red))
 	part:SetAttribute("Fitting", "CallPoint")
 end
 

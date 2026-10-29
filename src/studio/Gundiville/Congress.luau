@@ -529,7 +529,13 @@ function Congress.build(district: any, parent: Instance): { [string]: number }
 			Wood = Materials.Wood.Walnut,
 			Upholstery = Materials.Leather.Brown,
 			Runner = Materials.Floor.CarpetGreen,
-			Fixtures = { Committee = "Chandelier", Board = "Chandelier", Library = "Chandelier", Lounge = "Chandelier", Executive = "Chandelier" },
+			Fixtures = {
+				Committee = "Chandelier",
+				Board = "Chandelier",
+				Library = "Chandelier",
+				Lounge = "Chandelier",
+				Executive = "Chandelier",
+			},
 			Door = { Leaf = Materials.Wood.Walnut, Frame = Materials.Frame.Brown, Handle = Materials.Metal.Brass },
 			GlassDoor = {
 				Leaf = Materials.Wood.Walnut,

@@ -178,6 +178,14 @@ function Rooms.context(plan: Plan.Plan, space: Space, folder: Folder): Room
 	local windows: { Raw } = {}
 	local windowLength: { [string]: number } = {}
 	for _, record in plan.Windows do
+		-- A passage through a wall that crosses the space (the Hausali portal bay runs through
+		-- the main block's front wall) is not an opening in the space's own wall.
+		if record.At then
+			local _, line = Plan.edgeLine(r, record.Edge)
+			if math.abs(line - record.At) > 3 then
+				continue
+			end
+		end
 		if record.Space == space and record.Storey == space.Storey then
 			if record.Kind == "Window" then
 				table.insert(

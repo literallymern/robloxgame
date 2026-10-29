@@ -63,6 +63,30 @@ The four buildings were rebuilt with furnished rooms behind every window and wor
 
 If a room looks wrong, a door does not open, or a window shows no room, send a screenshot with the building and storey, and the Output lines.
 
+## Revision 3 — interiors (after R1–R8)
+
+The interiors were reworked with furniture from Roblox's own Duvall Drive packs, wall
+panelling, skirting and warmer, weaker interior lights ([11-interior-realism.md](../11-interior-realism.md);
+offline previews [1](../interior-previews-1.jpg) and [2](../interior-previews-2.jpg), rendered outside Roblox).
+Tested before this checklist, in the cloud session only: `tests/map/interior-assets.spec.luau`
+(47 checks against synthetic packs) and the whole `test_all.py`. Nothing of revision 3 has
+been seen in Roblox Studio yet.
+
+| # | Step | Expected result | Checks |
+|---|---|---|---|
+| I1 | Pull in GitHub Desktop, `rojo serve`, Rojo connected. Edit mode: `require(game.ServerStorage.StudioTools.BuildGundiville).run()` | Output: `Interior furnishings: official Roblox library installed 73 templates, 2 material variants.`, then `Built …` with about 31,000 parts and no `over the district budget` warning. A yellow `Official interior library not available (…)` warning means the import failed: the build still finishes with built furniture; send the warning | A35 |
+| I2 | Explorer: `ServerStorage` and `MaterialService`. Then in the command bar: `local n = 0 for _, d in game.ServerStorage.RoNationInteriorAssets:GetDescendants() do if d:IsA("LuaSourceContainer") then n += 1 end end print(n)` | `RoNationInteriorAssets` holds 73 models and a `MaterialVariants` folder; `MaterialService` has `Wood Floor Herringbone MV` and `Wood Floor MV`; the command prints `0` (no scripts) | Clean import |
+| I3 | Play. Visit the Congress committee rooms (first floor), the Hausali cabinet room (second floor), the bank's board room and governor's office (first floor), the residence salon, dining room and the Leader's office | No white glare on walls and ceilings; warm light; brass chandeliers; wooden panelling to the window sills; furniture like the previews (desks, leather chairs, bookcases, sofas, rugs, paintings, plants). Note any room that is too dark or too bright | A36, lighting |
+| I4 | Sit on a sofa, an office chair, a dining chair and the Leader's chair | You sit; you can get up with Space | Seats |
+| I5 | Walk the corridors of each building | Extinguishers, hose cabinets, fire call points, evacuation plans, exit and direction signs; doors still open with **E**; no furniture blocks a doorway or a corridor | Corridors, doors |
+| I6 | Look at the walls in a few rooms closely | Skirting along the floor, no stone of the façade inside, no plant leaves or furniture sticking through a wall | Finish |
+| I7 | **Shift+F5** in the Congress hall, the Hausali lobby and the residence | Note the frame rate as in R7 | Performance |
+| I8 | Stop Play. Save as in step 17 | The library in `ServerStorage` and the two material variants are saved with the place | |
+
+Ctrl+Z undoes the district build, but not the library import (it is a separate step). To go
+back to built furniture: delete `ServerStorage.RoNationInteriorAssets` and run `run()` again;
+`run()` then loads the library again, so to keep built furniture permanently, tell Claude.
+
 ## If something goes wrong
 
 - `BuildGundiville is not a valid member of StudioTools`: Rojo is not connected or GitHub Desktop has not pulled.

@@ -401,6 +401,7 @@ function Shell.build(plan: Plan.Plan, parent: Instance, runs: { Run }): Report
 						Storey = s,
 						Space = behind((passage.From + passage.To) / 2),
 						Edge = edge,
+						At = run.At,
 						From = passage.From,
 						To = passage.To,
 						Bottom = y0,

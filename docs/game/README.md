@@ -15,6 +15,7 @@ Technical documentation for the Roblox game **Ro-Nation**, set in the Democratic
 | [07-kagundali-junction.md](07-kagundali-junction.md) | what the first visual benchmark area at the R3/N5 junction builds and how to apply it |
 | [08-kagundali-screenshot-fixes.md](08-kagundali-screenshot-fixes.md) | what was fixed at the junction after Justin's Studio screenshots of 28 October |
 | [09-creator-store-assets.md](09-creator-store-assets.md) | how official Roblox trees and lamps are imported and applied to the Kagundali benchmark |
+| [11-interior-realism.md](11-interior-realism.md) | how the building interiors are furnished from official Roblox packs, lit and styled per building (with [previews 1](interior-previews-1.jpg) and [2](interior-previews-2.jpg)) |
 | [FILE-INVENTORY.md](FILE-INVENTORY.md) | what every file in the project is for |
 | [testing/m1-staging-checklist.md](testing/m1-staging-checklist.md) | how to test the Milestone 1 bank window against the staging bridge in Studio |
 | [testing/m2-map-checklist.md](testing/m2-map-checklist.md) | how to build the Milestone 2 map in Studio and check it |

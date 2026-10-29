@@ -12,7 +12,10 @@ return function(): any
 	)
 	if #report.Missing > 0 then
 		warn(
-			`[Ro-Nation:InteriorAssets] Not found in the packs (custom furniture is used instead): {table.concat(report.Missing, ", ")}`
+			`[Ro-Nation:InteriorAssets] Not found in the packs (custom furniture is used instead): {table.concat(
+				report.Missing,
+				", "
+			)}`
 		)
 	end
 	return report

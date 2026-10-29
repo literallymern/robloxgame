@@ -95,8 +95,9 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/Map/Builders/Kagundali.luau` | `…Map.Builders.Kagundali` | Junction plants, shoulders, drainage, sign construction, workshop | 2 (rev. 4) |
 | `src/studio/Map/Builders/JunctionTrees.luau` | `…Map.Builders.JunctionTrees` | Original tree, bush and fern templates for the junction (fallback without the packs) | 2 (rev. 4) |
 | `src/studio/Map/Builders/JunctionMarkings.luau` | `…Map.Builders.JunctionMarkings` | Restores road markings on the saved road surface at the junction | 2 (rev. 4) |
-| `src/shared/Config/GovernmentDistrict.luau` | `ReplicatedStorage.Shared.Config.GovernmentDistrict` | Government district: streets, square, buildings, residence, statue (user, size, finish, inscription), part budget (single source) | 3 |
-| `src/studio/BuildGundiville.luau` | `ServerStorage.StudioTools.BuildGundiville` | Commands: `run()`, `statue({ Finish = … })`, `focus()`, `remove()` (edit mode, one undo step each) | 3 |
+| `src/shared/Config/GovernmentDistrict.luau` | `ReplicatedStorage.Shared.Config.GovernmentDistrict` | Government district: streets, square, buildings, residence, statue (user, size, finish, inscription), part budget (single source; 33,000 since rev. 3) | 3 |
+| `src/studio/BuildGundiville.luau` | `ServerStorage.StudioTools.BuildGundiville` | Commands: `run()`, `statue({ Finish = … })`, `focus()`, `remove()` (edit mode, one undo step each); `run()` installs the interior library when it is missing | 3 |
+| `src/studio/UseInteriorAssets.luau` | `ServerStorage.StudioTools.UseInteriorAssets` | Command: (re)load the official Roblox interior library | 3 (rev. 3) |
 | `src/studio/Gundiville/Kit.luau` | `…StudioTools.Gundiville.Kit` | Building kit: walls with openings, windows, shutters, columns, pediments, roofs, dome, flags, emblem, inscriptions, lamps, trees, furniture (part counter moved to `Architecture.Parts` in rev. 2) | 3 |
 | `src/studio/Gundiville/District.luau` | `…Gundiville.District` | Builds the whole district into one folder and reports parts per builder | 3 |
 | `src/studio/Gundiville/Ground.luau` | `…Gundiville.Ground` | Measures the saved terrain under the district (raycasts, terrain only read) and the roads the avenue and main street meet; the district is raised onto it with footings and end ramps | 3 |
@@ -107,14 +108,15 @@ The Rojo test scripts (`src/shared/Begruessung.luau`, `src/server/Start.server.l
 | `src/studio/Gundiville/CentralBank.luau` | `…Gundiville.CentralBank` | Central Bank: facades and space plan (banking hall with five tellers, vault, offices; no money functions) | 3 (rev. 2) |
 | `src/studio/Gundiville/Residence.luau` | `…Gundiville.Residence` | Leader's residence: walls, gate, furnished guard posts, two-storey villa with 17 rooms (Leader's office, salon, music room, private rooms), gardens, gazebo | 3 (rev. 2) |
 | `src/studio/Gundiville/Statue.luau` | `…Gundiville.Statue` | Statue of Dr. Justin Wachmann: loads the Owner's avatar, poses it from its joints and accessory attachments, finishes (gold by default), pedestal, plaques, floodlights; stand-in fallback | 3 |
-| `src/studio/Architecture/Parts.luau` | `…StudioTools.Architecture.Parts` | Counted, anchored part creation shared by the kit and the architecture modules; footings | 3 (rev. 2) |
-| `src/studio/Architecture/Materials.luau` | `…Architecture.Materials` | Material and colour presets (plaster, stone, tiles, wood, fabric, metal, glass) with small variations | 3 (rev. 2) |
+| `src/studio/Architecture/Parts.luau` | `…StudioTools.Architecture.Parts` | Counted, anchored part creation shared by the kit and the architecture modules; footings; material variants | 3 (rev. 2/3) |
+| `src/studio/Architecture/StoreAssets.luau` | `…Architecture.StoreAssets` | Official Roblox interior library: catalogue of 73 Duvall Drive templates, creator check, clean-up, floor material variants, `place()` | 3 (rev. 3) |
+| `src/studio/Architecture/Materials.luau` | `…Architecture.Materials` | Material and colour presets (plaster, stone, tiles, wood, fabric, metal, glass), mid-tone paints, panelling woods, carpets, parquet variants | 3 (rev. 2/3) |
 | `src/studio/Architecture/Openings.luau` | `…Architecture.Openings` | Windows (frame, mullions, sills, surrounds, shutters) and doors (frames, leaves, handles, prompt, `RoNationDoor` tag) in real wall openings | 3 (rev. 2) |
-| `src/studio/Architecture/Shell.luau` | `…Architecture.Shell` | Facade wall runs with openings, storey by storey; maps every window to the room behind it | 3 (rev. 2) |
-| `src/studio/Architecture/Plan.luau` | `…Architecture.Plan` | Space plans: partitions with doors, floor slabs, finishes, ceiling lights, door signs, stairs; window and reachability report | 3 (rev. 2) |
+| `src/studio/Architecture/Shell.luau` | `…Architecture.Shell` | Facade wall runs with openings, storey by storey (painted inner lining); maps every window to the room behind it | 3 (rev. 2/3) |
+| `src/studio/Architecture/Plan.luau` | `…Architecture.Plan` | Space plans: partitions with doors, floor slabs, finishes, skirting, ceiling lights and chandeliers, door signs, stairs; building styles; window and reachability report | 3 (rev. 2/3) |
 | `src/studio/Architecture/Stairs.luau` | `…Architecture.Stairs` | Switchback staircases with landings and handrails | 3 (rev. 2) |
-| `src/studio/Architecture/Rooms.luau` | `…Architecture.Rooms` | 44 furnishing recipes by room type; placement that keeps doors and windows clear | 3 (rev. 2) |
-| `src/studio/Architecture/Furniture.luau` | `…Architecture.Furniture` | 52 furniture pieces and fittings (seats are `Seat` parts, lamps, chandeliers, piano) | 3 (rev. 2) |
+| `src/studio/Architecture/Rooms.luau` | `…Architecture.Rooms` | 44 furnishing recipes by room type (official models where they fit); dados, panelling, cornices; placement that keeps doors and windows clear | 3 (rev. 2/3) |
+| `src/studio/Architecture/Furniture.luau` | `…Architecture.Furniture` | 62 furniture pieces and fittings (seats are `Seat` parts, lamps, chandeliers, radiators, curtains, runners, fire safety); places official templates | 3 (rev. 2/3) |
 | `src/studio/Architecture/Exterior.luau` | `…Architecture.Exterior` | Gutters, downpipes, AC units, rooftop condensers, vents, roof hatches | 3 (rev. 2) |
 
 Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src/client/UI` (Milestone 4/8). See [01-architecture.md](01-architecture.md), section 3.
@@ -131,6 +133,7 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use (since 3 also seats, decals, lights, humanoid characters, `Players`, `ChangeHistoryService`; since rev. 2 signals, tags, prompts, `TweenService`) | 2, 3 |
 | `tests/map/gundiville.spec.luau` | 177 checks of the government district build (plan, budget, buildings, flags, rooms, statue, reruns, store assets) | 3 |
 | `tests/map/architecture.spec.luau` | 71 checks of the four buildings: every window has a room, rooms reachable, budgets, doors, furniture, stairs, DoorService | 3 (rev. 2) |
+| `tests/map/interior-assets.spec.luau` | 47 checks of the interior library (importer against synthetic packs) and of the four buildings furnished with it | 3 (rev. 3) |
 | `tests/map/preview.luau`, `tests/map/preview.py` | Renders the map preview image (needs Pillow and numpy) | 2 |
 | `tests/map/*.spec.luau` (17 more: river detail, roads realism, vegetation builders, canopy, highland relief, soil, original parity, terrain upgrade, infrastructure, bridge and road ground, Kagundali, Kagundali terrain, junction markings, creator assets, upgrade entry, environment inspection) | Checks of the environment overhaul and the junction benchmark; all run by `test_all.py` | 2 (rev. 3/4) |
 | `tests/map/preview-canopies.luau`, `tests/map/preview-junction.luau` | Geometry data for the tree previews in `tools/` | 2 (rev. 3/4) |
@@ -151,6 +154,8 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `07-kagundali-junction.md` | R3/N5 junction benchmark: what it builds and how to apply it |
 | `08-kagundali-screenshot-fixes.md` | Fixes after Justin's Studio screenshots of 28 October |
 | `09-creator-store-assets.md` | Import of Roblox's Forest Pack and City Props Pack |
+| `11-interior-realism.md` | Interior overhaul: official Roblox furniture library, linings and panelling, interior lighting, building styles |
+| `interior-previews-1.jpg`, `interior-previews-2.jpg` | Offline previews of twelve rooms with the official models (not Roblox renders) |
 | `canopy-geometry-preview.png`, `kagundali-tree-sources.png` | Software previews of the tree geometry (not Roblox renders) |
 | `01-architecture.md` | Architecture, hierarchy, services, security, sources of truth, persistence, streaming, testing |
 | `02-map-plan.md` | Map size, coordinates, footprints, roads, Gundiville district (as built: section 14) |

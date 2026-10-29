@@ -61,6 +61,7 @@ local function v(x: number, y: number, z: number): Vector3
 	return Vector3.new(x, y, z)
 end
 
+-- stylua: ignore start
 StoreAssets.Catalog = {
 	ExecutiveDesk = { Pack = "Furniture", Source = "Furniture_Study_Desk", Kind = "Floor", Size = v(7.24, 3.03, 3.80), Parts = 7 },
 	DeskChair = { Pack = "Furniture", Source = "Study_OfficeChair", Kind = "Floor", Size = v(2.49, 4.01, 2.39), Parts = 5 },
@@ -137,6 +138,7 @@ StoreAssets.Catalog = {
 	Dracaena = { Pack = "Landscaping", Source = "SolariumPottedPlant_F", Kind = "Floor", Size = v(8.96, 12.90, 8.44), Parts = 4, Child = "dracaena_marginata" },
 	Sapling = { Pack = "Landscaping", Source = "SolariumPottedPlant_A", Kind = "Floor", Size = v(8.66, 12.06, 8.63), Parts = 4 },
 } :: { [string]: Entry }
+-- stylua: ignore end
 
 -- Library --------------------------------------------------------------------------------------
 
