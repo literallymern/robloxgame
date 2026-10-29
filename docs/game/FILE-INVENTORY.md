@@ -14,6 +14,8 @@ Last update: 2026-10-28 (Milestone 3 revision 2: building overhaul).
 | `selene.toml` | selene settings (`std = "roblox"`) | 1 | New in Milestone 1 |
 | `stylua.toml` | StyLua settings (Luau, tabs, 120 columns) | 1 | New in Milestone 1 |
 | `.gitignore` | Ignores place files and system files | — | Keep |
+| `AGENTS.md` | Shared rules for the AI agents (Claude, Codex, VS Code): who does what, one agent at a time, Git, Roblox Studio MCP, assets | Setup | New 2026-10-29 |
+| `CLAUDE.md` | Loads `AGENTS.md` for Claude Code | Setup | New 2026-10-29 |
 | `assets/audio/` | Original rain loop and thunder WAVs (CC0) with an upload guide; not synced by Rojo | 2 (rev. 3) | New; silent in game until uploaded (B7) |
 | `tools/generate-weather-audio.py` | Generates the weather WAVs (needs numpy) | 2 (rev. 3) | New |
 | `tools/preview-canopies.py`, `tools/preview-junction-trees.py` | Software previews of the tree source geometry (not Roblox renders) | 2 (rev. 3/4) | New |
