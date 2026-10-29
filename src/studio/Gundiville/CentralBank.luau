@@ -70,7 +70,17 @@ local function hall(room: Room, report: { [string]: number })
 		y + 0.08,
 		Kit.with(Kit.Style.Floor, { Decoration = true })
 	)
-	Kit.slab(folder, "Runner", Kit.rect(-236, inner.MaxX, DOOR_Z - 3, DOOR_Z + 3), y + 0.08, y + 0.18, Kit.Style.Carpet)
+	-- A navy runner with a sand border from the portal to the counter.
+	local runnerAt = Vector3.new((-236 + inner.MaxX) / 2, y + 0.06, DOOR_Z)
+	Furniture.runner(
+		folder,
+		CFrame.lookAt(runnerAt, runnerAt + Vector3.new(0, 0, 1)),
+		inner.MaxX + 236,
+		6.4,
+		Materials.Floor.CarpetNavy,
+		Materials.Floor.CarpetSand
+	)
+	Rooms.panelling(room, Materials.Panel.Walnut, 3.4)
 
 	-- Teller counter from wall to wall, glass screens with pass-through slots, one chair per
 	-- teller.
@@ -192,15 +202,15 @@ local function hall(room: Room, report: { [string]: number })
 			Furniture.bench(folder, CFrame.lookAt(p, p - Vector3.new(1, 0, 0)), 6, Materials.Wood.Walnut)
 		end
 	end
-	for _, z in { inner.MinZ + 1.6, inner.MaxZ - 1.6 } do
-		Furniture.plant(folder, Vector3.new(inner.MaxX - 1.8, y, z), 7, math.floor(z))
-		Furniture.plant(folder, Vector3.new(-236, y, z), 6, math.floor(z) + 1)
+	for _, z in { inner.MinZ + 2.2, inner.MaxZ - 2.2 } do
+		Furniture.plant(folder, Vector3.new(inner.MaxX - 2.4, y, z), 9, math.floor(z), true, 1.9)
+		Furniture.plant(folder, Vector3.new(-236, y, z), 6.5, math.floor(z) + 1, false, 1.7)
 	end
 	local clockAt = Vector3.new(-230, y + 14, inner.MinZ)
 	Furniture.clock(folder, CFrame.lookAt(clockAt, clockAt + Vector3.new(0, 0, 1)))
 	for _, x in { -248, -222 } do
 		for _, z in { DOOR_Z - 26, DOOR_Z + 26 } do
-			Furniture.chandelier(folder, Vector3.new(x, ceiling, z), 10.2, 50)
+			Furniture.chandelier(folder, Vector3.new(x, ceiling, z), 10.2, 46, 10)
 		end
 	end
 end
@@ -229,6 +239,7 @@ local function spaces(report: { [string]: number }): { Space }
 		Top = 1,
 		Floor = Materials.Floor.Marble,
 		Lights = false,
+		Lining = false,
 		Custom = function(room: Room)
 			hall(room, report)
 		end,
@@ -360,8 +371,18 @@ function CentralBank.build(district: any, parent: Instance): { [string]: number 
 		Levels = { F, F + H, R },
 		Spaces = spaces(report),
 		Skylights = { SKYLIGHT },
+		-- Interior: cream walls with walnut skirting, wainscot and panelling, grey marble in
+		-- the corridors, navy and blue carpets in the offices, dark parquet for the governors,
+		-- chandeliers in the board room and the governors' offices.
 		Style = {
-			Partition = Materials.Wall.Cream,
+			Partition = Materials.Paint.Cream,
+			Skirting = Materials.Panel.Walnut,
+			Dado = Materials.Panel.Walnut,
+			Panelling = Materials.Panel.Walnut,
+			Wood = Materials.Wood.Walnut,
+			Upholstery = Materials.Leather.Brown,
+			Runner = Materials.Floor.CarpetNavy,
+			Fixtures = { Board = "Chandelier", Executive = "Chandelier" },
 			Door = {
 				Leaf = Materials.Wood.Walnut,
 				Frame = Materials.Frame.Brown,
@@ -379,11 +400,19 @@ function CentralBank.build(district: any, parent: Instance): { [string]: number 
 			Stair = {
 				Tread = Materials.Floor.Marble,
 				Landing = Materials.Floor.Marble,
-				Spine = Materials.Wall.Cream,
+				Spine = Materials.Paint.Cream,
 				Rail = Materials.Metal.Brass,
 			},
-			Floors = { Corridor = Materials.Floor.Marble },
-			Accent = Materials.Wall.Panel,
+			Floors = {
+				Corridor = Materials.Floor.MarbleDark,
+				Office = Materials.Floor.CarpetNavy,
+				SharedOffice = Materials.Floor.CarpetBlue,
+				Reception = Materials.Floor.CarpetNavy,
+				Executive = Materials.Floor.ParquetDark,
+				Board = Materials.Floor.ParquetDark,
+				Lounge = Materials.Floor.Parquet,
+			},
+			Accent = Materials.Panel.Walnut,
 		},
 		Seed = 3,
 	})

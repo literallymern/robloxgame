@@ -222,7 +222,17 @@ local function lobby(room: Room, report: { [string]: number })
 	local y = room.Floor
 	local r = room.Space.Rect
 	local minZ, maxZ = r.MinZ + Plan.Partition / 2, r.MaxZ - Plan.Partition / 2
-	Kit.slab(folder, "Runner", Kit.rect(r.MinX, 208, DOOR_Z - 3, DOOR_Z + 3), y, y + 0.1, Kit.Style.Carpet)
+	-- A navy runner with a sand border from the portal to the reception desk.
+	local runnerAt = Vector3.new((r.MinX + 208) / 2, y, DOOR_Z)
+	Furniture.runner(
+		folder,
+		CFrame.lookAt(runnerAt, runnerAt + Vector3.new(0, 0, 1)),
+		208 - r.MinX,
+		6.4,
+		Materials.Floor.CarpetNavy,
+		Materials.Floor.CarpetSand
+	)
+	Rooms.panelling(room, Materials.Panel.Oak, 3.2)
 	local steel = Materials.Metal.Steel
 	Kit.box(folder, "SecurityGate", 200.5, y, DOOR_Z - 2.2, 201.1, y + 7.4, DOOR_Z - 1.8, steel)
 	Kit.box(folder, "SecurityGate", 200.5, y, DOOR_Z + 1.8, 201.1, y + 7.4, DOOR_Z + 2.2, steel)
@@ -241,7 +251,7 @@ local function lobby(room: Room, report: { [string]: number })
 		Furniture.officeChair(folder, CFrame.lookAt(chair, chair - Vector3.new(1, 0, 0)), Materials.Leather.Black)
 		Furniture.computer(folder, CFrame.lookAt(desk + Vector3.new(0.4, 0, dz), desk + Vector3.new(-0.6, 0, dz)), 3.6)
 	end
-	Kit.box(folder, "ScreenWall", 214.4, y, DOOR_Z - 8, 215, y + 9.5, DOOR_Z + 8, Materials.Wall.Panel)
+	Kit.box(folder, "ScreenWall", 214.4, y, DOOR_Z - 8, 215, y + 9.5, DOOR_Z + 8, Materials.Panel.Oak)
 	Kit.emblem(folder, { Axis = "X", At = 214.4, Out = -1 }, DOOR_Z, y + 6.4, 4.5, 0.15)
 	for _, z in { DOOR_Z - 6.5, DOOR_Z + 6.5 } do
 		Kit.flagpole(folder, Vector3.new(213.2, y, z), 10, 3.2, Vector3.new(-0.4, 0, if z < DOOR_Z then -1 else 1))
@@ -265,8 +275,8 @@ local function lobby(room: Room, report: { [string]: number })
 		Color3.fromRGB(240, 220, 170),
 		Enum.NormalId.Back
 	)
-	for _, z in { minZ + 1.4, maxZ - 1.4 } do
-		Furniture.plant(folder, Vector3.new(216.4, y, z), 6.5, math.floor(z))
+	for _, z in { minZ + 2, maxZ - 2 } do
+		Furniture.plant(folder, Vector3.new(216, y, z), 7, math.floor(z), true, 1.7)
 	end
 end
 
@@ -312,6 +322,7 @@ local function spaces(report: { [string]: number }): { Space }
 			bay.Custom = function(r: Room)
 				lobby(r, report)
 			end
+			bay.Lining = false
 		end
 		add(bay)
 		local k = 0
@@ -369,8 +380,18 @@ function Hausali.build(district: any, parent: Instance): { [string]: number }
 		Footprints = { inner, Plan.rect(en.MinX + t, b.MinX + t, en.MinZ + t, en.MaxZ - t) },
 		Levels = { F, F + H, F + 2 * H, R },
 		Spaces = spaces(report),
+		-- Interior: linen walls over a sage-green oil-paint dado in the corridors (as in German
+		-- ministries), oak skirting and panelling, grey-green linoleum in the corridors, grey
+		-- and blue carpets in the offices, oak parquet in the cabinet and state rooms.
 		Style = {
-			Partition = Materials.Wall.White,
+			Partition = Materials.Paint.Linen,
+			Skirting = Materials.Panel.Oak,
+			Dado = Materials.Paint.Sage,
+			Panelling = Materials.Panel.Oak,
+			Wood = Materials.Wood.Oak,
+			Upholstery = Materials.Leather.Black,
+			Runner = Materials.Floor.CarpetNavy,
+			Fixtures = { Cabinet = "Chandelier", Salon = "Chandelier" },
 			Door = { Leaf = Materials.Wood.Oak, Frame = Materials.Frame.White, Handle = Materials.Metal.Chrome },
 			GlassDoor = {
 				Leaf = Materials.Wood.Oak,
@@ -383,11 +404,21 @@ function Hausali.build(district: any, parent: Instance): { [string]: number }
 			Stair = {
 				Tread = Materials.Floor.Terrazzo,
 				Landing = Materials.Floor.Terrazzo,
-				Spine = Materials.Wall.White,
+				Spine = Materials.Paint.Linen,
 				Rail = Materials.Metal.Iron,
 			},
-			Floors = { Corridor = Materials.Floor.Terrazzo, Lobby = Materials.Floor.Marble },
-			Accent = Materials.Wall.Sage,
+			Floors = {
+				Corridor = Materials.Floor.Linoleum,
+				Lobby = Materials.Floor.Marble,
+				Office = Materials.Floor.CarpetGrey,
+				SharedOffice = Materials.Floor.CarpetBlue,
+				Meeting = Materials.Floor.CarpetGrey,
+				Board = Materials.Floor.CarpetBlue,
+				Executive = Materials.Floor.Parquet,
+				Cabinet = Materials.Floor.Parquet,
+				Waiting = Materials.Floor.Linoleum,
+			},
+			Accent = Materials.Paint.Sage,
 		},
 		Seed = 2,
 	})

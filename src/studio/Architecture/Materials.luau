@@ -3,6 +3,10 @@
 -- colonial-era architecture. Real surfaces instead of plastic: plaster, limestone, granite,
 -- clay roof tiles, ceramic tiles, carpet, oiled wood, leather, brushed metal, glass.
 -- Colours are muted and slightly warm; Parts.vary adds small differences between pieces.
+-- Interiors use mid-tone paints (Materials.Paint) instead of near-white plaster: under the
+-- interior lights and the bright global ambient, white rooms looked flat and glaring. Wooden
+-- floors name the official Roblox wood floor material variants (StoreAssets.luau); without them
+-- they show plain wood in the same colour.
 
 local Parts = require(script.Parent.Parts)
 
@@ -12,7 +16,7 @@ local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
-local function m(material: Enum.Material, colour: Color3, extra: Options?): Options
+local function m(material: Enum.Material, colour: Color3, extra: any?): Options
 	local o: Options = { Material = material, Color = colour }
 	if extra then
 		for key, value in extra :: any do
@@ -41,24 +45,52 @@ Materials.Wall = table.freeze({
 	Panel = m(M.Wood, rgb(120, 82, 54)),
 	Concrete = m(M.Concrete, rgb(170, 168, 162)),
 })
-Materials.Ceiling = m(M.Plaster, rgb(242, 241, 236))
+Materials.Ceiling = m(M.Plaster, rgb(224, 220, 210))
+
+-- Interior paints (matt plaster in mid tones) and panelling.
+Materials.Paint = table.freeze({
+	Linen = m(M.Plaster, rgb(212, 205, 190)), -- warm off-white
+	Stone = m(M.Plaster, rgb(200, 192, 176)), -- warm stone grey
+	Greige = m(M.Plaster, rgb(184, 176, 162)),
+	Sand = m(M.Plaster, rgb(204, 188, 158)),
+	Cream = m(M.Plaster, rgb(220, 207, 180)),
+	Sage = m(M.Plaster, rgb(156, 166, 146)),
+	Moss = m(M.Plaster, rgb(108, 118, 98)),
+	Slate = m(M.Plaster, rgb(112, 122, 130)),
+	Teal = m(M.Plaster, rgb(86, 108, 112)),
+	Oxblood = m(M.Plaster, rgb(112, 60, 54)),
+	Ochre = m(M.Plaster, rgb(188, 158, 110)),
+	Charcoal = m(M.Plaster, rgb(70, 72, 74)),
+})
+Materials.Panel = table.freeze({
+	Oak = m(M.Wood, rgb(140, 100, 64)),
+	Walnut = m(M.Wood, rgb(92, 62, 42)),
+	Mahogany = m(M.Wood, rgb(98, 50, 38)),
+	Painted = m(M.Wood, rgb(214, 208, 194)),
+	Sage = m(M.Wood, rgb(140, 152, 132)),
+})
 
 -- Floor finishes.
 Materials.Floor = table.freeze({
-	CarpetGrey = m(M.Carpet, rgb(104, 106, 112)),
-	CarpetBlue = m(M.Carpet, rgb(58, 74, 104)),
-	CarpetRed = m(M.Carpet, rgb(124, 38, 42)),
-	CarpetGreen = m(M.Carpet, rgb(62, 90, 70)),
-	CarpetSand = m(M.Carpet, rgb(168, 150, 120)),
-	Terrazzo = m(M.Marble, rgb(204, 198, 186)),
-	Marble = m(M.Marble, rgb(222, 216, 204)),
-	TileWhite = m(M.CeramicTiles, rgb(224, 224, 218)),
-	TileGrey = m(M.CeramicTiles, rgb(150, 152, 150)),
-	TileTerracotta = m(M.CeramicTiles, rgb(170, 96, 66)),
-	Parquet = m(M.WoodPlanks, rgb(152, 106, 66)),
-	ParquetDark = m(M.WoodPlanks, rgb(108, 72, 46)),
-	Concrete = m(M.Concrete, rgb(150, 150, 146)),
-	Linoleum = m(M.Rubber, rgb(164, 170, 160)),
+	CarpetGrey = m(M.Carpet, rgb(92, 94, 98)),
+	CarpetBlue = m(M.Carpet, rgb(58, 66, 82)),
+	CarpetRed = m(M.Carpet, rgb(100, 46, 46)), -- muted burgundy, not signal red
+	CarpetGreen = m(M.Carpet, rgb(60, 76, 62)),
+	CarpetSand = m(M.Carpet, rgb(148, 134, 110)),
+	CarpetMoss = m(M.Carpet, rgb(84, 90, 70)),
+	CarpetTaupe = m(M.Carpet, rgb(116, 104, 92)),
+	CarpetNavy = m(M.Carpet, rgb(42, 50, 68)),
+	Terrazzo = m(M.Marble, rgb(188, 182, 170)),
+	Marble = m(M.Marble, rgb(212, 206, 194)),
+	MarbleDark = m(M.Marble, rgb(118, 112, 104)),
+	TileWhite = m(M.CeramicTiles, rgb(208, 208, 202)),
+	TileGrey = m(M.CeramicTiles, rgb(140, 142, 140)),
+	TileTerracotta = m(M.CeramicTiles, rgb(160, 92, 66)),
+	Parquet = m(M.Wood, rgb(164, 116, 74), { MaterialVariant = "Wood Floor Herringbone MV" }),
+	ParquetDark = m(M.Wood, rgb(116, 80, 54), { MaterialVariant = "Wood Floor Herringbone MV" }),
+	Planks = m(M.Wood, rgb(150, 108, 72), { MaterialVariant = "Wood Floor MV" }),
+	Concrete = m(M.Concrete, rgb(146, 146, 142)),
+	Linoleum = m(M.Rubber, rgb(138, 144, 134)),
 })
 
 -- Furniture.

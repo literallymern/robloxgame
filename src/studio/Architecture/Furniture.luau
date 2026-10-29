@@ -6,12 +6,29 @@
 -- Seats are real Seat parts, so players can sit. Small items are details without collision.
 -- Proportions follow the Roblox character (about 5 studs tall, seat height 1.7, desk 3).
 
+-- Where an official Roblox model fits (StoreAssets.luau), the recipes place that model with
+-- `Furniture.store` and fall back to the built piece when the library is not installed.
+
 local Parts = require(script.Parent.Parts)
 local Materials = require(script.Parent.Materials)
+local StoreAssets = require(script.Parent.StoreAssets)
 
 type Options = Parts.Options
 
 local Furniture = {}
+
+-- Official models ------------------------------------------------------------------------------
+
+-- Places the catalogued Roblox model `key` at `frame` (see StoreAssets.place). False when the
+-- library or the template is missing; the caller then builds its own piece.
+function Furniture.store(parent: Instance, key: string, frame: CFrame, scale: number?): boolean
+	return StoreAssets.place(parent, key, frame, scale) ~= nil
+end
+
+-- Footprint of a catalogued model (the same with and without the library).
+function Furniture.size(key: string): Vector3
+	return StoreAssets.size(key)
+end
 
 local function piece(
 	parent: Instance,
@@ -247,18 +264,57 @@ end
 
 -- Living things and small items ---------------------------------------------------------------
 
-function Furniture.plant(parent: Instance, position: Vector3, height: number, seed: number)
-	local pot = Materials.Pot
-	Parts.cylinder(parent, "PlantPot", position, position + v(0, 1.3, 0), 1.5, pot)
-	local green =
-		Color3.fromRGB(60 + math.floor(Parts.noise(seed) * 30), 104 + math.floor(Parts.noise(seed, 1) * 30), 52)
-	local size = height - 1.2
+-- Slim plants for corners and wide ones for halls (official models, by height).
+local SLIM_PLANTS = { "RubberPlant", "SnakePlant", "RubberPlant", "SnakePlant" }
+local WIDE_PLANTS = { "Philodendron", "Evergreen", "RubberPlantRed", "Dracaena", "Sapling" }
+
+-- A potted plant `height` studs high. `wide` allows a spreading plant (halls, lounges). `reach`
+-- is the free distance from `position` to the nearest wall (default 1.3, or 1.8 for wide
+-- plants): the plant is scaled down until its leaves stay clear of the walls, and it is only
+-- turned in quarter turns so its spread does not grow diagonally.
+function Furniture.plant(
+	parent: Instance,
+	position: Vector3,
+	height: number,
+	seed: number,
+	wide: boolean?,
+	reach: number?
+)
+	local list = if wide then WIDE_PLANTS else SLIM_PLANTS
+	local key = list[1 + math.floor(Parts.noise(seed, 7) * #list) % #list]
+	local size = StoreAssets.size(key)
+	local spread = math.max(size.X, size.Z)
+	local free = reach or (if wide then 1.8 else 1.3)
+	local scale = math.min(math.clamp(height / size.Y, 0.45, 1.25), 2 * free / spread)
+	local turn = CFrame.Angles(0, math.floor(Parts.noise(seed, 8) * 4) * math.pi / 2, 0)
+	if Furniture.store(parent, key, CFrame.new(position) * turn, scale) then
+		return
+	end
+	-- Built plant: a terracotta pot and two leaf clusters of different sizes (the leaves spread
+	-- up to 0.45 × their height from the stem).
+	height = math.min(height, 1.3 + free / 0.45)
+	local pot = Parts.with(Materials.Pot, { Material = Enum.Material.Slate, Color = Color3.fromRGB(150, 92, 66) })
+	Parts.cylinder(parent, "PlantPot", position, position + v(0, 1.4, 0), 1.6, pot)
+	local green = Color3.fromRGB(
+		52 + math.floor(Parts.noise(seed) * 22),
+		84 + math.floor(Parts.noise(seed, 1) * 24),
+		50 + math.floor(Parts.noise(seed, 2) * 12)
+	)
+	local leaves = { Material = Enum.Material.LeafyGrass, Color = green, CanCollide = false, CastShadow = true }
+	local foliage = height - 1.3
 	Parts.ellipsoid(
 		parent,
 		"PlantLeaves",
-		position + v(0, 1.2 + size / 2, 0),
-		v(size * 0.55, size, size * 0.55),
-		{ Material = Enum.Material.Grass, Color = green, CanCollide = false, CastShadow = true }
+		position + v(0, 1.3 + foliage * 0.6, 0),
+		v(foliage * 0.55, foliage * 0.8, foliage * 0.5),
+		leaves
+	)
+	Parts.ellipsoid(
+		parent,
+		"PlantLeaves",
+		position + v(foliage * 0.14, 1.3 + foliage * 0.3, -foliage * 0.1),
+		v(foliage * 0.6, foliage * 0.45, foliage * 0.62),
+		leaves
 	)
 end
 
@@ -354,6 +410,65 @@ function Furniture.extinguisher(parent: Instance, wall: CFrame)
 	piece(parent, "ExtinguisherSign", wall, 0, 2.2, -0.03, v(1, 1, 0.05), Parts.detail(Materials.Plastic.Red))
 end
 
+-- Wall hose reel cabinet (red steel box with a glazed door), as in German public buildings.
+function Furniture.hoseCabinet(parent: Instance, wall: CFrame)
+	piece(parent, "HoseCabinet", wall, 0, 0, -0.4, v(2.6, 2.6, 0.8), Materials.Plastic.Red)
+	piece(parent, "HoseCabinetGlass", wall, 0, 0.15, -0.82, v(2.1, 2, 0.04), Parts.detail(Materials.Glass.Interior))
+	local sign = Furniture.sign(parent, wall * CFrame.new(0, 1.85, 0), 1.6, 0.6, { "FIRE HOSE" }, Materials.Plastic.Red, Color3.new(1, 1, 1))
+	sign.Name = "HoseSign"
+end
+
+-- Manual fire alarm call point (small red box at shoulder height).
+function Furniture.callPoint(parent: Instance, wall: CFrame)
+	local part = piece(parent, "FireCallPoint", wall, 0, 0, -0.12, v(0.7, 0.7, 0.24), Parts.detail(Materials.Plastic.Red))
+	part:SetAttribute("Fitting", "CallPoint")
+end
+
+-- Framed evacuation plan beside a stair or exit.
+function Furniture.evacuationPlan(parent: Instance, wall: CFrame, floor: string)
+	piece(parent, "EvacuationFrame", wall, 0, 0, -0.04, v(2.6, 1.9, 0.08), Parts.detail(Materials.Metal.Aluminium))
+	local sheet = Furniture.sign(
+		parent,
+		wall * CFrame.new(0, 0, -0.08),
+		2.3,
+		1.6,
+		{ "EVACUATION PLAN", `Floor {floor}`, "You are here ●" },
+		Materials.Paper,
+		Color3.fromRGB(30, 110, 60)
+	)
+	sheet.Name = "EvacuationPlan"
+end
+
+-- A panel radiator under a window (cream steel; the corrugated finish shows the fins).
+function Furniture.radiator(parent: Instance, wall: CFrame, w: number)
+	local part = piece(parent, "Radiator", wall, 0, 1.45, -0.3, v(w, 2, 0.35), {
+		Material = Enum.Material.CorrugatedMetal,
+		Color = Color3.fromRGB(226, 220, 206),
+		Decoration = true,
+	})
+	part:SetAttribute("Fitting", "Radiator")
+end
+
+-- Floor-length curtains either side of a window and a brass rod over it. `wall` is on the wall
+-- at the middle of the window and at floor level; `w` the window width, `top` its head height.
+function Furniture.curtains(parent: Instance, wall: CFrame, w: number, top: number, fabric: Options)
+	local h = top + 0.5
+	for _, side in { -1, 1 } do
+		piece(parent, "Curtain", wall, side * (w / 2 + 0.55), h / 2, -0.35, v(1.5, h - 0.1, 0.25), Parts.detail(fabric))
+	end
+	piece(parent, "CurtainRod", wall, 0, h + 0.15, -0.35, v(w + 3.4, 0.14, 0.14), Parts.detail(Materials.Metal.Brass))
+end
+
+-- A carpet runner: a field with a border, `w` across and `l` long, on the floor.
+function Furniture.runner(parent: Instance, base: CFrame, w: number, l: number, field: Options, border: Options?)
+	if border then
+		piece(parent, "RunnerBorder", base, 0, 0.03, 0, v(w, 0.06, l), Parts.detail(border))
+		piece(parent, "Runner", base, 0, 0.05, 0, v(w - 0.9, 0.06, l - 0.9), Parts.detail(field))
+	else
+		piece(parent, "Runner", base, 0, 0.03, 0, v(w, 0.06, l), Parts.detail(field))
+	end
+end
+
 -- Sign with text on its face (door signs, exit signs, WC signs).
 function Furniture.sign(
 	parent: Instance,
@@ -437,55 +552,91 @@ function Furniture.ceilingVent(parent: Instance, position: Vector3)
 	part:SetAttribute("Fitting", "Vent")
 end
 
+-- Interior light: warm white (about 3000 K) and moderate, because the place's global lighting
+-- (Codex's environment system) already lights interiors through ambient and sky light. The
+-- glowing diffusers are a muted warm grey, so they read as lamps without glaring or blooming.
+Furniture.LightBrightness = 0.6
+Furniture.LightColour = Color3.fromRGB(255, 226, 190)
+local LIGHT_PANEL: Options = { Material = Enum.Material.Neon, Color = Color3.fromRGB(206, 198, 184), Decoration = true }
+local BULB: Options = { Material = Enum.Material.Neon, Color = Color3.fromRGB(214, 196, 166), Decoration = true }
+Furniture.Bulb = BULB
+
 -- A ceiling light panel with an optional point light (interiors are lit day and night).
 function Furniture.ceilingLight(parent: Instance, position: Vector3, w: number, d: number, range: number?): Part
 	local panel = Parts.box(
 		parent,
 		"CeilingLight",
 		position.X - w / 2,
-		position.Y - 0.18,
+		position.Y - 0.12,
 		position.Z - d / 2,
 		position.X + w / 2,
 		position.Y,
 		position.Z + d / 2,
-		{
-			Material = Enum.Material.Neon,
-			Color = Color3.fromRGB(255, 244, 226),
-			Decoration = true,
-		}
+		LIGHT_PANEL
 	)
 	if range then
 		local light = Instance.new("PointLight")
 		light.Range = range
-		light.Brightness = 0.9
-		light.Color = Color3.fromRGB(255, 238, 214)
+		light.Brightness = Furniture.LightBrightness
+		light.Color = Furniture.LightColour
 		light.Shadows = false
 		light.Parent = panel
 	end
 	return panel
 end
 
--- A brass chandelier with a glowing globe and a point light, hanging `drop` studs below the
--- ceiling point `top`.
-function Furniture.chandelier(parent: Instance, top: Vector3, drop: number, range: number): Part
+-- A classical brass chandelier hanging `drop` studs below the ceiling point `top`: ceiling
+-- rose, rod, a turned body and `arms` (default 6) candle lights on three crossing arm bars, with
+-- one point light.
+function Furniture.chandelier(parent: Instance, top: Vector3, drop: number, range: number, arms: number?): Part
 	local brass = Parts.detail(Materials.Metal.Brass)
+	local n = math.max(4, math.floor((arms or 6) / 2) * 2)
 	local bottom = top - v(0, drop, 0)
-	Parts.cylinder(parent, "ChandelierRod", top, bottom + v(0, 1, 0), 0.25, brass)
-	Parts.cylinder(parent, "ChandelierRing", bottom + v(0, 0.6, 0), bottom + v(0, 0.9, 0), 5, brass)
-	local globe = Parts.ellipsoid(
-		parent,
-		"ChandelierGlobe",
-		bottom + v(0, 0.4, 0),
-		v(3, 2.2, 3),
-		{ Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 236, 200), CastShadow = false, CanCollide = false }
-	)
+	local radius = math.clamp(drop * 0.32, 1.6, 2.8)
+	Parts.cylinder(parent, "ChandelierRose", top, top - v(0, 0.25, 0), 1.3, brass)
+	Parts.cylinder(parent, "ChandelierRod", top - v(0, 0.2, 0), bottom + v(0, 1.2, 0), 0.18, brass)
+	local body = Parts.ellipsoid(parent, "ChandelierBody", bottom + v(0, 0.55, 0), v(1, 1.7, 1), brass)
+	for i = 0, n / 2 - 1 do
+		local a = i * 2 * math.pi / n
+		local dir = v(math.cos(a), 0, math.sin(a))
+		Parts.cylinder(parent, "ChandelierArm", bottom + dir * radius, bottom - dir * radius, 0.16, brass)
+	end
+	for i = 0, n - 1 do
+		local a = i * 2 * math.pi / n
+		local p = bottom + v(math.cos(a), 0, math.sin(a)) * radius
+		Parts.ellipsoid(parent, "ChandelierCandle", p + v(0, 0.35, 0), v(0.32, 0.7, 0.32), BULB)
+	end
 	local light = Instance.new("PointLight")
 	light.Range = range
-	light.Brightness = 1.2
-	light.Color = Color3.fromRGB(255, 232, 196)
+	light.Brightness = 0.85
+	light.Color = Color3.fromRGB(255, 220, 178)
 	light.Shadows = false
-	light.Parent = globe
-	return globe
+	light.Parent = body
+	return body
+end
+
+-- An Art Deco bowl pendant (corridors and offices of the older buildings): brass rod and band,
+-- frosted glass bowl, with an optional point light.
+function Furniture.pendant(parent: Instance, top: Vector3, drop: number, range: number?): Part
+	local brass = Parts.detail(Materials.Metal.Brass)
+	local bottom = top - v(0, drop, 0)
+	Parts.cylinder(parent, "PendantRose", top, top - v(0, 0.2, 0), 0.9, brass)
+	Parts.cylinder(parent, "PendantRod", top - v(0, 0.15, 0), bottom + v(0, 0.5, 0), 0.12, brass)
+	local bowl = Parts.ellipsoid(parent, "PendantBowl", bottom + v(0, 0.35, 0), v(2.4, 0.9, 2.4), {
+		Material = Enum.Material.Glass,
+		Color = Color3.fromRGB(232, 222, 204),
+		Transparency = 0.15,
+		Decoration = true,
+	})
+	if range then
+		local light = Instance.new("PointLight")
+		light.Range = range
+		light.Brightness = Furniture.LightBrightness
+		light.Color = Furniture.LightColour
+		light.Shadows = false
+		light.Parent = bowl
+	end
+	return bowl
 end
 
 -- A fireplace against a wall: marble surround, dark firebox, mantel shelf and hearth. `wall`
@@ -575,6 +726,14 @@ function Furniture.nightstand(parent: Instance, base: CFrame, wood: Options)
 		1.1,
 		Parts.detail(Materials.Fabric.Beige)
 	)
+end
+
+-- A bentwood-style coat stand: weighted foot, pole and a ring of hooks.
+function Furniture.coatStand(parent: Instance, position: Vector3)
+	local wood = Parts.detail(Materials.Wood.Walnut)
+	Parts.cylinder(parent, "CoatStandFoot", position, position + v(0, 0.2, 0), 1.6, wood)
+	Parts.cylinder(parent, "CoatStand", position, position + v(0, 6.1, 0), 0.25, wood)
+	Parts.cylinder(parent, "CoatStandHooks", position + v(0, 5.6, 0), position + v(0, 5.8, 0), 1.4, wood)
 end
 
 function Furniture.floorLamp(parent: Instance, position: Vector3)

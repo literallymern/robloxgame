@@ -46,10 +46,11 @@ District.GeneratedBy = "BuildGundiville"
 District.GroundY = 60
 District.RoadTop = 0.05 -- asphalt top above the ground (N4 and N5 start at the ground)
 District.WalkTop = 0.6 -- sidewalks, the square and building plinths
--- The whole district; checked by tests/map/gundiville.spec.luau. Since the building overhaul
--- (furnished interiors behind every window) the four buildings take about 26,800 parts; most
--- are small details without collision, and StreamingEnabled sends clients only what is near.
-District.MaxParts = 30000
+-- The whole district; checked by tests/map/gundiville.spec.luau. Since the interior overhaul
+-- (wall linings, skirting, panelling, chandeliers and radiators in every room) the four
+-- buildings take about 30,000 parts and the district about 31,300; most are small details
+-- without collision or shadows, and StreamingEnabled sends clients only what is near.
+District.MaxParts = 33000
 
 -- Placeholder blocks of MapLayout.GundivillePlaceholders that this district replaces.
 District.Replaces = frozenList({ "Avenue", "Square", "Congress", "Hausali", "Residence", "CentralBank" })

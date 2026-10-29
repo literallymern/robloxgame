@@ -36,8 +36,8 @@ local function seat(parent: Instance, position: Vector3, facing: Vector3, option
 	s.Anchored = true
 	s.Size = Vector3.new(2.4, 0.5, 2.2)
 	s.CFrame = CFrame.lookAt(position, position + facing)
-	s.Material = Enum.Material.Fabric
-	s.Color = if options then options.Color else Color3.fromRGB(120, 34, 38)
+	s.Material = Enum.Material.Leather
+	s.Color = if options then options.Color else Color3.fromRGB(122, 78, 50) -- cognac leather
 	s.TopSurface = Enum.SurfaceType.Smooth
 	s.BottomSurface = Enum.SurfaceType.Smooth
 	s.Parent = parent
@@ -45,11 +45,6 @@ local function seat(parent: Instance, position: Vector3, facing: Vector3, option
 	return s
 end
 Congress.seat = seat
-
--- A brass chandelier hanging `drop` studs below the ceiling.
-local function chandelier(parent: Instance, x: number, z: number, ceiling: number, drop: number, range: number)
-	Furniture.chandelier(parent, Vector3.new(x, ceiling, z), drop, range)
-end
 
 -- The assembly chamber (custom furnishing of the chamber space): wood panelling, the
 -- presiding dais on the north side with the national emblem and two flags behind it, and the
@@ -60,7 +55,7 @@ local function chamber(room: Room, report: { [string]: number })
 	local minZ = r.MinZ + Plan.Partition / 2
 	local top = room.Floor
 	local ceiling = room.Floor + room.Height
-	Rooms.wainscot(room, 10, Materials.Wall.Panel)
+	Rooms.wainscot(room, 10, Materials.Panel.Walnut)
 
 	local daisZ = minZ + 2
 	Kit.box(folder, "Dais", -26, top, daisZ, 26, top + 1.6, daisZ + 14, Kit.Style.Floor)
@@ -103,7 +98,7 @@ local function chamber(room: Room, report: { [string]: number })
 				"SeatBack",
 				frame * CFrame.new(0, rise + 2.9, 1.75),
 				Vector3.new(2.4, 2.4, 0.3),
-				{ Material = Enum.Material.Fabric, Color = Color3.fromRGB(104, 28, 32) }
+				{ Material = Enum.Material.Leather, Color = Color3.fromRGB(108, 68, 44) }
 			)
 			Util.part(
 				folder,
@@ -132,7 +127,7 @@ local function chamber(room: Room, report: { [string]: number })
 	end
 	for _, x in { -30, 0, 30 } do
 		for _, z in { r.MinZ + 22, r.MaxZ - 22 } do
-			chandelier(folder, x, z, ceiling, 8, 60)
+			Furniture.chandelier(folder, Vector3.new(x, ceiling, z), 8, 54, 12)
 		end
 	end
 end
@@ -145,7 +140,17 @@ local function hall(room: Room)
 	local y = room.Floor
 	local ceiling = y + room.Height
 	local minZ = r.MinZ + Plan.Partition / 2
-	Kit.slab(folder, "HallCarpet", Kit.rect(-6, 6, minZ, r.MaxZ), y, y + 0.1, Kit.Style.Carpet)
+	-- A deep green runner with a sand border from the portal to the chamber doors.
+	local runnerAt = Vector3.new(0, y, (minZ + r.MaxZ) / 2)
+	Furniture.runner(
+		folder,
+		CFrame.lookAt(runnerAt, runnerAt + Vector3.new(0, 0, 1)),
+		12,
+		r.MaxZ - minZ,
+		Materials.Floor.CarpetGreen,
+		Materials.Floor.CarpetSand
+	)
+	Rooms.panelling(room, Materials.Panel.Walnut, 3.4)
 	Kit.emblem(folder, { Axis = "Z", At = minZ, Out = 1 }, 0, y + 17.3, 4.5, 0.2)
 	for _, side in { -1, 1 } do
 		local x = side * 24
@@ -165,10 +170,10 @@ local function hall(room: Room)
 		)
 		local bench = Vector3.new(side * 22, y, minZ + 1.4)
 		Furniture.bench(folder, CFrame.lookAt(bench, bench + Vector3.new(0, 0, 1)), 10, Materials.Wood.Walnut)
-		Furniture.plant(folder, Vector3.new(side * 38.5, y, r.MaxZ - 2.5), 7, 3 + side)
-		Furniture.plant(folder, Vector3.new(side * 11, y, minZ + 1.6), 6, 5 + side)
+		Furniture.plant(folder, Vector3.new(side * 38, y, r.MaxZ - 3), 8, 3 + side, true, 2.4)
+		Furniture.plant(folder, Vector3.new(side * 11, y, minZ + 1.8), 6, 5 + side, false, 1.5)
 		for _, z in { -337, -322 } do
-			chandelier(folder, side * 22, z, ceiling, 6, 50)
+			Furniture.chandelier(folder, Vector3.new(side * 22, ceiling, z), 7, 46, 8)
 		end
 	end
 end
@@ -319,8 +324,9 @@ local function spaces(c: any, chamberRoom: (room: Room) -> (), hallRoom: (room: 
 		Rect = Plan.rect(c.Chamber.MinX, c.Chamber.MaxX, c.Chamber.MinZ, c.Chamber.MaxZ),
 		Storey = 0,
 		Top = 2,
-		Floor = Materials.Floor.CarpetRed,
+		Floor = Materials.Floor.CarpetGreen,
 		Lights = false,
+		Lining = false,
 		Custom = chamberRoom,
 		Doors = {
 			Plan.door("MaxZ", 0, "Double", { Width = 8, Height = 10, StartOpen = true }),
@@ -336,6 +342,7 @@ local function spaces(c: any, chamberRoom: (room: Room) -> (), hallRoom: (room: 
 		Top = 1,
 		Open = true,
 		Lights = false,
+		Lining = false,
 		Custom = hallRoom,
 	})
 	for _, side in { -1, 1 } do
@@ -511,8 +518,18 @@ function Congress.build(district: any, parent: Instance): { [string]: number }
 		Spaces = spaces(c, function(room)
 			chamber(room, report)
 		end, hall),
+		-- Interior: warm stone-grey walls, walnut skirting, dado and panelling, moss and taupe
+		-- carpets in the offices, deep green in the committee rooms, oak parquet in the
+		-- corridors, chandeliers in the representative rooms.
 		Style = {
-			Partition = Materials.Wall.Warm,
+			Partition = Materials.Paint.Stone,
+			Skirting = Materials.Panel.Walnut,
+			Dado = Materials.Panel.Walnut,
+			Panelling = Materials.Panel.Walnut,
+			Wood = Materials.Wood.Walnut,
+			Upholstery = Materials.Leather.Brown,
+			Runner = Materials.Floor.CarpetGreen,
+			Fixtures = { Committee = "Chandelier", Board = "Chandelier", Library = "Chandelier", Lounge = "Chandelier", Executive = "Chandelier" },
 			Door = { Leaf = Materials.Wood.Walnut, Frame = Materials.Frame.Brown, Handle = Materials.Metal.Brass },
 			GlassDoor = {
 				Leaf = Materials.Wood.Walnut,
@@ -525,11 +542,22 @@ function Congress.build(district: any, parent: Instance): { [string]: number }
 			Stair = {
 				Tread = Materials.Floor.Marble,
 				Landing = Materials.Floor.Marble,
-				Spine = Materials.Wall.Warm,
+				Spine = Materials.Paint.Stone,
 				Rail = Materials.Metal.Brass,
 			},
-			Floors = { Gallery = Materials.Floor.Marble, Corridor = Materials.Floor.Terrazzo },
-			Accent = Materials.Wall.Panel,
+			Floors = {
+				Gallery = Materials.Floor.Marble,
+				Corridor = Materials.Floor.Parquet,
+				Office = Materials.Floor.CarpetMoss,
+				SharedOffice = Materials.Floor.CarpetTaupe,
+				Meeting = Materials.Floor.CarpetTaupe,
+				Committee = Materials.Floor.CarpetGreen,
+				Board = Materials.Floor.CarpetGreen,
+				Reception = Materials.Floor.CarpetMoss,
+				Press = Materials.Floor.CarpetTaupe,
+				Waiting = Materials.Floor.Marble,
+			},
+			Accent = Materials.Panel.Walnut,
 		},
 		Seed = 1,
 	})

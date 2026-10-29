@@ -25,8 +25,12 @@ local function check(name: string, ok: boolean, detail: any?)
 	end
 end
 
--- Part budgets per building (measured plus a margin) and the least number of rooms.
-local BUDGET = { Congress = 9800, Hausali = 10600, CentralBank = 4500, Residence = 3500 }
+-- Part budgets per building (measured plus a margin) and the least number of rooms. Since the
+-- interior overhaul (wall linings, skirting, panelling, chandeliers, radiators) the buildings
+-- measure Congress 10,285, Hausali 11,069, Central Bank 4,765 and Residence 3,905 parts with
+-- built furniture; with the official interior library they are slightly lighter
+-- (tests/map/interior-assets.spec.luau uses the same budgets).
+local BUDGET = { Congress = 10700, Hausali = 11500, CentralBank = 5000, Residence = 4200 }
 local MIN_ROOMS = { Congress = 70, Hausali = 100, CentralBank = 30, Residence = 16 }
 local ORDER = { "Congress", "Hausali", "CentralBank", "Residence" }
 

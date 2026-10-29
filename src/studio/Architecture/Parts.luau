@@ -7,6 +7,8 @@
 -- ground continue down to the footing level, so no gap shows where the terrain is lower.
 -- Details: small decorative parts (switches, books, handles) do not collide, cast shadows or
 -- take part in raycasts, which keeps physics and lighting cheap.
+-- Options may also name a MaterialVariant (Materials.Floor parquet); a part shows its plain
+-- material when the place does not have that variant.
 
 local Util = require(script.Parent.Parent.Map.Builders.Util)
 
@@ -32,6 +34,14 @@ end
 
 function Parts.setFooting(ground: number?, footing: number?)
 	footingGround, footingY = ground, footing
+end
+
+local function finish<T>(part: T, options: Options?): T
+	local variant = if options then (options :: any).MaterialVariant else nil
+	if variant then
+		(part :: any).MaterialVariant = variant
+	end
+	return part
 end
 
 -- A copy of `options` for a small detail: no collision, queries, touches or shadow.
@@ -70,13 +80,13 @@ function Parts.box(
 	local size = hi - lo
 	assert(size.X > 0 and size.Y > 0 and size.Z > 0, `Parts.box {name}: empty box`)
 	count += 1
-	return Util.part(parent, name, CFrame.new((lo + hi) / 2), size, options)
+	return finish(Util.part(parent, name, CFrame.new((lo + hi) / 2), size, options), options)
 end
 
 -- A block at any orientation.
 function Parts.part(parent: Instance, name: string, frame: CFrame, size: Vector3, options: Options?): Part
 	count += 1
-	return Util.part(parent, name, frame, size, options)
+	return finish(Util.part(parent, name, frame, size, options), options)
 end
 
 function Parts.wedge(parent: Instance, name: string, frame: CFrame, size: Vector3, options: Options?): WedgePart

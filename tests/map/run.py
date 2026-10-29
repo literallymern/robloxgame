@@ -26,6 +26,7 @@ MODULES = {
     "StudioTools/CheckEnvironment": "src/studio/CheckEnvironment.luau",
     "StudioTools/UpgradeKagundali": "src/studio/UpgradeKagundali.luau",
     "StudioTools/UseCreatorStoreAssets": "src/studio/UseCreatorStoreAssets.luau",
+    "StudioTools/UseInteriorAssets": "src/studio/UseInteriorAssets.luau",
     "Server/Services/DoorService": "src/server/Services/DoorService.luau",
 }
 for folder, prefix in (

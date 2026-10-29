@@ -17,6 +17,11 @@
 -- Everything goes into one folder, Workspace.Map.GovernmentDistrict (attribute
 -- GeneratedBy = "BuildGundiville"). A rerun replaces exactly that folder. BuildMap.run() keeps
 -- it and no longer builds the placeholder blocks it replaces. Hand-built parts elsewhere stay.
+--
+-- Interiors: before building, run() makes sure the official Roblox furniture library is in
+-- ServerStorage.RoNationInteriorAssets (Architecture/StoreAssets.luau; loaded once from the
+-- Roblox-published Duvall Drive packs, scripts removed). The rooms place copies of it; if it
+-- cannot be loaded, the rooms get the built furniture instead and the output says why.
 
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,6 +32,7 @@ local District = require(Gundiville.District)
 local Ground = require(Gundiville.Ground)
 local Statue = require(Gundiville.Statue)
 local Kit = require(Gundiville.Kit)
+local StoreAssets = require(script.Parent.Architecture.StoreAssets)
 local Places = require(script.Parent.Map.Builders.Places)
 local Util = require(script.Parent.Map.Builders.Util)
 
@@ -153,6 +159,14 @@ function BuildGundiville.run(options: Statue.Options?): District.Report?
 		)
 	end
 	local ground = Ground.apply(district, survey.Lift, survey.Joins)
+	local library, status = StoreAssets.ensure()
+	if library then
+		log(`Interior furnishings: official Roblox library {status}.`)
+	else
+		warn(
+			`[Ro-Nation:BuildGundiville] Official interior library not available ({status}); the rooms get built furniture instead. Retry with require(game.ServerStorage.StudioTools.UseInteriorAssets)().`
+		)
+	end
 	local report = recorded("Ro-Nation: build Gundiville government district", function()
 		-- Build into a detached folder first; the place only changes when everything worked.
 		local folder = District.newFolder(district)

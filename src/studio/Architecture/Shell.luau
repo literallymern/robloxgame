@@ -169,6 +169,77 @@ local function closedShutters(
 	)
 end
 
+-- Interior skin: where rooms lie behind a facade, the inner `Plan.Lining` studs of the wall are
+-- a separate layer in the building's interior paint (Style.Lining, else Style.Partition), so
+-- rooms do not show the facade stone or render on their window wall. The layer stops at the
+-- ceiling of the top storey; a parapet above keeps the full facade thickness.
+local function lined(
+	plan: Plan.Plan,
+	parent: Instance,
+	run: Run,
+	wall: Openings.Wall,
+	storey: number,
+	y0: number,
+	y1: number,
+	holes: { Openings.Hole },
+	material: Options
+)
+	local style = plan.Spec.Style
+	local paint = style.Lining or style.Partition
+	local name = run.Name or "Wall"
+	local skin = Plan.Lining
+	local top = Plan.level(plan, storey + 1) - (if storey >= plan.Storeys - 1 then plan.Slab else 0)
+	top = math.min(top, y1)
+	if top - y0 < 1 then
+		Openings.solid(parent, name, wall, run.From, run.To, y0, y1, holes, material)
+		return
+	end
+	-- Stretches of the run with the building behind them (cut at the footprint corners).
+	local cuts = { run.From, run.To }
+	for _, fp in plan.Spec.Footprints do
+		local bounds: { number } = if run.Axis == "X" then { fp.MinX, fp.MaxX } else { fp.MinZ, fp.MaxZ }
+		for _, c in bounds do
+			if c > run.From + 0.01 and c < run.To - 0.01 then
+				table.insert(cuts, c)
+			end
+		end
+	end
+	table.sort(cuts)
+	type Stretch = { From: number, To: number, Inside: boolean }
+	local stretches: { Stretch } = {}
+	for i = 1, #cuts - 1 do
+		local a, b = cuts[i], cuts[i + 1]
+		if b - a < 0.01 then
+			continue
+		end
+		local x, z = Plan.point(run.Axis, run.At, (a + b) / 2, -run.Out * (run.Thickness / 2 + 0.5))
+		local inside = Plan.inside(plan, x, z)
+		local last = stretches[#stretches]
+		if last and last.Inside == inside then
+			last.To = b
+		else
+			table.insert(stretches, { From = a, To = b, Inside = inside })
+		end
+	end
+	local half = run.Thickness / 2
+	local outer: Openings.Wall =
+		{ Axis = run.Axis, At = run.At + run.Out * skin / 2, Thickness = run.Thickness - skin, Out = run.Out }
+	local inner: Openings.Wall =
+		{ Axis = run.Axis, At = run.At - run.Out * (half - skin / 2), Thickness = skin, Out = run.Out }
+	local finish = Parts.with(paint, { CastShadow = false })
+	for _, st in stretches do
+		if not st.Inside then
+			Openings.solid(parent, name, wall, st.From, st.To, y0, y1, holes, material)
+			continue
+		end
+		Openings.solid(parent, name, outer, st.From, st.To, y0, top, holes, material)
+		Openings.solid(parent, "WallLining", inner, st.From, st.To, y0, top, holes, finish)
+		if y1 - top > 0.01 then
+			Openings.solid(parent, name, wall, st.From, st.To, top, y1, holes, material)
+		end
+	end
+end
+
 export type Report = { Windows: number, Doors: number, Unmapped: number, Blocked: number }
 
 -- Builds the runs into `parent` and records their windows and doors in the plan.
@@ -230,7 +301,7 @@ function Shell.build(plan: Plan.Plan, parent: Instance, runs: { Run }): Report
 				end
 			end
 			local material = if run.Materials then run.Materials[s + 1] or run.Material else run.Material
-			Openings.solid(parent, run.Name or "Wall", wall, run.From, run.To, y0, y1, holes, material)
+			lined(plan, parent, run, wall, s, y0, y1, holes, material)
 			-- The space behind a point of the wall, on this storey.
 			local function behind(along: number): Plan.Space?
 				local x, z = Plan.point(run.Axis, run.At, along, -run.Out * (run.Thickness / 2 + 0.5))

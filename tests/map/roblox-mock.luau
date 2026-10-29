@@ -276,6 +276,7 @@ local ENUMS = {
 		"Limestone",
 		"Pavement",
 		"CorrodedMetal",
+		"CorrugatedMetal",
 		"DiamondPlate",
 		"Foil",
 		"Metal",
@@ -352,6 +353,7 @@ local BASEPART = {
 	CanTouch = "boolean",
 	CastShadow = "boolean",
 	Reflectance = "number",
+	MaterialVariant = "string",
 }
 local LIGHT = {
 	Range = "number",
@@ -502,6 +504,11 @@ local CLASSES = {
 		isA = { "MeshPart", "TriangleMeshPart", "BasePart", "PVInstance" },
 	},
 	SurfaceAppearance = { props = { ColorMap = "string" }, isA = { "SurfaceAppearance" } },
+	MaterialVariant = {
+		props = { BaseMaterial = "EnumItem", StudsPerTile = "number", ColorMap = "string" },
+		isA = { "MaterialVariant" },
+	},
+	Sound = { props = { SoundId = "string", Volume = "number", Looped = "boolean" }, isA = { "Sound" } },
 	Script = { props = { Source = "string" }, isA = { "Script", "BaseScript", "LuaSourceContainer" } },
 	ModuleScript = { props = { Source = "string" }, isA = { "ModuleScript", "LuaSourceContainer" } },
 	SpotLight = {
@@ -729,6 +736,22 @@ function METHODS.FindFirstChildOfClass(self, className)
 	for _, child in self.__children do
 		if child.__class == className then
 			return child
+		end
+	end
+	return nil
+end
+function METHODS.FindFirstChildWhichIsA(self, className, recursive)
+	for _, child in self.__children do
+		if METHODS.IsA(child, className) then
+			return child
+		end
+	end
+	if recursive then
+		for _, child in self.__children do
+			local found = METHODS.FindFirstChildWhichIsA(child, className, true)
+			if found then
+				return found
+			end
 		end
 	end
 	return nil
@@ -1252,6 +1275,7 @@ TweenInfo = {
 }
 local lighting = service("Lighting")
 local serverStorage = service("ServerStorage")
+local materialService = service("MaterialService")
 local geometry = service("GeometryService", {
 	UnionAsync = function(_, main, parts, options)
 		assert(main:IsA("BasePart") and #parts > 0, "UnionAsync requires multiple primitives")
@@ -1325,6 +1349,8 @@ game = {
 			return history
 		elseif name == "TweenService" then
 			return tweens
+		elseif name == "MaterialService" then
+			return materialService
 		end
 		error(`GetService: {name} is not in this mock`)
 	end,

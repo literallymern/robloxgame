@@ -19,7 +19,8 @@ type Edge = Plan.Edge
 local Rooms = {}
 
 export type Side = "Front" | "Back" | "Left" | "Right"
-type Span = { Side: Side, From: number, To: number }
+-- Bottom and Top: heights above the floor (windows); Exterior: a stretch of facade wall.
+type Span = { Side: Side, From: number, To: number, Bottom: number?, Top: number?, Exterior: boolean? }
 type Box = { U0: number, U1: number, W0: number, W1: number }
 
 export type Room = {
@@ -43,6 +44,8 @@ export type Room = {
 	WallUsed: { Span },
 	Walls: { Span }, -- where the room really has a wall (wall items only go there)
 	Seed: number,
+	Panel: number?, -- top of the wall panelling or dado (wall items below it stand off it)
+	PanelDepth: number,
 }
 
 local NORMAL: { [string]: Vector3 } = {
@@ -157,7 +160,7 @@ function Rooms.context(plan: Plan.Plan, space: Space, folder: Folder): Room
 		MaxZ = r.MaxZ - inset.MaxZ,
 	}
 	-- Doors and windows on the base storey.
-	type Raw = { Edge: Edge, From: number, To: number }
+	type Raw = { Edge: Edge, From: number, To: number, Bottom: number?, Top: number?, Exterior: boolean? }
 	local doors: { Raw } = {}
 	for _, seg in plan.Segments do
 		if seg.Storey ~= space.Storey then
@@ -177,7 +180,10 @@ function Rooms.context(plan: Plan.Plan, space: Space, folder: Folder): Room
 	for _, record in plan.Windows do
 		if record.Space == space and record.Storey == space.Storey then
 			if record.Kind == "Window" then
-				table.insert(windows, { Edge = record.Edge, From = record.From, To = record.To })
+				table.insert(
+					windows,
+					{ Edge = record.Edge, From = record.From, To = record.To, Bottom = record.Bottom, Top = record.Top }
+				)
 				windowLength[record.Edge] = (windowLength[record.Edge] or 0) + record.To - record.From
 			else
 				table.insert(doors, { Edge = record.Edge, From = record.From, To = record.To })
@@ -201,7 +207,7 @@ function Rooms.context(plan: Plan.Plan, space: Space, folder: Folder): Room
 		for i = 1, #cuts - 1 do
 			local x, z = Plan.point(axis, at, (cuts[i] + cuts[i + 1]) / 2, out * 0.5)
 			if not Plan.inside(plan, x, z) then
-				table.insert(walls, { Edge = e, From = cuts[i], To = cuts[i + 1] })
+				table.insert(walls, { Edge = e, From = cuts[i], To = cuts[i + 1], Exterior = true })
 			end
 		end
 		for _, seg in plan.Segments do
@@ -259,6 +265,8 @@ function Rooms.context(plan: Plan.Plan, space: Space, folder: Folder): Room
 		WallUsed = {},
 		Walls = {},
 		Seed = (space.Seed or 0) + plan.Index[space] * 7 + (plan.Spec.Seed or 0) * 131,
+		Panel = nil,
+		PanelDepth = 0,
 	}
 	for _, e: Edge in Plan.Edges do
 		room.Sides[e] = sideOf(e, front, a)
@@ -270,11 +278,15 @@ function Rooms.context(plan: Plan.Plan, space: Space, folder: Folder): Room
 	end
 	for _, w in windows do
 		local s = span(room, w.Edge, w.From, w.To)
+		s.Bottom = if w.Bottom then w.Bottom - y else nil
+		s.Top = if w.Top then w.Top - y else nil
 		table.insert(room.Windows, s)
 		table.insert(room.Low, zone(room, s, 2.4, 0.5))
 	end
 	for _, w in walls do
-		table.insert(room.Walls, span(room, w.Edge, w.From, w.To))
+		local s = span(room, w.Edge, w.From, w.To)
+		s.Exterior = w.Exterior
+		table.insert(room.Walls, s)
 	end
 	return room
 end
@@ -458,6 +470,9 @@ function Rooms.onWall(
 	else
 		p, dir = Rooms.world(room, W / 2, along, y), -room.A
 	end
+	if room.Panel and y < room.Panel then
+		p += dir * room.PanelDepth -- on the face of the panelling
+	end
 	build(CFrame.lookAt(p, p + dir))
 	return true
 end
@@ -492,11 +507,65 @@ local function tint(o: Options, room: Room, k: number): Options
 	return Parts.with(o, { Color = Parts.vary(o.Color or Color3.new(0.8, 0.8, 0.8), room.Seed * 13 + k, 0.05) })
 end
 
-local WOODS = { Materials.Wood.Oak, Materials.Wood.Walnut, Materials.Wood.Pine, Materials.Wood.White }
+local WOODS = { Materials.Wood.Oak, Materials.Wood.Walnut, Materials.Wood.Oak, Materials.Wood.Walnut }
 local FABRICS = { Materials.Fabric.Grey, Materials.Fabric.Blue, Materials.Fabric.Green, Materials.Fabric.Charcoal }
 local LEATHERS = { Materials.Leather.Brown, Materials.Leather.Black, Materials.Leather.Oxblood, Materials.Leather.Tan }
 
 local f = Furniture
+
+-- The building's furniture wood and upholstery (Style.Wood / Style.Upholstery), or a pick.
+local function woodOf(room: Room, k: number): Options
+	return room.Plan.Spec.Style.Wood or pick(room, k, WOODS)
+end
+local function upholsteryOf(room: Room, k: number): Options
+	return room.Plan.Spec.Style.Upholstery or pick(room, k, LEATHERS)
+end
+
+-- Official models ---------------------------------------------------------------------------------
+
+-- An official Roblox model (StoreAssets) with its catalogued footprint, centred at (u, w) with
+-- its front towards `facing`. When it is not installed, `fallback` builds a piece in its place.
+-- The layout is the same either way.
+local function model(
+	room: Room,
+	key: string,
+	u: number,
+	w: number,
+	facing: Side,
+	tall: boolean?,
+	fallback: ((frame: CFrame) -> ())?,
+	scale: number?
+): boolean
+	local size = f.size(key) * (scale or 1)
+	return Rooms.item(room, u, w, facing, size.X, size.Z, tall, function(frame)
+		if not f.store(room.Folder, key, frame, scale) and fallback then
+			fallback(frame)
+		end
+	end)
+end
+
+-- The same with its back against a wall (positions as Rooms.alongWall tries them).
+local function modelAlong(
+	room: Room,
+	side: Side,
+	key: string,
+	tall: boolean?,
+	fallback: ((frame: CFrame) -> ())?,
+	prefer: number?,
+	scale: number?
+): boolean
+	local size = f.size(key) * (scale or 1)
+	return Rooms.alongWall(room, side, size.X, size.Z, tall, function(frame)
+		if not f.store(room.Folder, key, frame, scale) and fallback then
+			fallback(frame)
+		end
+	end, prefer)
+end
+
+-- A model at a free place without layout bookkeeping (props on tables and desks).
+local function prop(room: Room, key: string, frame: CFrame, scale: number?)
+	f.store(room.Folder, key, frame, scale)
+end
 
 -- Wall sockets and a thermostat, plus an air conditioner in larger rooms.
 local function services(room: Room)
@@ -507,22 +576,52 @@ local function services(room: Room)
 			f.fitting(folder, wall, "Outlet")
 		end)
 	end
-	if room.Width * room.Depth > 220 and room.Height > 9 then
+	if room.Width * room.Depth > 220 and room.Height > 9 and not room.Plan.Spec.Style.Panelling then
 		Rooms.findWall(room, "Back", room.Height - 1.6, 3.4, function(wall)
 			f.airConditioner(folder, wall)
 		end)
 	end
 end
 
-local function plantInCorner(room: Room, k: number)
+-- A radiator under the first `count` windows that have a sill high enough.
+local function radiators(room: Room, count: number)
 	local W, D = room.Width, room.Depth
-	local corners = { { -W / 2 + 1.1, D - 1.1 }, { W / 2 - 1.1, D - 1.1 }, { -W / 2 + 1.1, 1.1 }, { W / 2 - 1.1, 1.1 } }
+	local placed = 0
+	for _, win in room.Windows do
+		if placed >= count then
+			return
+		end
+		if (win.Bottom or 0) < 2.7 or win.To - win.From < 2.4 then
+			continue
+		end
+		local along = (win.From + win.To) / 2
+		local width = math.min(win.To - win.From - 0.4, 5)
+		local p: Vector3, dir: Vector3
+		if win.Side == "Front" then
+			p, dir = Rooms.world(room, along, 0), room.N
+		elseif win.Side == "Back" then
+			p, dir = Rooms.world(room, along, D), -room.N
+		elseif win.Side == "Left" then
+			p, dir = Rooms.world(room, -W / 2, along), room.A
+		else
+			p, dir = Rooms.world(room, W / 2, along), -room.A
+		end
+		f.radiator(room.Folder, CFrame.lookAt(p, p + dir), width)
+		placed += 1
+	end
+end
+
+-- A plant in a free corner; its leaves keep clear of both walls and of the panelling.
+local function plantInCorner(room: Room, k: number, wide: boolean?)
+	local W, D = room.Width, room.Depth
+	local a = if wide then 2 else 1.5
+	local corners = { { -W / 2 + a, D - a }, { W / 2 - a, D - a }, { -W / 2 + a, a }, { W / 2 - a, a } }
 	local start = 1 + math.floor(noise(room, k) * 4)
 	for i = 0, 3 do
 		local c = corners[1 + (start + i - 1) % 4]
 		if
-			Rooms.item(room, c[1], c[2], "Front", 1.8, 1.8, false, function(frame)
-				f.plant(room.Folder, frame.Position, 4.5 + noise(room, k + 1) * 2.5, room.Seed + k)
+			Rooms.item(room, c[1], c[2], "Front", 2 * a - 0.4, 2 * a - 0.4, false, function(frame)
+				f.plant(room.Folder, frame.Position, 5 + noise(room, k + 1) * 1.8, room.Seed + k, wide, a - 0.25)
 			end)
 		then
 			return
@@ -530,26 +629,66 @@ local function plantInCorner(room: Room, k: number)
 	end
 end
 
-local function pictures(room: Room, count: number, k: number)
+-- Paintings: official reproductions (landscapes and portraits), hung above the panelling.
+local LANDSCAPES = {
+	"PaintingMurnau",
+	"PaintingBordighera",
+	"PaintingBoats",
+	"PaintingGulfStream",
+	"PaintingSail",
+	"PaintingBathers",
+}
+local PORTRAITS =
+	{ "PaintingOfficer", "PaintingCottage", "PaintingHelena", "PaintingFurCap", "PaintingTocsin", "PaintingLark" }
+
+local function painting(room: Room, side: Side, k: number, scale: number?, portrait: boolean?): boolean
+	local list = if portrait or (portrait == nil and noise(room, k + 70) < 0.35) then PORTRAITS else LANDSCAPES
+	local key = pick(room, k, list)
+	local s = scale or 0.75
+	local bottom = math.max(room.Panel or 0, 2.6) + 0.7
+	local size = f.size(key)
+	local room_ = room.Height - 1 - bottom
+	if size.Y * s > room_ then
+		s = math.max(0.45, room_ / size.Y)
+	end
+	local w, h = size.X * s, size.Y * s
+	return Rooms.findWall(room, side, bottom + h / 2, w + 0.8, function(wall)
+		if not f.store(room.Folder, key, wall, s) then
+			f.picture(room.Folder, wall, w, h, room.Seed + k)
+		end
+	end)
+end
+
+local function pictures(room: Room, count: number, k: number, scale: number?)
 	for i = 1, count do
 		local choices: { Side } = { "Left", "Right", "Back" }
 		local side: Side = choices[1 + math.floor(noise(room, k + i) * 3) % 3]
-		local w = 3 + noise(room, k + 10 + i) * 2
-		Rooms.findWall(room, side, 5.6, w + 0.6, function(wall)
-			f.picture(room.Folder, wall, w, w * 0.72, room.Seed + i)
-		end)
+		painting(room, side, k + i, scale)
 	end
 end
 
-local function storageWall(room: Room, side: Side, k: number)
-	local wood = tint(pick(room, k, WOODS), room, k)
-	local h = math.min(8, room.Height - 1.5)
-	Rooms.alongWall(room, side, 4, 1.5, true, function(frame)
-		f.shelf(room.Folder, frame, 4, 1.5, h, wood, room.Seed + k)
-	end, if noise(room, k + 2) < 0.5 then -1 else 1)
-	Rooms.alongWall(room, side, 3, 1.8, false, function(frame)
-		f.cabinet(room.Folder, frame, 3, 1.8, 3.4, wood)
-	end)
+-- A bookcase and a filing cabinet (offices), or two bookcases and a credenza (executive).
+local function storageWall(room: Room, side: Side, k: number, executive: boolean?)
+	local wood = tint(woodOf(room, k), room, k)
+	local key = if noise(room, k + 1) < 0.5 then "Bookcase" else "BookcaseB"
+	local size = f.size(key)
+	local prefer = if noise(room, k + 2) < 0.5 then -1 else 1
+	for _ = 1, if executive then 2 else 1 do
+		modelAlong(room, side, key, true, function(frame)
+			f.shelf(room.Folder, frame, size.X, size.Z, math.min(size.Y, room.Height - 1.5), wood, room.Seed + k)
+		end, prefer)
+	end
+	if executive then
+		modelAlong(room, side, "Credenza", false, function(frame)
+			local c = f.size("Credenza")
+			f.cabinet(room.Folder, frame, c.X, c.Z, c.Y, wood)
+		end)
+	else
+		local c = f.size("FilingCabinet")
+		modelAlong(room, side, "FilingCabinet", false, function(frame)
+			f.cabinet(room.Folder, frame, c.X, c.Z, c.Y, Materials.Metal.Steel)
+		end, -prefer)
+	end
 end
 
 -- Pieces for large rooms in homes ----------------------------------------------------------------
@@ -558,18 +697,29 @@ local function large(room: Room): boolean
 	return room.Width * room.Depth > 700
 end
 
--- Two armchairs facing each other over a small table, with a floor lamp, near the windows.
+-- Two armchairs facing each other over a side table with a lamp, near the windows.
 local function sittingCorner(room: Room, k: number, upholstery: Options): boolean
 	local folder = room.Folder
 	local W = room.Width
 	local sign = if noise(room, k) < 0.5 then -1 else 1
-	for _, u in { sign * (W / 2 - 5.5), -sign * (W / 2 - 5.5) } do
+	local arm = f.size("ArmChair")
+	for _, u in { sign * (W / 2 - 6), -sign * (W / 2 - 6) } do
 		if
-			Rooms.item(room, u, 5.5, "Front", 9.6, 4.2, false, function(frame)
-				f.table(folder, frame, 2.4, 2.4, Materials.Wood.Walnut)
-				f.armchair(folder, frame * CFrame.new(3.2, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), upholstery)
-				f.armchair(folder, frame * CFrame.new(-3.2, 0, 0) * CFrame.Angles(0, -math.pi / 2, 0), upholstery)
-				f.floorLamp(folder, (frame * CFrame.new(0, 0, 1.6)).Position)
+			Rooms.item(room, u, 5.6, "Front", 10.4, 4.4, false, function(frame)
+				local tableFrame = frame
+				if f.store(folder, "SideTable", tableFrame) then
+					prop(room, "TableLamp", tableFrame * CFrame.new(0, f.size("SideTable").Y, 0))
+				else
+					f.table(folder, tableFrame, 2.4, 2.4, Materials.Wood.Walnut)
+				end
+				for _, side in { -1, 1 } do
+					local chair = frame
+						* CFrame.new(side * (arm.Z / 2 + 1.6), 0, 0)
+						* CFrame.Angles(0, side * math.pi / 2, 0)
+					if not f.store(folder, "ArmChair", chair) then
+						f.armchair(folder, chair, upholstery)
+					end
+				end
 			end)
 		then
 			return true
@@ -581,33 +731,22 @@ end
 -- A writing desk with a chair against a side wall.
 local function writingDesk(room: Room, k: number, wood: Options): boolean
 	local side: Side = if noise(room, k) < 0.5 then "Left" else "Right"
+	local desk = f.size("ExecutiveDesk")
 	for _, s: Side in { side, if side == "Left" then "Right" else "Left" } do
 		if
-			Rooms.alongWall(room, s, 5.2, 5, false, function(frame)
-				local desk = frame * CFrame.new(0, 0, 1.2)
-				f.desk(room.Folder, desk, 5, 2.6, wood)
-				Parts.cylinder(
-					room.Folder,
-					"DeskLamp",
-					(desk * CFrame.new(-1.8, 3.04, 0.6)).Position,
-					(desk * CFrame.new(-1.8, 4.3, 0.6)).Position,
-					0.25,
-					Parts.detail(Materials.Metal.Brass)
-				)
-				Parts.cylinder(
-					room.Folder,
-					"DeskLampShade",
-					(desk * CFrame.new(-1.8, 4.1, 0.6)).Position,
-					(desk * CFrame.new(-1.8, 4.8, 0.6)).Position,
-					1.1,
-					Parts.detail(Materials.Fabric.Beige)
-				)
-				f.chair(
-					room.Folder,
-					frame * CFrame.new(0, 0, -1.2) * CFrame.Angles(0, math.pi, 0),
-					wood,
-					Materials.Fabric.Beige
-				)
+			Rooms.alongWall(room, s, desk.X + 0.4, desk.Z + 2.6, false, function(frame)
+				-- The desk's back is at the wall; its user side faces the room.
+				local deskBase = frame * CFrame.new(0, 0, 1.3)
+				if f.store(room.Folder, "ExecutiveDesk", deskBase) then
+					prop(room, "TableLamp", deskBase * CFrame.new(-desk.X / 2 + 0.9, desk.Y, 0.9))
+					prop(room, "Journal", deskBase * CFrame.new(0.4, desk.Y, -0.5) * CFrame.Angles(0, 0.3, 0))
+				else
+					f.desk(room.Folder, deskBase, desk.X, desk.Z, wood)
+				end
+				local chair = frame * CFrame.new(0, 0, -desk.Z / 2 + 0.6)
+				if not f.store(room.Folder, "ArmDiningChair", chair * CFrame.Angles(0, math.pi, 0)) then
+					f.chair(room.Folder, chair * CFrame.Angles(0, math.pi, 0), wood, Materials.Fabric.Beige)
+				end
 			end)
 		then
 			return true
@@ -616,41 +755,97 @@ local function writingDesk(room: Room, k: number, wood: Options): boolean
 	return false
 end
 
--- A low chest of drawers with a mirror over it.
+-- A chest of drawers with a mirror over it.
 local function dresser(room: Room, side: Side, wood: Options): boolean
-	return Rooms.alongWall(room, side, 5, 1.8, false, function(frame)
-		f.cabinet(room.Folder, frame, 5, 1.8, 3.2, wood)
-		f.mirror(room.Folder, frame * CFrame.new(0, 6.2, 0.9), 3.6, 3.4)
+	local size = f.size("Dresser")
+	return Rooms.alongWall(room, side, size.X, size.Z, false, function(frame)
+		if not f.store(room.Folder, "Dresser", frame) then
+			f.cabinet(room.Folder, frame, size.X, size.Z, size.Y, wood)
+		end
+		f.mirror(room.Folder, frame * CFrame.new(0, size.Y + 2.6, size.Z / 2), 3.6, 3.4)
 	end)
 end
 
--- A round table with four chairs.
+-- A table for four: the round entry table with dining chairs.
 local function tableForFour(room: Room, u: number, w: number, wood: Options, fabric: Options?): boolean
-	return Rooms.item(room, u, w, "Front", 7.6, 7.6, false, function(frame)
-		f.table(room.Folder, frame, 3.6, 3.6, wood)
+	local t = f.size("RoundTable")
+	return Rooms.item(room, u, w, "Front", t.X + 3.6, t.Z + 3.6, false, function(frame)
+		if not f.store(room.Folder, "RoundTable", frame) then
+			f.table(room.Folder, frame, 3.6, 3.6, wood)
+		end
 		for i = 0, 3 do
-			local a = i * math.pi / 2
-			f.chair(room.Folder, frame * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 2.9), wood, fabric)
+			local chair = frame * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 0, t.Z / 2 + 0.9)
+			if not f.store(room.Folder, "DiningChair", chair) then
+				f.chair(room.Folder, chair, wood, fabric)
+			end
 		end
 	end)
 end
 
+-- Desk props: a lamp, and for executives a notepad and a pen (official models only).
+local function deskProps(room: Room, deskBase: CFrame, top: number, deskW: number, executive: boolean?)
+	local lamp = deskBase * CFrame.new(-deskW / 2 + 0.9, top, 0.5)
+	if not f.store(room.Folder, if executive then "BankersLamp" else "DeskLamp", lamp) then
+		Parts.cylinder(
+			room.Folder,
+			"DeskLamp",
+			(lamp * CFrame.new(0, 0.02, 0)).Position,
+			(lamp * CFrame.new(0, 1.3, 0)).Position,
+			0.25,
+			Parts.detail(Materials.Metal.Brass)
+		)
+		Parts.cylinder(
+			room.Folder,
+			"DeskLampShade",
+			(lamp * CFrame.new(0, 1.1, 0)).Position,
+			(lamp * CFrame.new(0, 1.8, 0)).Position,
+			1.1,
+			Parts.detail(Materials.Fabric.Beige)
+		)
+	end
+	if executive then
+		prop(room, "Notepad", deskBase * CFrame.new(0.3, top, -0.75) * CFrame.Angles(0, 0.15, 0))
+		prop(room, "Pen", deskBase * CFrame.new(1.0, top, -0.75) * CFrame.Angles(0, -0.4, 0))
+	else
+		prop(room, "Cup", deskBase * CFrame.new(deskW / 2 - 0.8, top, -0.6))
+	end
+end
+
 -- Desk with its chair, the user sitting between the desk and the window (facing the room).
+-- Executives get the official study desk and chair where it fits.
 local function workplace(room: Room, u: number, w: number, deskW: number, executive: boolean?): boolean
-	local deskD = if executive then 3.6 else 3
-	local top = tint(if executive then Materials.Wood.Walnut else pick(room, 3, WOODS), room, 3)
-	local fabric = if executive then pick(room, 4, LEATHERS) else pick(room, 4, FABRICS)
-	-- The whole workplace (chair zone in front of the desk) must be free.
-	-- The frame faces the window; its local +Z points into the room. Chair zone first (3.5 deep),
-	-- then the desk.
+	local studyDesk = f.size("ExecutiveDesk")
+	local store = executive and deskW >= studyDesk.X
+	if store then
+		deskW = studyDesk.X
+	end
+	local deskD = if store then studyDesk.Z elseif executive then 3.6 else 3
+	local top = tint(if executive then Materials.Wood.Walnut else woodOf(room, 3), room, 3)
+	local fabric = if executive then upholsteryOf(room, 4) else pick(room, 4, FABRICS)
+	-- The whole workplace (chair zone between window and desk, then the desk) must be free.
+	-- The frame faces the window; its local +Z points into the room.
 	local depth = deskD + 3.5
 	return Rooms.item(room, u, w + depth / 2, "Front", deskW + 0.4, depth, false, function(frame)
+		local folder = room.Folder
 		local deskBase = frame * CFrame.new(0, 0, depth / 2 - deskD / 2)
-		f.desk(room.Folder, deskBase, deskW, deskD, top)
-		f.computer(room.Folder, deskBase, 3.04, executive or noise(room, 5) < 0.3)
-		local chair = frame * CFrame.new(0, 0, -depth / 2 + 1.2) * CFrame.Angles(0, math.pi, 0)
-		f.officeChair(room.Folder, chair, fabric)
-		f.bin(room.Folder, (deskBase * CFrame.new(deskW / 2 - 0.6, 0, 0.6)).Position)
+		local height = 3.04
+		if store and f.store(folder, "ExecutiveDesk", deskBase) then
+			height = studyDesk.Y
+		else
+			f.desk(folder, deskBase, deskW, deskD, top)
+		end
+		f.computer(
+			folder,
+			deskBase * CFrame.new(if executive then deskW / 2 - 1.8 else 0, 0, 0),
+			height,
+			not executive and noise(room, 5) < 0.3
+		)
+		deskProps(room, deskBase, height, deskW, executive)
+		local chair = frame * CFrame.new(0, 0, -depth / 2 + 1.3) * CFrame.Angles(0, math.pi, 0)
+		if not (executive and f.store(folder, "DeskChair", chair)) then
+			f.officeChair(folder, chair, fabric)
+		end
+		f.bin(folder, (deskBase * CFrame.new(deskW / 2 - 0.6, 0, 0.6)).Position)
 	end)
 end
 
@@ -661,6 +856,7 @@ Rooms.Recipes = Recipes
 
 local function office(room: Room, executive: boolean)
 	local W, D = room.Width, room.Depth
+	local folder = room.Folder
 	local deskW = math.clamp(W - 3.5, 4, if executive then 9 else 6.5)
 	local placed = workplace(room, 0, 1.6, deskW, executive)
 	if not placed then
@@ -671,48 +867,74 @@ local function office(room: Room, executive: boolean)
 		end
 	end
 	-- Visitor chairs in front of the desk.
-	local wood = pick(room, 6, WOODS)
-	for _, u in { -1.6, 1.6 } do
-		Rooms.item(room, u, 1.6 + 3.5 + (if executive then 3.6 else 3) + 1.2, "Front", 1.9, 1.9, false, function(frame)
-			f.chair(room.Folder, frame, wood, pick(room, 7, FABRICS))
+	local wood = woodOf(room, 6)
+	local visitor = if executive then "ArmDiningChair" else "DiningChair"
+	local deskD = if executive then f.size("ExecutiveDesk").Z else 3
+	for _, u in { -1.7, 1.7 } do
+		model(room, visitor, u, 1.6 + 3.5 + deskD + 1.4, "Front", false, function(frame)
+			f.chair(folder, frame, wood, if executive then upholsteryOf(room, 7) else pick(room, 7, FABRICS))
 		end)
 	end
-	storageWall(room, if noise(room, 8) < 0.5 then "Left" else "Right", 9)
+	local storeSide: Side = if noise(room, 8) < 0.5 then "Left" else "Right"
+	local other: Side = if storeSide == "Left" then "Right" else "Left"
+	storageWall(room, storeSide, 9, executive)
 	if executive then
-		-- A sitting corner at the back: sofa, armchairs, coffee table on a rug.
-		local leather = pick(room, 10, LEATHERS)
-		if D > 22 and W > 12 then
-			f.rug(room.Folder, Rooms.frame(room, 0, D - 7, "Front"), math.min(W - 4, 12), 9, Materials.Fabric.Red)
-			Rooms.item(room, 0, D - 2, "Front", 8.4, 2.8, false, function(frame)
-				f.sofa(room.Folder, frame, 3, leather)
+		-- A sitting group at the back on an oriental rug: sofa, coffee table, two armchairs.
+		local sofa = f.size("Sofa3")
+		if D > 19 and W > 15 then
+			local rugKey = pick(room, 10, { "RugKhamseh", "RugUshak", "RugClassic" })
+			local rug = f.size(rugKey)
+			local rugFrame = Rooms.frame(room, 0, D - rug.Z / 2 - 1.2, "Front")
+			if not f.store(folder, rugKey, rugFrame) then
+				f.rug(folder, rugFrame, rug.X, rug.Z, Materials.Floor.CarpetRed)
+			end
+			model(room, "Sofa3", 0, D - sofa.Z / 2 - 0.2, "Front", false, function(frame)
+				f.sofa(folder, frame, 3, upholsteryOf(room, 10))
 			end)
-			Rooms.item(room, 0, D - 6.5, "Front", 4.5, 2.6, false, function(frame)
-				f.coffeeTable(room.Folder, frame, 4.5, 2.6, Materials.Wood.Walnut)
+			model(room, "CoffeeTable", 0, D - sofa.Z - 2.6, "Front", false, function(frame)
+				f.coffeeTable(folder, frame, f.size("CoffeeTable").X, f.size("CoffeeTable").Z, Materials.Wood.Walnut)
 			end)
-			for _, u in { -4.6, 4.6 } do
-				Rooms.item(room, u, D - 7.5, if u < 0 then "Right" else "Left", 3, 2.8, false, function(frame)
-					f.armchair(room.Folder, frame, leather)
+			for _, u in { -5.4, 5.4 } do
+				model(room, "ArmChair", u, D - sofa.Z - 2.8, if u < 0 then "Right" else "Left", false, function(frame)
+					f.armchair(folder, frame, upholsteryOf(room, 10))
 				end)
 			end
 		end
-		storageWall(room, if noise(room, 8) < 0.5 then "Right" else "Left", 11)
-		pictures(room, 2, 12)
+		storageWall(room, other, 11, true)
+		painting(room, "Back", 12, 0.85, true)
+		pictures(room, 1, 13, 0.8)
+		model(room, "GrandfatherClock", W / 2 - 2, D - 1.2, "Front", true, nil)
 	else
 		pictures(room, 1, 12)
 		if noise(room, 13) < 0.5 then
-			Rooms.findWall(room, "Back", 5, 5.5, function(wall)
-				f.whiteboard(room.Folder, wall, 5, 3.2)
+			Rooms.findWall(room, other, 5.4, 5.5, function(wall)
+				f.whiteboard(folder, wall, 5, 3.2)
 			end)
 		else
-			Rooms.findWall(room, "Back", 5, 4.2, function(wall)
-				f.noticeBoard(room.Folder, wall, 4, 3, room.Seed)
+			local cork = f.size("CorkBoard")
+			Rooms.findWall(room, other, 5.4, cork.X + 0.6, function(wall)
+				if not f.store(folder, "CorkBoard", wall) then
+					f.noticeBoard(folder, wall, 4, 3, room.Seed)
+				end
+			end)
+		end
+	end
+	-- A coat stand by the door, a plant, a clock and the radiators.
+	local door = room.Doors[1]
+	if door then
+		local rack = f.size("CoatRack")
+		local zoneU = if door.Side == "Back" then (if door.From > 0 then door.From - 2.2 else door.To + 2.2) else 0
+		if door.Side == "Back" then
+			model(room, "CoatRack", zoneU, D - rack.Z / 2 - 0.3, "Front", true, function(frame)
+				f.coatStand(folder, frame.Position)
 			end)
 		end
 	end
 	plantInCorner(room, 14)
 	Rooms.findWall(room, "Back", room.Height - 3.2, 1.6, function(wall)
-		f.clock(room.Folder, wall)
+		f.clock(folder, wall)
 	end)
+	radiators(room, if W > 22 then 2 else 1)
 	services(room)
 end
 
@@ -779,68 +1001,100 @@ Recipes.SharedOffice = function(room)
 	services(room)
 end
 
--- Conference table with chairs, a screen and a whiteboard.
+-- Conference table with chairs, a screen and a whiteboard (meeting rooms); formal rooms
+-- (committees, the cabinet, boards) get the long official dining table with upholstered
+-- armchairs, a credenza, paintings and a grandfather clock.
 local function meeting(room: Room, formal: boolean)
 	local W, D = room.Width, room.Depth
+	local folder = room.Folder
 	local alongW = D >= W
 	local long = math.max(W, D) - 9
 	local short = math.min(W, D) - 9
-	local tl = math.clamp(long, 5, if formal then 34 else 18)
-	local tw = math.clamp(short, 3.5, if formal then 7 else 5)
-	local top = tint(if formal then Materials.Wood.Mahogany else pick(room, 3, WOODS), room, 3)
-	local seat = if formal then pick(room, 4, LEATHERS) else pick(room, 4, FABRICS)
-	local wood = pick(room, 5, WOODS)
-	local cu, cw = 0, D / 2
+	local wood = woodOf(room, 5)
+	local top = tint(if formal then Materials.Wood.Mahogany else wood, room, 3)
+	local seat = if formal then upholsteryOf(room, 4) else pick(room, 4, FABRICS)
+	-- The official tables where they fit, else a built table sized to the room.
+	local key: string? = nil
+	if long >= f.size("LongTable").X and short >= f.size("LongTable").Z then
+		key = "LongTable"
+	elseif long >= f.size("Table").X and short >= f.size("Table").Z then
+		key = "Table"
+	end
+	local tl = if key then f.size(key).X else math.clamp(long, 5, if formal then 34 else 18)
+	local tw = if key then f.size(key).Z else math.clamp(short, 3.5, if formal then 7 else 5)
+	local th = if key then f.size(key).Y else 2.95
+	local chairKey = if formal then "ArmDiningChair" else "DiningChair"
 	local facing: Side = if alongW then "Left" else "Front"
-	local placed = Rooms.item(room, cu, cw, facing, tl, tw, false, function(frame)
-		f.table(room.Folder, frame, tl, tw, top)
+	local placed = Rooms.item(room, 0, D / 2, facing, tl + 4.4, tw + 4.4, false, function(frame)
+		if not (key and f.store(folder, key, frame)) then
+			f.table(folder, frame, tl, tw, top, th)
+		end
 		local n = math.max(1, math.floor(tl / 2.8))
+		local function chair(at: CFrame)
+			if not f.store(folder, chairKey, at) then
+				if formal then
+					f.officeChair(folder, at, seat)
+				else
+					f.chair(folder, at, wood, seat)
+				end
+			end
+		end
 		for i = 1, n do
 			local x = -tl / 2 + (i - 0.5) * tl / n
 			for _, side in { -1, 1 } do
-				local chair = frame * CFrame.new(x, 0, side * (tw / 2 + 1.1))
+				-- Chairs face the table: those on the -Z side turn round.
+				local at = frame * CFrame.new(x, 0, side * (tw / 2 + 0.9))
 				if side < 0 then
-					chair = chair * CFrame.Angles(0, math.pi, 0)
+					at = at * CFrame.Angles(0, math.pi, 0)
 				end
-				if formal then
-					f.officeChair(room.Folder, chair, seat)
-				else
-					f.chair(room.Folder, chair, wood, seat)
-				end
+				chair(at)
 			end
 		end
 		for _, side in { -1, 1 } do
-			local chair = frame * CFrame.new(side * (tl / 2 + 1.1), 0, 0) * CFrame.Angles(0, side * math.pi / 2, 0)
-			f.officeChair(room.Folder, chair, seat)
+			chair(frame * CFrame.new(side * (tl / 2 + 0.9), 0, 0) * CFrame.Angles(0, side * math.pi / 2, 0))
+		end
+		if formal then
+			for i = 1, math.min(n, 4) do
+				prop(room, "Notepad", frame * CFrame.new(-tl / 2 + (i - 0.5) * tl / math.min(n, 4), th, -tw / 2 + 0.7))
+			end
 		end
 	end)
 	if not placed then
-		Rooms.item(room, 0, D / 2, "Front", 4, 4, false, function(frame)
-			f.table(room.Folder, frame, 4, 4, top)
+		Rooms.item(room, 0, D / 2, "Front", 8, 8, false, function(frame)
+			f.table(folder, frame, 4, 4, top)
 			for k = 0, 3 do
-				f.chair(room.Folder, frame * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, 3), wood, seat)
+				f.chair(folder, frame * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, 3), wood, seat)
 			end
 		end)
 	end
-	-- Screen at one end, whiteboard or flipchart at the other.
+	-- Screen at one end, whiteboard (meetings) or a portrait (formal rooms) at the other.
 	local ends: { Side } = if alongW then { "Back", "Front" } else { "Left", "Right" }
 	Rooms.findWall(room, ends[1], 6, 8, function(wall)
-		f.screen(room.Folder, wall, 7)
+		f.screen(folder, wall, 7)
 	end)
-	Rooms.findWall(room, ends[2], 5, 5.5, function(wall)
-		f.whiteboard(room.Folder, wall, 5, 3.2)
-	end)
+	if formal then
+		painting(room, ends[2], 20, 0.9, true)
+	else
+		Rooms.findWall(room, ends[2], 5.4, 5.5, function(wall)
+			f.whiteboard(folder, wall, 5, 3.2)
+		end)
+	end
 	local sides: { Side } = if alongW then { "Left", "Right" } else { "Back" }
-	Rooms.alongWall(room, sides[1], 6, 1.8, false, function(frame)
-		f.cabinet(room.Folder, frame, 6, 1.8, 3, wood)
-		f.appliance(room.Folder, frame * CFrame.new(1.6, 3, 0), "Kettle")
+	modelAlong(room, sides[1], if formal then "CredenzaLong" else "Credenza", false, function(frame)
+		local c = f.size(if formal then "CredenzaLong" else "Credenza")
+		f.cabinet(folder, frame, c.X, c.Z, c.Y, wood)
 	end)
 	plantInCorner(room, 18)
 	plantInCorner(room, 19)
-	pictures(room, if formal then 3 else 1, 20)
-	Rooms.findWall(room, sides[#sides], room.Height - 3.2, 1.6, function(wall)
-		f.clock(room.Folder, wall)
-	end)
+	pictures(room, if formal then 2 else 1, 21, 0.8)
+	if formal then
+		modelAlong(room, sides[#sides], "GrandfatherClock", true, nil, 1)
+	else
+		Rooms.findWall(room, sides[#sides], room.Height - 3.2, 1.6, function(wall)
+			f.clock(folder, wall)
+		end)
+	end
+	radiators(room, 2)
 	services(room)
 end
 
@@ -1017,7 +1271,10 @@ local function kitchenette(room: Room, dining: number)
 			and Rooms.alongWall(room, side :: Side, length, 2.3, false, function(frame)
 				f.kitchen(folder, frame, length, doors, worktop, room.Height)
 				f.appliance(folder, frame * CFrame.new(length / 2 - 1.2, 3, 0.2), "Microwave")
-				f.appliance(folder, frame * CFrame.new(0.4, 3, 0.3), "CoffeeMachine")
+				if not f.store(folder, "CoffeeMachine", frame * CFrame.new(0.4, 3, 0.3)) then
+					f.appliance(folder, frame * CFrame.new(0.4, 3, 0.3), "CoffeeMachine")
+				end
+				prop(room, "Kettle", frame * CFrame.new(-length / 2 + 1.4, 3, 0.2))
 			end)
 		then
 			Rooms.alongWall(room, side :: Side, 2.6, 2.4, true, function(frame)
@@ -1143,36 +1400,57 @@ Recipes.Archive = function(room)
 end
 Recipes.Library = function(room)
 	local W, D = room.Width, room.Depth
+	local folder = room.Folder
 	local wood = tint(Materials.Wood.Walnut, room, 2)
+	local keys = if room.Height >= 14.5 then { "BookcaseTall", "BookcaseTallB" } else { "Bookcase", "BookcaseB" }
+	local rugKey = pick(room, 3, { "RugClassic", "RugLarge", "RugSwan" })
+	local rugFrame = Rooms.frame(room, 0, D / 2, "Front")
+	if not f.store(folder, rugKey, rugFrame) then
+		f.rug(folder, rugFrame, math.min(W - 6, 13), math.min(D - 8, 8), Materials.Floor.CarpetGreen)
+	end
 	for _, side in { "Back", "Left", "Right" } do
 		for k = 1, 6 do
-			Rooms.alongWall(room, side :: Side, 4, 1.5, true, function(frame)
-				f.shelf(room.Folder, frame, 4, 1.5, math.min(9, room.Height - 1.5), wood, room.Seed + k * 3)
+			local key = keys[1 + k % 2]
+			local size = f.size(key)
+			modelAlong(room, side :: Side, key, true, function(frame)
+				f.shelf(folder, frame, size.X, size.Z, math.min(size.Y, room.Height - 1.5), wood, room.Seed + k * 3)
 			end)
 		end
 	end
-	local tables = math.max(1, math.floor((D - 10) / 8))
-	for t = 0, tables - 1 do
-		Rooms.item(room, 0, 5 + t * 8, "Front", math.min(10, W - 8), 6.5, false, function(frame)
-			local tl = math.min(10, W - 8)
-			f.table(room.Folder, frame, tl, 3.4, Materials.Wood.Oak)
-			for i = 1, math.max(1, math.floor(tl / 3)) do
+	-- Reading tables with chairs and banker's lamps.
+	local t = f.size("Table")
+	local tables = math.max(1, math.floor((D - 10) / 9))
+	for i = 0, tables - 1 do
+		Rooms.item(room, 0, 5.5 + i * 9, "Front", t.X + 1, t.Z + 4.4, false, function(frame)
+			if not f.store(folder, "Table", frame) then
+				f.table(folder, frame, t.X, t.Z, Materials.Wood.Oak, t.Y)
+			end
+			for c = 1, 3 do
 				for _, side in { -1, 1 } do
-					local c = frame
-						* CFrame.new(-tl / 2 + (i - 0.5) * tl / math.max(1, math.floor(tl / 3)), 0, side * 2.6)
+					local at = frame * CFrame.new(-t.X / 2 + (c - 0.5) * t.X / 3, 0, side * (t.Z / 2 + 0.9))
 					if side < 0 then
-						c = c * CFrame.Angles(0, math.pi, 0)
+						at = at * CFrame.Angles(0, math.pi, 0)
 					end
-					f.chair(room.Folder, c, Materials.Wood.Walnut, Materials.Leather.Brown)
+					if not f.store(folder, "DiningChair", at) then
+						f.chair(folder, at, Materials.Wood.Walnut, Materials.Leather.Brown)
+					end
 				end
 			end
+			for _, x in { -t.X / 4, t.X / 4 } do
+				prop(room, "BankersLamp", frame * CFrame.new(x, t.Y, 0))
+			end
+			prop(room, "BookDark", frame * CFrame.new(-t.X / 2 + 1.2, t.Y, -0.8) * CFrame.Angles(0, 0.3, 0))
 		end)
 	end
-	Rooms.item(room, W / 2 - 3, D - 4, "Left", 3, 2.8, false, function(frame)
-		f.armchair(room.Folder, frame, Materials.Leather.Oxblood)
-		f.floorLamp(room.Folder, (frame * CFrame.new(2.2, 0, 0.8)).Position)
+	model(room, "ArmChair", W / 2 - 3, D - 4, "Left", false, function(frame)
+		f.armchair(folder, frame, Materials.Leather.Oxblood)
 	end)
+	Rooms.item(room, W / 2 - 3, D - 7, "Left", 1.6, 1.6, false, function(frame)
+		f.floorLamp(folder, frame.Position)
+	end)
+	model(room, "GrandfatherClock", -W / 2 + 2, D - 1.2, "Front", true, nil)
 	plantInCorner(room, 28)
+	radiators(room, 2)
 	services(room)
 end
 
@@ -1315,12 +1593,15 @@ Recipes.Waiting = function(room)
 			f.seatRow(folder, frame, 4, fabric)
 		end)
 	end
-	Rooms.item(room, 0, room.Depth / 2, "Front", 4, 2.4, false, function(frame)
-		f.coffeeTable(folder, frame, 4, 2.4, Materials.Wood.Oak)
+	local ct = f.size("CoffeeTable")
+	Rooms.item(room, 0, room.Depth / 2, "Front", ct.X, ct.Z, false, function(frame)
+		if not f.store(folder, "CoffeeTable", frame) then
+			f.coffeeTable(folder, frame, ct.X, ct.Z, Materials.Wood.Oak)
+		end
 		Parts.part(
 			folder,
 			"Magazines",
-			frame * CFrame.new(0.6, 1.5, 0),
+			frame * CFrame.new(0.6, ct.Y + 0.05, 0),
 			Vector3.new(1.4, 0.1, 1),
 			Parts.detail(Materials.Paper)
 		)
@@ -1328,72 +1609,110 @@ Recipes.Waiting = function(room)
 	Rooms.alongWall(room, "Back", 1.4, 1.4, false, function(frame)
 		f.waterCooler(folder, frame)
 	end)
-	plantInCorner(room, 29)
+	plantInCorner(room, 29, true)
 	plantInCorner(room, 30)
-	Rooms.findWall(room, "Back", 5, 4.2, function(wall)
-		f.noticeBoard(folder, wall, 4, 3, room.Seed)
+	local cork = f.size("CorkBoard")
+	Rooms.findWall(room, "Back", 5.4, cork.X + 0.6, function(wall)
+		if not f.store(folder, "CorkBoard", wall) then
+			f.noticeBoard(folder, wall, 4, 3, room.Seed)
+		end
 	end)
 	pictures(room, 1, 31)
+	radiators(room, 2)
 	services(room)
+end
+
+-- Sofa (official model, dark or light upholstery by building), side tables with lamps.
+local function sofaKey(room: Room, seats: number): string
+	local light = room.Plan.Spec.Style.LightSofas == true
+	return (if seats >= 3 then "Sofa3" else "Sofa2") .. (if light then "Light" else "")
+end
+
+local function sofaGroup(room: Room, w: number, facing: Side, seats: number): boolean
+	local folder = room.Folder
+	local key = sofaKey(room, seats)
+	local sofa = f.size(key)
+	local side = f.size("SideTable")
+	return Rooms.item(room, 0, w, facing, sofa.X + 2 * side.X + 0.6, sofa.Z, false, function(frame)
+		if not f.store(folder, key, frame) then
+			f.sofa(folder, frame, seats, upholsteryOf(room, 10))
+		end
+		for _, s in { -1, 1 } do
+			local at = frame * CFrame.new(s * (sofa.X / 2 + side.X / 2 + 0.25), 0, 0.6)
+			if f.store(folder, "SideTable", at) then
+				prop(room, "TableLamp", at * CFrame.new(0, side.Y, 0))
+			end
+		end
+	end)
 end
 
 Recipes.Lounge = function(room)
 	local folder = room.Folder
-	local leather = pick(room, 10, LEATHERS)
-	local D = room.Depth
-	f.rug(
-		folder,
-		Rooms.frame(room, 0, D / 2, "Front"),
-		math.min(room.Width - 4, 14),
-		math.min(D - 6, 10),
-		pick(room, 11, { Materials.Fabric.Red, Materials.Fabric.Beige, Materials.Fabric.Green })
-	)
-	Rooms.item(room, 0, D / 2 + 4, "Front", 8.4, 2.8, false, function(frame)
-		f.sofa(folder, frame, 3, leather)
+	local D, W = room.Depth, room.Width
+	local up = upholsteryOf(room, 10)
+	local rugKey = pick(room, 11, { "RugLarge", "RugKhamseh", "RugSwan" })
+	local rugFrame = Rooms.frame(room, 0, D / 2 + 1, "Front")
+	if not f.store(folder, rugKey, rugFrame) then
+		f.rug(folder, rugFrame, math.min(W - 4, 13), math.min(D - 6, 10), Materials.Floor.CarpetRed)
+	end
+	local sofa = f.size(sofaKey(room, 3))
+	local ct = f.size("CoffeeTable")
+	sofaGroup(room, D / 2 + 1 + ct.Z / 2 + 1.3 + sofa.Z / 2, "Front", 3)
+	model(room, "CoffeeTable", 0, D / 2 + 1, "Front", false, function(frame)
+		f.coffeeTable(folder, frame, ct.X, ct.Z, Materials.Wood.Walnut)
 	end)
-	Rooms.item(room, 0, D / 2, "Front", 4.5, 2.6, false, function(frame)
-		f.coffeeTable(folder, frame, 4.5, 2.6, Materials.Wood.Walnut)
-	end)
-	for _, u in { -5, 5 } do
-		Rooms.item(room, u, D / 2 - 1, if u < 0 then "Right" else "Left", 3, 2.8, false, function(frame)
-			f.armchair(folder, frame, leather)
+	local arm = f.size("ArmChair")
+	for _, u in { -1, 1 } do
+		local facing: Side = if u < 0 then "Right" else "Left"
+		model(room, "ArmChair", u * (ct.X / 2 + 1.3 + arm.Z / 2), D / 2 + 0.6, facing, false, function(frame)
+			f.armchair(folder, frame, up)
 		end)
 	end
-	Rooms.findWall(room, "Back", 6, 7.4, function(wall)
-		f.screen(folder, wall, 7)
-	end)
+	local kind = room.Space.Kind
+	if kind == "Family" or string.find(room.Space.Name, "Staff") or string.find(room.Space.Name, "Drivers") then
+		Rooms.findWall(room, "Back", 6, 7.4, function(wall)
+			f.screen(folder, wall, 7)
+		end)
+	else
+		painting(room, "Back", 34, 0.9)
+	end
 	if large(room) then
 		storageWall(room, if noise(room, 35) < 0.5 then "Left" else "Right", 36)
 		tableForFour(
 			room,
-			(if noise(room, 37) < 0.5 then -1 else 1) * (room.Width / 2 - 5),
-			5,
+			(if noise(room, 37) < 0.5 then -1 else 1) * (room.Width / 2 - 6),
+			6,
 			Materials.Wood.Oak,
 			Materials.Fabric.Beige
 		)
-		Rooms.alongWall(room, "Back", 6, 1.8, false, function(frame)
-			f.cabinet(folder, frame, 6, 1.8, 3.2, Materials.Wood.Walnut)
+		modelAlong(room, "Back", "Credenza", false, function(frame)
+			local c = f.size("Credenza")
+			f.cabinet(folder, frame, c.X, c.Z, c.Y, Materials.Wood.Walnut)
 		end)
 		sittingCorner(room, 38, Materials.Fabric.Green)
 	end
-	plantInCorner(room, 32)
+	plantInCorner(room, 32, true)
 	plantInCorner(room, 33)
-	pictures(room, 2, 34)
+	pictures(room, 2, 34, 0.8)
+	radiators(room, 2)
 	services(room)
 end
 Recipes.Family = Recipes.Lounge
 Recipes.Garden = function(room)
 	local folder = room.Folder
-	for _, u in { -3, 3 } do
-		Rooms.item(room, u, room.Depth / 2, if u < 0 then "Right" else "Left", 3, 2.8, false, function(frame)
+	local ct = f.size("CoffeeTable")
+	local arm = f.size("ArmChair")
+	for _, u in { -1, 1 } do
+		local facing: Side = if u < 0 then "Right" else "Left"
+		model(room, "ArmChair", u * (ct.X / 2 + 1.2 + arm.Z / 2), room.Depth / 2, facing, false, function(frame)
 			f.armchair(folder, frame, Materials.Fabric.Beige)
 		end)
 	end
-	Rooms.item(room, 0, room.Depth / 2, "Front", 2.6, 2.6, false, function(frame)
-		f.coffeeTable(folder, frame, 2.6, 2.6, Materials.Wood.Pine)
+	model(room, "CoffeeTable", 0, room.Depth / 2, "Front", false, function(frame)
+		f.coffeeTable(folder, frame, ct.X, ct.Z, Materials.Wood.Oak)
 	end)
 	for k = 1, 4 do
-		plantInCorner(room, 40 + k)
+		plantInCorner(room, 40 + k, k % 2 == 1)
 	end
 end
 
@@ -1459,66 +1778,118 @@ end
 
 -- Villa ------------------------------------------------------------------------------------------
 
+-- Floor-length curtains at the windows of a representative room in a home.
+function Rooms.curtains(room: Room, fabric: Options)
+	local W, D = room.Width, room.Depth
+	for _, win in room.Windows do
+		local along = (win.From + win.To) / 2
+		local p: Vector3, dir: Vector3
+		if win.Side == "Front" then
+			p, dir = Rooms.world(room, along, 0), room.N
+		elseif win.Side == "Back" then
+			p, dir = Rooms.world(room, along, D), -room.N
+		elseif win.Side == "Left" then
+			p, dir = Rooms.world(room, -W / 2, along), room.A
+		else
+			p, dir = Rooms.world(room, W / 2, along), -room.A
+		end
+		local top = math.min(win.Top or (room.Height - 1.5), room.Height - 0.8)
+		f.curtains(room.Folder, CFrame.lookAt(p, p + dir), win.To - win.From, top, fabric)
+	end
+end
+
+-- A large official rug scaled down to the room (at most `fill` of it).
+local function bigRug(room: Room, w: number, fill: number, fallback: Options)
+	local key = "RugHall"
+	local size = f.size(key)
+	local scale = math.min(1, (room.Width * fill) / size.X, (room.Depth * fill) / size.Z)
+	local frame = Rooms.frame(room, 0, w, "Front")
+	if not f.store(room.Folder, key, frame, scale) then
+		f.rug(room.Folder, frame, size.X * scale, size.Z * scale, fallback)
+	end
+end
+
 Recipes.Salon = function(room)
 	local folder = room.Folder
 	local D, W = room.Depth, room.Width
-	local fabric = pick(room, 10, { Materials.Fabric.Beige, Materials.Fabric.Green, Materials.Fabric.Blue })
+	local up = upholsteryOf(room, 10)
 	-- Fireplace on a side wall with the seating around it.
 	local fireSide: Side = if noise(room, 2) < 0.5 then "Left" else "Right"
 	local lo, hi = Rooms.wallRange(room, fireSide)
-	Rooms.onWall(room, fireSide, (lo + hi) / 2, 0, 7, function(wall)
+	Rooms.onWall(room, fireSide, (lo + hi) / 2, 0, 7.6, function(wall)
 		f.fireplace(folder, wall)
+		prop(room, "Bowl", wall * CFrame.new(1.8, 5.3, -0.7))
+		-- A landscape over the mantel, as large as the wall above it allows.
+		local key = pick(room, 3, LANDSCAPES)
+		local size = f.size(key)
+		local scale = math.clamp((room.Height - 1 - 6.2) / size.Y, 0.4, 0.9)
+		local at = wall * CFrame.new(0, 6.2 + size.Y * scale / 2, 0)
+		if not f.store(folder, key, at, scale) then
+			f.picture(folder, at, size.X * scale, size.Y * scale, room.Seed + 3)
+		end
 	end)
-	f.rug(folder, Rooms.frame(room, 0, D / 2, "Front"), math.min(W - 6, 18), math.min(D - 8, 14), Materials.Fabric.Red)
-	Rooms.item(room, 0, D / 2 + 5, "Front", 11, 2.8, false, function(frame)
-		f.sofa(folder, frame, 4, fabric)
+	bigRug(room, D / 2, 0.62, Materials.Floor.CarpetRed)
+	local ct = f.size("CoffeeTable")
+	local sofa = f.size(sofaKey(room, 3))
+	local gap = ct.Z / 2 + 1.3 + sofa.Z / 2
+	sofaGroup(room, D / 2 + gap, "Front", 3)
+	model(room, sofaKey(room, 3), 0, D / 2 - gap, "Back", false, function(frame)
+		f.sofa(folder, frame, 3, up)
 	end)
-	Rooms.item(room, 0, D / 2 - 5, "Back", 8.4, 2.8, false, function(frame)
-		f.sofa(folder, frame, 3, fabric)
+	model(room, "CoffeeTable", 0, D / 2, "Front", false, function(frame)
+		f.coffeeTable(folder, frame, ct.X, ct.Z, Materials.Wood.Walnut)
 	end)
-	Rooms.item(room, 0, D / 2, "Front", 6, 3.2, false, function(frame)
-		f.coffeeTable(folder, frame, 6, 3.2, Materials.Wood.Walnut)
-	end)
-	for _, u in { -7.5, 7.5 } do
-		Rooms.item(room, u, D / 2, if u < 0 then "Right" else "Left", 3, 2.8, false, function(frame)
+	prop(room, "Bowl", Rooms.frame(room, 0.6, D / 2, "Front", ct.Y))
+	local arm = f.size("ArmChair")
+	for _, u in { -1, 1 } do
+		local facing: Side = if u < 0 then "Right" else "Left"
+		model(room, "ArmChair", u * (sofa.X / 2 + 1 + arm.Z / 2), D / 2, facing, false, function(frame)
 			f.armchair(folder, frame, Materials.Leather.Brown)
 		end)
-		Rooms.item(room, u, D / 2 + 4.5, "Front", 1.4, 1.4, false, function(frame)
-			f.floorLamp(folder, frame.Position)
-		end)
 	end
-	Rooms.alongWall(room, "Back", 7, 1.8, false, function(frame)
-		f.cabinet(folder, frame, 7, 1.8, 3.4, Materials.Wood.Mahogany)
+	modelAlong(room, "Back", "Console", false, function(frame)
+		local c = f.size("Console")
+		f.cabinet(folder, frame, c.X, c.Z, c.Y, Materials.Wood.Mahogany)
 	end)
-	storageWall(room, if fireSide == "Left" then "Right" else "Left", 3)
+	modelAlong(room, "Back", "GrandfatherClock", true, nil, 1)
+	modelAlong(room, "Back", "DisplayCase", true, function(frame)
+		local c = f.size("DisplayCase")
+		f.cabinet(folder, frame, c.X, c.Z, c.Y, Materials.Wood.Mahogany)
+	end, -1)
+	storageWall(room, if fireSide == "Left" then "Right" else "Left", 3, true)
 	if large(room) then
 		sittingCorner(room, 47, Materials.Fabric.Beige)
 		tableForFour(
 			room,
-			(if noise(room, 48) < 0.5 then -1 else 1) * (W / 2 - 5),
-			D - 5,
+			(if noise(room, 48) < 0.5 then -1 else 1) * (W / 2 - 6),
+			D - 6,
 			Materials.Wood.Walnut,
 			Materials.Fabric.Red
 		)
 	end
-	pictures(room, 4, 36)
+	pictures(room, 3, 36, 0.85)
 	for k = 1, 3 do
-		plantInCorner(room, 50 + k)
+		plantInCorner(room, 50 + k, k == 1)
+	end
+	if room.Plan.Spec.Style.LightSofas then
+		Rooms.curtains(room, Materials.Fabric.Beige)
 	end
 end
 
--- Music room: a grand piano by the windows, a few chairs for listeners, a cabinet for sheet
--- music, pictures and plants.
+-- Music room: a grand piano by the windows, a few chairs for listeners, a console for sheet
+-- music, a bookcase, pictures and plants.
 Recipes.Music = function(room)
 	local folder = room.Folder
-	local W, D = room.Width, room.Depth
-	f.rug(folder, Rooms.frame(room, 0, D / 2, "Front"), math.min(W - 4, 14), math.min(D - 6, 16), Materials.Fabric.Red)
+	local D = room.Depth
+	bigRug(room, D / 2, 0.55, Materials.Floor.CarpetRed)
 	-- The pianist faces the room's side wall; the body reaches towards the windows' side.
 	Rooms.item(room, 0, 9, "Left", 6, 9.6, false, function(frame)
-		f.piano(folder, frame * CFrame.new(0, 0, -1.75))
+		if not f.store(folder, "Piano", frame) then
+			f.piano(folder, frame * CFrame.new(0, 0, -1.75))
+		end
 	end)
 	for i, u in { -4.5, -1.5, 1.5, 4.5 } do
-		Rooms.item(room, u, D / 2 + 6 + math.abs(u) * 0.3, "Front", 2, 2, false, function(frame)
+		model(room, "DiningChair", u, D / 2 + 6 + math.abs(u) * 0.3, "Front", false, function(frame)
 			f.chair(
 				folder,
 				frame,
@@ -1527,50 +1898,68 @@ Recipes.Music = function(room)
 			)
 		end)
 	end
-	Rooms.alongWall(room, "Back", 6, 1.8, false, function(frame)
-		f.cabinet(folder, frame, 6, 1.8, 3.6, Materials.Wood.Mahogany)
+	modelAlong(room, "Back", "Console", false, function(frame)
+		local c = f.size("Console")
+		f.cabinet(folder, frame, c.X, c.Z, c.Y, Materials.Wood.Mahogany)
 	end)
-	Rooms.alongWall(room, if noise(room, 2) < 0.5 then "Left" else "Right", 4, 1.5, true, function(frame)
-		f.shelf(folder, frame, 4, 1.5, math.min(8, room.Height - 1.5), Materials.Wood.Walnut, room.Seed + 5)
+	modelAlong(room, if noise(room, 2) < 0.5 then "Left" else "Right", "BookcaseB", true, function(frame)
+		local c = f.size("BookcaseB")
+		f.shelf(folder, frame, c.X, c.Z, math.min(c.Y, room.Height - 1.5), Materials.Wood.Walnut, room.Seed + 5)
 	end)
 	sittingCorner(room, 3, Materials.Leather.Tan)
-	pictures(room, 3, 4)
-	plantInCorner(room, 5)
+	pictures(room, 3, 4, 0.85)
+	plantInCorner(room, 5, true)
 	plantInCorner(room, 6)
+	if room.Plan.Spec.Style.LightSofas then
+		Rooms.curtains(room, Materials.Fabric.Beige)
+	end
 end
 
 Recipes.Dining = function(room)
 	local folder = room.Folder
 	local W, D = room.Width, room.Depth
 	local alongW = D >= W
-	local tl = math.clamp(math.max(W, D) - 12, 8, 22)
-	Rooms.item(room, 0, D / 2, if alongW then "Left" else "Front", tl, 4.4, false, function(frame)
-		f.table(folder, frame, tl, 4.4, Materials.Wood.Mahogany)
+	local key: string? = if math.max(W, D) - 12 >= f.size("LongTable").X then "LongTable" else nil
+	local tl = if key then f.size("LongTable").X else math.clamp(math.max(W, D) - 12, 8, 22)
+	local tw = if key then f.size("LongTable").Z else 4.4
+	local th = if key then f.size("LongTable").Y else 2.95
+	bigRug(room, D / 2, 0.68, Materials.Floor.CarpetRed)
+	Rooms.item(room, 0, D / 2, if alongW then "Left" else "Front", tl + 4.6, tw + 4.4, false, function(frame)
+		if not (key and f.store(folder, key, frame)) then
+			f.table(folder, frame, tl, tw, Materials.Wood.Mahogany, th)
+		end
 		local n = math.floor(tl / 2.8)
 		for i = 1, n do
 			for _, side in { -1, 1 } do
-				local c = frame * CFrame.new(-tl / 2 + (i - 0.5) * tl / n, 0, side * 3.3)
+				local c = frame * CFrame.new(-tl / 2 + (i - 0.5) * tl / n, 0, side * (tw / 2 + 0.8))
 				if side < 0 then
 					c = c * CFrame.Angles(0, math.pi, 0)
 				end
-				f.chair(folder, c, Materials.Wood.Walnut, Materials.Fabric.Red)
+				if not f.store(folder, "DiningChair", c) then
+					f.chair(folder, c, Materials.Wood.Walnut, Materials.Fabric.Red)
+				end
 			end
 		end
 		for _, side in { -1, 1 } do
-			f.chair(
-				folder,
-				frame * CFrame.new(side * (tl / 2 + 1.3), 0, 0) * CFrame.Angles(0, side * math.pi / 2, 0),
-				Materials.Wood.Walnut,
-				Materials.Fabric.Red
-			)
+			local c = frame * CFrame.new(side * (tl / 2 + 1.1), 0, 0) * CFrame.Angles(0, side * math.pi / 2, 0)
+			if not f.store(folder, "ArmDiningChair", c) then
+				f.chair(folder, c, Materials.Wood.Walnut, Materials.Fabric.Red)
+			end
+		end
+		for _, x in { -tl / 3, 0, tl / 3 } do
+			prop(room, "Bowl", frame * CFrame.new(x, th, 0))
 		end
 	end)
-	Rooms.alongWall(room, "Back", 8, 2, false, function(frame)
-		f.cabinet(folder, frame, 8, 2, 3.6, Materials.Wood.Mahogany)
+	modelAlong(room, "Back", "CredenzaLong", false, function(frame)
+		local c = f.size("CredenzaLong")
+		f.cabinet(folder, frame, c.X, c.Z, c.Y, Materials.Wood.Mahogany)
 	end)
-	pictures(room, 3, 37)
-	plantInCorner(room, 54)
+	pictures(room, 3, 37, 0.85)
+	plantInCorner(room, 54, true)
 	plantInCorner(room, 55)
+	if room.Plan.Spec.Style.LightSofas then
+		Rooms.curtains(room, Materials.Fabric.Beige)
+	end
 end
 
 Recipes.Kitchen = function(room)
@@ -1585,47 +1974,60 @@ Recipes.Kitchen = function(room)
 	end)
 end
 
-local function bedroom(room: Room, double: boolean, wardrobe: number)
+local function bedroom(room: Room, double: boolean, wardrobe: number, guest: boolean?)
 	local folder = room.Folder
-	local wood = pick(room, 3, { Materials.Wood.Walnut, Materials.Wood.Oak, Materials.Wood.White })
+	local wood = pick(room, 3, { Materials.Wood.Walnut, Materials.Wood.Oak })
 	local linen =
 		pick(room, 4, { Materials.Fabric.Beige, Materials.Fabric.Blue, Materials.Fabric.Green, Materials.Fabric.Grey })
-	local bw = if double then 6.4 else 3.6
-	local bl = 7.6
-	Rooms.alongWall(room, "Back", bw + 0.4, bl + 0.4, false, function(frame)
-		f.bed(folder, frame, bw, bl, wood, linen)
+	local bedKey = if guest then "GuestBed" else "Bed"
+	local bed = f.size(bedKey)
+	local stand = f.size("Nightstand")
+	local bw = if double then bed.X else 3.6
+	local bl = if double then bed.Z else 7.6
+	Rooms.alongWall(room, "Back", bw + 2 * stand.X + 0.8, bl + 0.4, false, function(frame)
+		-- The bed's front is its foot end; the headboard is at the wall (+Z of the frame).
+		if not (double and f.store(folder, bedKey, frame)) then
+			local l = if double then 7.6 else bl
+			f.bed(folder, frame * CFrame.new(0, 0, bl / 2 - l / 2), if double then 6.4 else bw, l, wood, linen)
+		end
 		for _, side in { -1, 1 } do
 			if double or side > 0 then
-				f.nightstand(folder, frame * CFrame.new(side * (bw / 2 + 1.2), 0, bl / 2 - 0.9), wood)
+				local at = frame * CFrame.new(side * (bw / 2 + stand.X / 2 + 0.2), 0, bl / 2 - stand.Z / 2)
+				if f.store(folder, "Nightstand", at) then
+					prop(room, "TableLamp", at * CFrame.new(0, stand.Y, 0.2))
+				else
+					f.nightstand(folder, at, wood)
+				end
 			end
 		end
 	end)
+	local armoire = f.size("Armoire")
+	local wardrobeSide: Side = if noise(room, 5) < 0.5 then "Left" else "Right"
 	for _ = 1, wardrobe do
-		Rooms.alongWall(room, if noise(room, 5) < 0.5 then "Left" else "Right", 4, 2.2, true, function(frame)
-			f.wardrobe(folder, frame, 4, 2.2, math.min(8, room.Height - 1.5), wood)
+		modelAlong(room, wardrobeSide, "Armoire", true, function(frame)
+			f.wardrobe(folder, frame, armoire.X, armoire.Z, math.min(armoire.Y, room.Height - 1.5), wood)
 		end)
 	end
-	Rooms.alongWall(room, "Front", 4, 1.8, false, function(frame)
-		f.cabinet(folder, frame, 4, 1.8, 3, wood)
-	end)
-	f.rug(
-		folder,
-		Rooms.frame(room, 0, room.Depth - bl - 1, "Front"),
-		math.min(room.Width - 4, 9),
-		5,
-		Materials.Fabric.Beige
-	)
-	Rooms.item(room, room.Width / 2 - 2.5, 3.5, "Left", 3, 2.8, false, function(frame)
+	dresser(room, if wardrobeSide == "Left" then "Right" else "Left", wood)
+	local rugKey = pick(room, 6, { "RugLarge", "RugKhamseh", "RugUshak" })
+	local rugFrame = Rooms.frame(room, 0, room.Depth - bl - 2.2, "Front")
+	if not f.store(folder, rugKey, rugFrame) then
+		f.rug(folder, rugFrame, math.min(room.Width - 4, 9), 5, Materials.Fabric.Beige)
+	end
+	model(room, "ArmChair", room.Width / 2 - 3, 3.8, "Left", false, function(frame)
 		f.armchair(folder, frame, linen)
 	end)
 	if large(room) then
 		sittingCorner(room, 57, linen)
 		writingDesk(room, 58, wood)
 		dresser(room, if noise(room, 59) < 0.5 then "Left" else "Right", wood)
-		plantInCorner(room, 60)
+		plantInCorner(room, 60, true)
 	end
-	pictures(room, 2, 38)
+	pictures(room, 2, 38, 0.8)
 	plantInCorner(room, 56)
+	if room.Plan.Spec.Style.LightSofas then
+		Rooms.curtains(room, linen)
+	end
 	services(room)
 end
 
@@ -1633,8 +2035,8 @@ Recipes.Bedroom = function(room)
 	bedroom(room, true, 2)
 end
 Recipes.Guest = function(room)
-	bedroom(room, true, 1)
-	workplace(room, -room.Width / 4, 1.6, 5)
+	bedroom(room, true, 1, true)
+	writingDesk(room, 61, Materials.Wood.Oak)
 end
 Recipes.Staff = function(room)
 	bedroom(room, false, 1)
@@ -1661,9 +2063,35 @@ end
 
 -- Circulation ------------------------------------------------------------------------------------
 
--- Corridors: fire extinguishers, exit signs, notice boards, benches and plants in wide ones.
+-- The room numbers of the rooms whose doors open onto a circulation space, as "1.01–1.14".
+local function roomRange(room: Room): string?
+	local plan = room.Plan
+	local numbers: { string } = {}
+	for _, seg in plan.Segments do
+		for _, hole in seg.Holes do
+			local other = if hole.Other == room.Space
+				then hole.Room
+				elseif hole.Room == room.Space then hole.Other
+				else nil
+			local n = if other then plan.Numbers[other] else nil
+			if n and not table.find(numbers, n) then
+				table.insert(numbers, n)
+			end
+		end
+	end
+	if #numbers == 0 then
+		return nil
+	end
+	table.sort(numbers)
+	return if #numbers == 1 then `Room {numbers[1]}` else `Rooms {numbers[1]}–{numbers[#numbers]}`
+end
+
+-- Corridors: fire safety along the walls (extinguishers, hose reels, call points, an
+-- evacuation plan), exit signs and a direction sign at both ends, notice boards, and benches
+-- with paintings and plants in wide ones.
 Recipes.Corridor = function(room)
 	local folder = room.Folder
+	local style = room.Plan.Spec.Style
 	local alongSide = room.Width >= room.Depth -- long walls are Front/Back
 	local longSides: { Side } = if alongSide then { "Front", "Back" } else { "Left", "Right" }
 	local lo, hi = Rooms.wallRange(room, longSides[1])
@@ -1674,38 +2102,73 @@ Recipes.Corridor = function(room)
 	while s < hi - 6 do
 		k += 1
 		local side: Side = longSides[1 + k % 2]
-		Rooms.onWall(room, side, s, 2.6, 1.6, function(wall)
-			f.extinguisher(folder, wall)
-		end)
+		if k % 3 == 2 then
+			Rooms.onWall(room, side, s, 4.2, 2.8, function(wall)
+				f.hoseCabinet(folder, wall)
+			end)
+		else
+			Rooms.onWall(room, side, s, 2.6, 1.6, function(wall)
+				f.extinguisher(folder, wall)
+			end)
+		end
 		s += 36
 	end
 	for i = 1, math.max(1, math.floor(length / 50)) do
-		Rooms.findWall(room, longSides[1 + i % 2], 5.2, 4.4, function(wall)
-			f.noticeBoard(folder, wall, 4, 3, room.Seed + i)
+		local side = longSides[1 + i % 2]
+		local cork = f.size("CorkBoard")
+		Rooms.findWall(room, side, 5.4, cork.X + 0.6, function(wall)
+			if not f.store(folder, "CorkBoard", wall) then
+				f.noticeBoard(folder, wall, 4, 3, room.Seed + i)
+			end
 		end)
 	end
 	if wide >= 8 then
 		for i = 1, math.max(1, math.floor(length / 40)) do
 			local at = lo + i * length / (math.floor(length / 40) + 1)
 			local side: Side = longSides[1 + (i + 1) % 2]
-			Rooms.onWall(room, side, at, 5.6, 5, function(wall)
-				f.picture(folder, wall, 4, 3, room.Seed + i)
+			local placed = Rooms.against(room, side, at, 5, 1.6, false, function(frame)
+				f.bench(folder, frame, 5, style.Wood or Materials.Wood.Oak)
 			end)
-			Rooms.against(room, side, at, 5, 1.6, false, function(frame)
-				f.bench(folder, frame, 5, Materials.Wood.Oak)
+			if placed then
+				painting(room, side, 60 + i, 0.7)
+			end
+		end
+	end
+	-- Exit sign, direction sign, call point and evacuation plan at both ends; plants there.
+	local endSides: { Side } = if alongSide then { "Left", "Right" } else { "Front", "Back" }
+	local range = roomRange(room)
+	local storey = if room.Space.Storey == 0 then "G" else tostring(room.Space.Storey)
+	for i, side: Side in endSides do
+		local elo, ehi = Rooms.wallRange(room, side)
+		local mid = (elo + ehi) / 2
+		Rooms.onWall(room, side, mid, room.Height - 1.4, 2.4, function(wall)
+			f.exitSign(folder, wall)
+		end)
+		if range and room.Height > 10 then
+			Rooms.onWall(room, side, mid, 7.9, 3.6, function(wall)
+				local sign = f.sign(
+					folder,
+					wall,
+					3.4,
+					1.3,
+					{ string.upper(room.Space.Name), range },
+					style.Plate or Materials.Plastic.White,
+					style.Ink or Color3.fromRGB(40, 44, 52)
+				)
+				sign.Name = "DirectionSign"
+			end)
+		end
+		Rooms.findWall(room, longSides[i], 4.4, 1, function(wall)
+			f.callPoint(folder, wall)
+		end)
+		if i == 1 then
+			Rooms.findWall(room, longSides[2], 5.4, 3.2, function(wall)
+				f.evacuationPlan(folder, wall, storey)
 			end)
 		end
 	end
-	-- Exit signs over both ends, plants in the end corners.
-	local endSides: { Side } = if alongSide then { "Left", "Right" } else { "Front", "Back" }
-	for _, side: Side in endSides do
-		local elo, ehi = Rooms.wallRange(room, side)
-		Rooms.onWall(room, side, (elo + ehi) / 2, room.Height - 1.4, 2.4, function(wall)
-			f.exitSign(folder, wall)
-		end)
-	end
 	if wide >= 9 then
-		plantInCorner(room, 60)
+		plantInCorner(room, 60, true)
 		plantInCorner(room, 61)
 	end
 end
@@ -1713,8 +2176,8 @@ Recipes.Gallery = Recipes.Corridor
 Recipes.Landing = Recipes.Corridor
 
 Recipes.Hall = function(room)
-	plantInCorner(room, 62)
-	plantInCorner(room, 63)
+	plantInCorner(room, 62, true)
+	plantInCorner(room, 63, true)
 	plantInCorner(room, 64)
 	plantInCorner(room, 65)
 end
@@ -1868,9 +2331,214 @@ function Rooms.wainscot(room: Room, height: number, options: Options, only: { Si
 	end
 end
 
--- Furnishes a space: its custom builder, or the recipe of its kind.
+-- Linings ---------------------------------------------------------------------------------------
+-- Skirting boards on the facade walls (Plan builds them on the partitions), an oil-paint or
+-- wooden dado in corridors, and in representative rooms a wooden wainscot with a chair rail and
+-- a plaster cornice under the ceiling. Every piece runs between doors and floor-length windows.
+
+Rooms.Representative = {
+	Executive = true,
+	Committee = true,
+	Board = true,
+	Cabinet = true,
+	Salon = true,
+	Library = true,
+	Dining = true,
+	LeadersOffice = true,
+	Study = true,
+	Music = true,
+	Lounge = true,
+	Family = true,
+}
+local CIRCULATION = { Corridor = true, Gallery = true, Landing = true }
+local UNLINED = { WC = true, Bathroom = true, Lift = true, Stair = true }
+
+-- Stretches (along the wall) of `side` that have a wall, without its doors and without the
+-- windows whose sill is below `height`. `exterior`: only the facade stretches.
+function Rooms.stretches(room: Room, side: Side, height: number, exterior: boolean?): { { number } }
+	local lo, hi = Rooms.wallRange(room, side)
+	local cuts: { { number } } = {}
+	for _, d in room.Doors do
+		if d.Side == side then
+			table.insert(cuts, { d.From - 0.35, d.To + 0.35 })
+		end
+	end
+	for _, w in room.Windows do
+		if w.Side == side and (w.Bottom or 0) < height then
+			table.insert(cuts, { w.From - 0.1, w.To + 0.1 })
+		end
+	end
+	table.sort(cuts, function(a: { number }, b: { number })
+		return a[1] < b[1]
+	end)
+	local out: { { number } } = {}
+	for _, wall in room.Walls do
+		if wall.Side ~= side or (exterior and not wall.Exterior) then
+			continue
+		end
+		local a, b = math.max(lo, wall.From), math.min(hi, wall.To)
+		local cursor = a
+		for _, c in cuts do
+			if c[2] <= cursor or c[1] >= b then
+				continue
+			end
+			if c[1] - cursor > 0.3 then
+				table.insert(out, { cursor, c[1] })
+			end
+			cursor = math.max(cursor, c[2])
+		end
+		if b - cursor > 0.3 then
+			table.insert(out, { cursor, b })
+		end
+	end
+	return out
+end
+
+-- A board on the wall face of `side` from a to b, y0..y1 above the floor, `depth` thick.
+local function board(
+	room: Room,
+	side: Side,
+	a: number,
+	b: number,
+	y0: number,
+	y1: number,
+	depth: number,
+	name: string,
+	o: Options
+)
+	local W, D = room.Width, room.Depth
+	local mid, h, c = (a + b) / 2, y1 - y0, depth / 2
+	local frame: CFrame
+	if side == "Front" then
+		frame = Rooms.frame(room, mid, c, "Back", y0 + h / 2)
+	elseif side == "Back" then
+		frame = Rooms.frame(room, mid, D - c, "Front", y0 + h / 2)
+	elseif side == "Left" then
+		frame = Rooms.frame(room, -W / 2 + c, mid, "Right", y0 + h / 2)
+	else
+		frame = Rooms.frame(room, W / 2 - c, mid, "Left", y0 + h / 2)
+	end
+	Parts.part(room.Folder, name, frame, Vector3.new(b - a, h, depth), Parts.detail(o))
+end
+
+local SIDES: { Side } = { "Front", "Back", "Left", "Right" }
+
+-- Skirting boards on the facade walls of the room.
+function Rooms.skirting(room: Room)
+	local o = room.Plan.Spec.Style.Skirting or Materials.Wood.Walnut
+	local top = Plan.Skirting - 0.1
+	for _, side in SIDES do
+		for _, st in Rooms.stretches(room, side, top + 0.1, true) do
+			board(room, side, st[1], st[2], -0.1, top, 0.08, "Skirting", o)
+		end
+	end
+end
+
+-- Height of a lining that should end under the window sills (at most `max`).
+local function underSills(room: Room, max: number): number
+	local h = max
+	for _, w in room.Windows do
+		if w.Bottom and w.Bottom > 1.5 then
+			h = math.min(h, w.Bottom - 0.15)
+		end
+	end
+	return math.max(h, 2.2)
+end
+
+-- Corridor dado: oil paint (thin) or a wooden wainscot with a rail, up to about one metre.
+function Rooms.dado(room: Room, o: Options, height: number?)
+	local wood = o.Material == Enum.Material.Wood or o.Material == Enum.Material.WoodPlanks
+	local h = underSills(room, height or 3.4)
+	local depth = if wood then 0.1 else 0.04
+	for _, side in SIDES do
+		for _, st in Rooms.stretches(room, side, h) do
+			board(room, side, st[1], st[2], 0, h, depth, "Dado", o)
+			if wood then
+				board(room, side, st[1], st[2], h - 0.05, h + 0.12, depth + 0.07, "DadoRail", o)
+			end
+		end
+	end
+	room.Panel, room.PanelDepth = h + 0.15, depth + 0.07
+end
+
+-- Representative rooms: wooden wainscot to the window sills with a chair rail.
+function Rooms.panelling(room: Room, o: Options, height: number?)
+	local h = underSills(room, height or 3.2)
+	local rail = Parts.with(o, { Color = Parts.vary(o.Color or Color3.new(0.4, 0.3, 0.2), room.Seed, 0.08) })
+	for _, side in SIDES do
+		for _, st in Rooms.stretches(room, side, h) do
+			board(room, side, st[1], st[2], -0.1, h, 0.12, "Wainscot", o)
+			board(room, side, st[1], st[2], h - 0.04, h + 0.16, 0.2, "ChairRail", rail)
+		end
+	end
+	room.Panel, room.PanelDepth = h + 0.2, 0.2
+end
+
+-- Plaster cornice along the top of every wall (cut only where an opening reaches the ceiling).
+function Rooms.cornice(room: Room, o: Options?)
+	local top = room.Height
+	for _, side in SIDES do
+		local lo, hi = Rooms.wallRange(room, side)
+		local cuts: { { number } } = {}
+		for _, list in { room.Doors, room.Windows } do
+			for _, opening in list do
+				if opening.Side == side and (opening.Top or 0) > top - 0.6 then
+					table.insert(cuts, { opening.From, opening.To })
+				end
+			end
+		end
+		for _, wall in room.Walls do
+			if wall.Side ~= side then
+				continue
+			end
+			local a, b = math.max(lo, wall.From), math.min(hi, wall.To)
+			table.sort(cuts, function(p: { number }, q: { number })
+				return p[1] < q[1]
+			end)
+			local cursor = a
+			for _, c in cuts do
+				if c[2] > cursor and c[1] < b then
+					if c[1] - cursor > 0.3 then
+						board(room, side, cursor, c[1], top - 0.5, top, 0.32, "Cornice", o or Materials.Ceiling)
+					end
+					cursor = math.max(cursor, c[2])
+				end
+			end
+			if b - cursor > 0.3 then
+				board(room, side, cursor, b, top - 0.5, top, 0.32, "Cornice", o or Materials.Ceiling)
+			end
+		end
+	end
+end
+
+-- The linings a room of its kind gets in its building (see the Style fields in Plan.luau).
+function Rooms.lining(room: Room)
+	local style = room.Plan.Spec.Style
+	local kind = room.Space.Kind
+	if UNLINED[kind] or room.Height < 6 then
+		return
+	end
+	local representative = (style.Representative or Rooms.Representative)[kind]
+	local panel = if style.PanellingBy and style.PanellingBy[kind] then style.PanellingBy[kind] else style.Panelling
+	if representative and panel then
+		Rooms.panelling(room, panel)
+	else
+		if CIRCULATION[kind] and style.Dado then
+			Rooms.dado(room, style.Dado)
+		end
+		Rooms.skirting(room)
+	end
+	if representative then
+		Rooms.cornice(room)
+	end
+end
+
+-- Furnishes a space: linings, then its custom builder or the recipe of its kind.
 function Rooms.furnish(plan: Plan.Plan, space: Space, folder: Folder)
 	local room = Rooms.context(plan, space, folder)
+	if not space.Custom or space.Lining ~= false then
+		Rooms.lining(room)
+	end
 	if space.Custom then
 		space.Custom(room)
 		return

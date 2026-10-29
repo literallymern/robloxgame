@@ -35,6 +35,8 @@ export type Axis = "X" | "Z"
 
 Plan.Partition = 0.6 -- interior wall thickness
 Plan.DoorHeight = 7.6 -- a character is about 5 studs tall
+Plan.Lining = 0.15 -- painted inner skin of the facade walls (Shell.luau), inside the wall thickness
+Plan.Skirting = 0.55 -- skirting board height above the floor slab
 
 export type OpeningSpec = {
 	Edge: Edge, -- edge of the space that lists it
@@ -82,13 +84,25 @@ export type Space = {
 	Number: string?, -- room number on the door sign (default: storey.nn)
 	Custom: ((room: any) -> ())?, -- builds the furnishing instead of the recipe
 	Lights: boolean?, -- false: the custom furnishing lights the space
+	Lining: boolean?, -- false: no skirting, dado or panelling (the custom furnishing lines it)
 	Seed: number?,
 	Grand: boolean?, -- stairs: wider flights
 	Gender: ("Men" | "Women" | "Accessible")?, -- WCs
 }
 
 export type Style = {
-	Partition: Options,
+	Partition: Options, -- interior paint: both faces of the partitions
+	Lining: Options?, -- inner skin of the facade walls (default: Partition)
+	Skirting: Options?, -- skirting boards (default: dark wood)
+	Dado: Options?, -- lower wall of corridors: oil paint or wood wainscot (Rooms.lining)
+	Panelling: Options?, -- wood wainscot, chair rail and cornice of representative rooms
+	Representative: { [string]: boolean }?, -- kinds that get the panelling (default list in Rooms)
+	PanellingBy: { [string]: Options }?, -- panelling of particular kinds (default: Panelling)
+	Wood: Options?, -- the building's furniture wood (built furniture)
+	Upholstery: Options?, -- its upholstery (built furniture)
+	Runner: Options?, -- carpet runners in halls and representative rooms
+	LightSofas: boolean?, -- the light upholstered sofas instead of the dark ones
+	Fixtures: { [string]: "Chandelier" }?, -- kinds lit by chandeliers instead of ceiling panels
 	Door: Openings.DoorStyle,
 	GlassDoor: Openings.DoorStyle?,
 	Plate: Options?, -- door signs
@@ -816,6 +830,59 @@ local function wallsFolder(plan: Plan, storey: number): Folder
 	return folderFor(plan, storey, "Walls")
 end
 
+-- Spaces whose floor is on `storey` and whose walls get skirting boards (washrooms are tiled,
+-- stairs and lift shafts have no floor along their walls on the upper storeys).
+local NO_SKIRTING = { Stair = true, Lift = true, WC = true, Bathroom = true }
+local function skirted(space: Space?, storey: number): boolean
+	return space ~= nil and space.Storey == storey and not NO_SKIRTING[space.Kind]
+end
+
+-- Skirting boards along a partition, cut at the openings that reach the floor. One board covers
+-- both faces where both rooms need it (it is thicker than the partition), so a wall costs one
+-- piece per stretch between doors.
+local function skirting(plan: Plan, seg: Segment, parent: Instance, wall: Openings.Wall, from: number, to: number)
+	local a, b = skirted(seg.A, seg.Storey), skirted(seg.B, seg.Storey)
+	if not a and not b then
+		return
+	end
+	local y0 = Plan.level(plan, seg.Storey)
+	local half, t = Plan.Partition / 2, 0.08
+	local lo = if a then -half - t else half
+	local hi = if b then half + t else -half
+	local cuts: { { number } } = {}
+	for _, hole in seg.Holes do
+		if hole.Bottom <= y0 + Plan.Skirting + 0.1 then
+			table.insert(cuts, { hole.From, hole.To })
+		end
+	end
+	table.sort(cuts, function(p: { number }, q: { number })
+		return p[1] < q[1]
+	end)
+	local o = Parts.detail(plan.Spec.Style.Skirting or Materials.Wood.Walnut)
+	local cursor = from
+	local function board(s0: number, s1: number)
+		if s1 - s0 > 0.3 then
+			Openings.wallBox(
+				parent,
+				"Skirting",
+				wall,
+				s0,
+				s1,
+				y0,
+				y0 + Plan.Skirting,
+				seg.At + seg.Out * lo,
+				seg.At + seg.Out * hi,
+				o
+			)
+		end
+	end
+	for _, c in cuts do
+		board(cursor, c[1])
+		cursor = math.max(cursor, c[2])
+	end
+	board(cursor, to)
+end
+
 local function buildWalls(plan: Plan)
 	local style = plan.Spec.Style
 	for _, seg in plan.Segments do
@@ -850,6 +917,7 @@ local function buildWalls(plan: Plan)
 			table.insert(holes, { From = hole.From, To = hole.To, Bottom = hole.Bottom, Top = hole.Top })
 		end
 		Openings.solid(parent, "Partition", wall, from, to, y0, y1, holes, style.Partition)
+		skirting(plan, seg, parent, wall, from, to)
 		for _, hole in seg.Holes do
 			local roomFolder = plan.Folders[hole.Room] or parent
 			local w: Openings.Wall = { Axis = seg.Axis, At = seg.At, Thickness = Plan.Partition, Out = hole.Toward }
@@ -979,8 +1047,8 @@ local function lights(plan: Plan, space: Space, folder: Instance)
 	-- A few panels carry point lights, spread along the long axis (one per 50 studs).
 	local carriers = math.max(1, math.ceil(long / 50))
 	local reach = if carriers == 1
-		then math.clamp(math.sqrt(w * w + d * d) * 0.6, 16, 60)
-		else math.min(60, long / carriers + 14)
+		then math.clamp(math.sqrt(w * w + d * d) * 0.6, 16, 48)
+		else math.min(48, long / carriers + 14)
 	local targets: { Vector3 } = {}
 	for j = 1, carriers do
 		local t = (j - 0.5) / carriers
@@ -991,6 +1059,21 @@ local function lights(plan: Plan, space: Space, folder: Instance)
 		for k = 1, nz do
 			table.insert(panels, Vector3.new(r.MinX + (i - 0.5) * w / nx, y, r.MinZ + (k - 0.5) * d / nz))
 		end
+	end
+	-- Representative rooms of some buildings: chandeliers along the middle instead of panels.
+	local fixtures = plan.Spec.Style.Fixtures
+	if fixtures and fixtures[space.Kind] == "Chandelier" then
+		local n = math.max(1, math.floor(long / 26 + 0.5))
+		local height = y - Plan.level(plan, space.Storey)
+		for j = 1, n do
+			local t = (j - 0.5) / n
+			local p = if alongX then Vector3.new(r.MinX + t * w, y, cz) else Vector3.new(cx, y, r.MinZ + t * d)
+			Furniture.chandelier(folder, p, math.clamp(height * 0.26, 2.4, 3.6), math.min(48, long / n + 16))
+		end
+		plan.Report.Lights += n
+		local away = if alongX then Vector3.new(0, 0, math.min(4, d / 4)) else Vector3.new(math.min(4, w / 4), 0, 0)
+		Furniture.smokeDetector(folder, Vector3.new(cx, y, cz) + away)
+		return
 	end
 	local carrying: { [number]: boolean } = {}
 	for _, target in targets do

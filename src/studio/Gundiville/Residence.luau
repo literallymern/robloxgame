@@ -21,6 +21,7 @@ local Plan = require(Architecture.Plan)
 local Shell = require(Architecture.Shell)
 local Rooms = require(Architecture.Rooms)
 local Furniture = require(Architecture.Furniture)
+local StoreAssets = require(Architecture.StoreAssets)
 local Exterior = require(Architecture.Exterior)
 
 type Space = Plan.Space
@@ -66,6 +67,14 @@ end
 local function wallAt(x: number, y: number, z: number, dir: Vector3): CFrame
 	local p = Vector3.new(x, y, z)
 	return CFrame.lookAt(p, p + dir)
+end
+
+-- An official painting (StoreAssets) at a wall frame (its centre), or a built picture.
+local function portrait(parent: Instance, wall: CFrame, key: string, scale: number, seed: number)
+	if not Furniture.store(parent, key, wall, scale) then
+		local size = Furniture.size(key) * scale
+		Furniture.picture(parent, wall, size.X, size.Y, seed)
+	end
 end
 
 -- A wall lantern (glass box on a bracket) that the day/night cycle switches on at night.
@@ -218,24 +227,19 @@ local function hall(room: Room)
 	local r = room.Space.Rect
 	local half = Plan.Partition / 2
 	local west, east = r.MinX + half, r.MaxX - half
-	Kit.slab(
+	local runnerAt = Vector3.new(DOOR_X, y, (r.MinZ + r.MaxZ - 0.3) / 2)
+	Furniture.runner(
 		folder,
-		"RunnerBorder",
-		Kit.rect(DOOR_X - 3.6, DOOR_X + 3.6, r.MinZ, r.MaxZ - 0.3),
-		y,
-		y + 0.04,
-		Kit.with(Kit.Style.DarkGranite, { Decoration = true })
+		CFrame.lookAt(runnerAt, runnerAt + Vector3.new(0, 0, 1)),
+		7.2,
+		r.MaxZ - 0.3 - r.MinZ,
+		Materials.Floor.CarpetRed,
+		Materials.Floor.CarpetSand
 	)
-	Kit.slab(
-		folder,
-		"Runner",
-		Kit.rect(DOOR_X - 3, DOOR_X + 3, r.MinZ, r.MaxZ - 0.3),
-		y + 0.04,
-		y + 0.1,
-		Kit.Style.Carpet
-	)
+	Rooms.panelling(room, Materials.Panel.Painted, 3.2)
+	Rooms.cornice(room)
 	Kit.emblem(folder, { Axis = "X", At = west, Out = 1 }, -722, y + 6.8, 4.2, 0.2)
-	Furniture.picture(folder, wallAt(east, y + 6.6, -722, Vector3.new(-1, 0, 0)), 4.6, 6, 3)
+	portrait(folder, wallAt(east, y + 6.6, -722, Vector3.new(-1, 0, 0)), "PaintingOfficer", 0.8, 3)
 	for _, side in { -1, 1 } do
 		local x = if side < 0 then west + 0.9 else east - 0.9
 		local facing = Vector3.new(-side, 0, 0)
@@ -243,17 +247,17 @@ local function hall(room: Room)
 			Furniture.bench(folder, frame, 6, Materials.Wood.Walnut)
 		end)
 		for _, z in { -727.5, -716.5 } do
-			put(room, if side < 0 then west + 1.2 else east - 1.2, z, facing, 1.8, 1.8, function(frame)
-				Furniture.plant(folder, frame.Position, 5.5, math.floor(z) + side)
+			put(room, if side < 0 then west + 1.5 else east - 1.5, z, facing, 2.6, 2.6, function(frame)
+				Furniture.plant(folder, frame.Position, 5.5, math.floor(z) + side, false, 1.2)
 			end)
 		end
-		put(room, if side < 0 then west + 1.2 else east - 1.2, r.MaxZ - 1.4, facing, 1.8, 1.8, function(frame)
-			Furniture.plant(folder, frame.Position, 6, 20 + side)
+		put(room, if side < 0 then west + 2.2 else east - 2.2, r.MaxZ - 2.2, facing, 3.6, 3.6, function(frame)
+			Furniture.plant(folder, frame.Position, 7, 20 + side, true, 1.9)
 		end)
 		Kit.flagpole(folder, Vector3.new(DOOR_X + side * 11.5, y, r.MinZ + 1.5), 9, 3, Vector3.new(side, 0, 0.3))
 	end
 	for _, z in { -706, -730 } do
-		Furniture.chandelier(folder, Vector3.new(DOOR_X, ceiling, z), 3.4, 40)
+		Furniture.chandelier(folder, Vector3.new(DOOR_X, ceiling, z), 3.4, 40, 8)
 	end
 end
 
@@ -266,46 +270,59 @@ local function upperHall(room: Room)
 	local r = room.Space.Rect
 	local half = Plan.Partition / 2
 	local west, east = r.MinX + half, r.MaxX - half
-	Kit.slab(
+	local runnerAt = Vector3.new(DOOR_X, y, (r.MinZ + r.MaxZ - 0.3) / 2)
+	Furniture.runner(
 		folder,
-		"Runner",
-		Kit.rect(DOOR_X - 2.6, DOOR_X + 2.6, r.MinZ, r.MaxZ - 0.3),
-		y,
-		y + 0.08,
-		Kit.Style.Carpet
+		CFrame.lookAt(runnerAt, runnerAt + Vector3.new(0, 0, 1)),
+		5.6,
+		r.MaxZ - 0.3 - r.MinZ,
+		Materials.Floor.CarpetRed,
+		Materials.Floor.CarpetSand
 	)
-	local fabric = Materials.Fabric.Beige
-	put(room, west + 1.5, -718, Vector3.new(1, 0, 0), 9, 2.9, function(frame)
-		Furniture.sofa(folder, frame, 3, fabric)
+	Rooms.panelling(room, Materials.Panel.Painted, 3.2)
+	Rooms.cornice(room)
+	-- Sitting group by the west wall on an oriental rug.
+	local rugAt = CFrame.lookAt(Vector3.new(west + 6.4, y, -718), Vector3.new(west + 7.4, y, -718))
+	if not Furniture.store(folder, "RugKhamseh", rugAt) then
+		Furniture.rug(folder, rugAt, 13, 9, Materials.Floor.CarpetRed)
+	end
+	local sofa = Furniture.size("Sofa3Light")
+	put(room, west + 0.4 + sofa.Z / 2, -718, Vector3.new(1, 0, 0), sofa.X, sofa.Z, function(frame)
+		if not Furniture.store(folder, "Sofa3Light", frame) then
+			Furniture.sofa(folder, frame, 3, Materials.Fabric.Beige)
+		end
 	end)
-	put(room, west + 5.4, -718, Vector3.new(1, 0, 0), 5, 2.6, function(frame)
-		Furniture.coffeeTable(folder, frame, 5, 2.6, Materials.Wood.Walnut)
+	local ct = Furniture.size("CoffeeTable")
+	put(room, west + 0.4 + sofa.Z + 1.3 + ct.Z / 2, -718, Vector3.new(1, 0, 0), ct.X, ct.Z, function(frame)
+		if not Furniture.store(folder, "CoffeeTable", frame) then
+			Furniture.coffeeTable(folder, frame, ct.X, ct.Z, Materials.Wood.Walnut)
+		end
 	end)
-	for _, z in { -722, -714 } do
-		put(room, west + 9.2, z, Vector3.new(-1, 0, 0), 3, 2.8, function(frame)
-			Furniture.armchair(folder, frame, Materials.Leather.Tan)
+	for _, z in { -723, -713 } do
+		local facing = Vector3.new(0, 0, if z < -718 then 1 else -1)
+		put(room, west + 0.4 + sofa.Z + 1.3 + ct.Z / 2, z, facing, 3.3, 3.7, function(frame)
+			if not Furniture.store(folder, "ArmChair", frame) then
+				Furniture.armchair(folder, frame, Materials.Leather.Tan)
+			end
 		end)
 	end
-	Furniture.rug(
-		folder,
-		CFrame.lookAt(Vector3.new(west + 5.4, y, -718), Vector3.new(west + 6.4, y, -718)),
-		13,
-		9,
-		Materials.Fabric.Red
-	)
-	Furniture.picture(folder, wallAt(west, y + 6.4, -718, Vector3.new(1, 0, 0)), 6, 4, 9)
-	put(room, east - 0.95, -718, Vector3.new(-1, 0, 0), 6, 1.8, function(frame)
-		Furniture.cabinet(folder, frame, 6, 1.8, 3.4, Materials.Wood.Walnut)
-		Furniture.plant(folder, (frame * CFrame.new(2, 3.4, 0)).Position, 2.6, 31)
+	Furniture.picture(folder, wallAt(west, y + 7.2, -718, Vector3.new(1, 0, 0)), 6, 4, 9)
+	local console = Furniture.size("Console")
+	put(room, east - 0.1 - console.Z / 2, -718, Vector3.new(-1, 0, 0), console.X, console.Z, function(frame)
+		if Furniture.store(folder, "Console", frame) then
+			Furniture.store(folder, "BustMan", frame * CFrame.new(0, console.Y, 0))
+		else
+			Furniture.cabinet(folder, frame, console.X, console.Z, console.Y, Materials.Wood.Walnut)
+		end
 	end)
-	Furniture.picture(folder, wallAt(east, y + 6.4, -718, Vector3.new(-1, 0, 0)), 4.4, 3.4, 12)
-	for _, x in { west + 1.2, east - 1.2 } do
-		put(room, x, r.MaxZ - 1.4, Vector3.new(0, 0, -1), 1.8, 1.8, function(frame)
-			Furniture.plant(folder, frame.Position, 6, math.floor(x))
+	portrait(folder, wallAt(east, y + 7.6, -718, Vector3.new(-1, 0, 0)), "PaintingHelena", 0.6, 12)
+	for _, x in { west + 2, east - 2 } do
+		put(room, x, r.MaxZ - 2, Vector3.new(0, 0, -1), 3, 3, function(frame)
+			Furniture.plant(folder, frame.Position, 6.5, math.floor(x), true, 1.7)
 		end)
 	end
 	for _, z in { -706, -730 } do
-		Furniture.chandelier(folder, Vector3.new(DOOR_X, ceiling, z), 3, 36)
+		Furniture.chandelier(folder, Vector3.new(DOOR_X, ceiling, z), 3, 36, 8)
 	end
 end
 
@@ -316,18 +333,30 @@ local function passage(room: Room)
 	local y = room.Floor
 	local r = room.Space.Rect
 	local cz = (r.MinZ + r.MaxZ) / 2
-	Kit.slab(folder, "Runner", Kit.rect(r.MinX + 1, r.MaxX - 1, cz - 1.6, cz + 1.6), y, y + 0.08, Kit.Style.Carpet)
+	local runnerAt = Vector3.new((r.MinX + r.MaxX) / 2, y, cz)
+	Furniture.runner(
+		folder,
+		CFrame.lookAt(runnerAt, runnerAt + Vector3.new(0, 0, 1)),
+		r.MaxX - r.MinX - 2,
+		3.6,
+		Materials.Floor.CarpetRed,
+		Materials.Floor.CarpetSand
+	)
 	local walls: { Rooms.Side } = { "Left", "Right", "Left", "Right" }
 	for i, side in walls do
-		Rooms.findWall(room, side :: Rooms.Side, 5.6, 4.6, function(wall)
-			Furniture.picture(folder, wall, 4, 3, room.Seed + i)
+		Rooms.findWall(room, side :: Rooms.Side, 6.6, 5, function(wall)
+			portrait(folder, wall, if i % 2 == 0 then "PaintingBordighera" else "PaintingMurnau", 0.6, room.Seed + i)
 		end)
 	end
+	local console = Furniture.size("Console")
 	local consoles: { Rooms.Side } = { "Left", "Right" }
-	for _, side in consoles do
-		Rooms.alongWall(room, side :: Rooms.Side, 4, 1.4, false, function(frame)
-			Furniture.table(folder, frame, 4, 1.4, Materials.Wood.Walnut, 2.8)
-			Furniture.plant(folder, (frame * CFrame.new(1.2, 2.8, 0)).Position, 2.2, room.Seed)
+	for i, side in consoles do
+		Rooms.alongWall(room, side :: Rooms.Side, console.X, console.Z, false, function(frame)
+			if Furniture.store(folder, "Console", frame) then
+				Furniture.store(folder, if i == 1 then "Bust" else "Bowl", frame * CFrame.new(0, console.Y, 0))
+			else
+				Furniture.table(folder, frame, console.X, console.Z, Materials.Wood.Walnut, 2.8)
+			end
 		end)
 	end
 end
@@ -344,90 +373,115 @@ local function office(room: Room, report: { [string]: number })
 	local north, west = r.MinZ + half, r.MinX + half
 	local cx = 620
 	local mahogany = Materials.Wood.Mahogany
-	Furniture.rug(
-		folder,
-		CFrame.lookAt(Vector3.new(cx, y, -721), Vector3.new(cx, y, -720)),
-		20,
-		15,
-		Materials.Fabric.Red
-	)
+	local rugAt = CFrame.lookAt(Vector3.new(cx, y, -720.5), Vector3.new(cx, y, -719.5))
+	if not Furniture.store(folder, "RugHall", rugAt, 0.62) then
+		Furniture.rug(folder, rugAt, 21.7, 15.3, Materials.Floor.CarpetRed)
+	end
 
-	-- The desk (its front, the Leader's side, faces north) with a blotter, a lamp, a telephone
-	-- and a nameplate towards the visitors.
+	-- The desk (its front, the Leader's side, faces north) with a blotter, a banker's lamp, a
+	-- telephone and a nameplate towards the visitors. The official study desk, a little
+	-- enlarged, or a built mahogany desk.
 	local deskAt = Vector3.new(cx, y, -727)
 	local desk = CFrame.lookAt(deskAt, deskAt + Vector3.new(0, 0, -1))
-	Furniture.desk(folder, desk, 10, 4.2, mahogany)
+	local deskTop = 3.04
+	local study = Furniture.size("ExecutiveDesk")
+	if Furniture.store(folder, "ExecutiveDesk", desk, 1.15) then
+		deskTop = study.Y * 1.15
+	else
+		Furniture.desk(folder, desk, 10, 4.2, mahogany)
+	end
 	Parts.part(
 		folder,
 		"Blotter",
-		desk * CFrame.new(0, 3.07, -0.4),
+		desk * CFrame.new(0, deskTop + 0.03, -0.4),
 		Vector3.new(3.6, 0.04, 2),
 		Parts.detail(Materials.Leather.Black)
 	)
-	local lampAt = (desk * CFrame.new(-3.8, 3.04, 0.8)).Position
-	Parts.cylinder(
-		folder,
-		"DeskLamp",
-		lampAt,
-		lampAt + Vector3.new(0, 1.4, 0),
-		0.25,
-		Parts.detail(Materials.Metal.Brass)
-	)
-	Parts.cylinder(
-		folder,
-		"DeskLampShade",
-		lampAt + Vector3.new(0, 1.2, 0),
-		lampAt + Vector3.new(0, 1.9, 0),
-		1.2,
-		Parts.detail(Materials.Fabric.Green)
-	)
+	local lamp = desk * CFrame.new(-3.2, deskTop, 0.8)
+	if not Furniture.store(folder, "BankersLamp", lamp) then
+		local lampAt = lamp.Position
+		Parts.cylinder(
+			folder,
+			"DeskLamp",
+			lampAt,
+			lampAt + Vector3.new(0, 1.4, 0),
+			0.25,
+			Parts.detail(Materials.Metal.Brass)
+		)
+		Parts.cylinder(
+			folder,
+			"DeskLampShade",
+			lampAt + Vector3.new(0, 1.2, 0),
+			lampAt + Vector3.new(0, 1.9, 0),
+			1.2,
+			Parts.detail(Materials.Fabric.Green)
+		)
+	end
+	Furniture.store(folder, "Pen", desk * CFrame.new(1.2, deskTop, -0.6) * CFrame.Angles(0, 0.5, 0))
 	Parts.part(
 		folder,
 		"Telephone",
-		desk * CFrame.new(3.6, 3.2, 0.4),
+		desk * CFrame.new(3, deskTop + 0.18, 0.4),
 		Vector3.new(1, 0.35, 0.8),
 		Parts.detail(Materials.Plastic.Black)
 	)
 	local plate = Parts.part(
 		folder,
 		"DeskNameplate",
-		desk * CFrame.new(0, 3.38, 1.7),
+		desk * CFrame.new(0, deskTop + 0.34, 1.6),
 		Vector3.new(3.4, 0.6, 0.2),
 		Kit.Style.Bronze
 	)
 	Kit.inscription(plate, { "LEADER OF THE REVOLUTION" }, Color3.fromRGB(240, 220, 170), Enum.NormalId.Back)
 
-	-- The Leader's chair: a high-backed leather chair on a pedestal.
-	local seatAt = Vector3.new(cx, y + 1.65, -730.6)
-	local chairFrame = CFrame.lookAt(seatAt, seatAt + Vector3.new(0, 0, 1))
-	local leather = Materials.Leather.Oxblood
-	Parts.seat(folder, "LeadersChair", chairFrame, Vector3.new(2.6, 0.5, 2.4), leather)
-	Parts.part(folder, "LeadersChairBack", chairFrame * CFrame.new(0, 2.1, 1.15), Vector3.new(2.9, 4.2, 0.5), leather)
-	for _, side in { -1, 1 } do
+	-- The Leader's chair: the official leather study chair, enlarged (its seat is the
+	-- LeadersChair), or a built high-backed leather chair.
+	local chairBase = CFrame.lookAt(Vector3.new(cx, y, -730.4), Vector3.new(cx, y, -729.4))
+	local chairModel = StoreAssets.place(folder, "DeskChair", chairBase, 1.15)
+	local leadersSeat = if chairModel then chairModel:FindFirstChildWhichIsA("Seat", true) else nil
+	if chairModel and leadersSeat then
+		leadersSeat.Name = "LeadersChair"
+	else
+		if chairModel then
+			chairModel:Destroy()
+		end
+		local seatAt = Vector3.new(cx, y + 1.65, -730.6)
+		local chairFrame = CFrame.lookAt(seatAt, seatAt + Vector3.new(0, 0, 1))
+		local leather = Materials.Leather.Oxblood
+		Parts.seat(folder, "LeadersChair", chairFrame, Vector3.new(2.6, 0.5, 2.4), leather)
 		Parts.part(
 			folder,
-			"LeadersChairArm",
-			chairFrame * CFrame.new(side * 1.45, 0.65, 0),
-			Vector3.new(0.35, 0.8, 2.3),
+			"LeadersChairBack",
+			chairFrame * CFrame.new(0, 2.1, 1.15),
+			Vector3.new(2.9, 4.2, 0.5),
 			leather
 		)
+		for _, side in { -1, 1 } do
+			Parts.part(
+				folder,
+				"LeadersChairArm",
+				chairFrame * CFrame.new(side * 1.45, 0.65, 0),
+				Vector3.new(0.35, 0.8, 2.3),
+				leather
+			)
+		end
+		Parts.cylinder(
+			folder,
+			"LeadersChairFoot",
+			Vector3.new(cx, y, -730.6),
+			Vector3.new(cx, y + 1.4, -730.6),
+			0.5,
+			Parts.detail(Materials.Metal.Dark)
+		)
+		Parts.cylinder(
+			folder,
+			"LeadersChairBase",
+			Vector3.new(cx, y, -730.6),
+			Vector3.new(cx, y + 0.2, -730.6),
+			2.4,
+			Parts.detail(Materials.Metal.Dark)
+		)
 	end
-	Parts.cylinder(
-		folder,
-		"LeadersChairFoot",
-		Vector3.new(cx, y, -730.6),
-		Vector3.new(cx, y + 1.4, -730.6),
-		0.5,
-		Parts.detail(Materials.Metal.Dark)
-	)
-	Parts.cylinder(
-		folder,
-		"LeadersChairBase",
-		Vector3.new(cx, y, -730.6),
-		Vector3.new(cx, y + 0.2, -730.6),
-		2.4,
-		Parts.detail(Materials.Metal.Dark)
-	)
 	report.Seats += 1
 
 	-- Emblem and flags behind the desk, bookcases on both sides of them.
@@ -436,73 +490,99 @@ local function office(room: Room, report: { [string]: number })
 		Kit.flagpole(folder, Vector3.new(cx + side * 6.5, y, north + 1.4), 9, 3, Vector3.new(side, 0, 0.3))
 		report.Flags += 1
 	end
-	for i, x in { 599.4, 603.6, 607.8, 632.2, 636.4, 640.6 } do
-		local p = Vector3.new(x, y, north + 0.78)
-		Furniture.shelf(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, 1)), 4.2, 1.5, 9, Materials.Wood.Walnut, 70 + i)
+	local case = Furniture.size("BookcaseB")
+	for i, x in { 598.6, 603.7, 608.8, 631.2, 636.3, 641.4 } do
+		local p = Vector3.new(x, y, north + 0.1 + case.Z / 2)
+		local frame = CFrame.lookAt(p, p + Vector3.new(0, 0, 1))
+		if not Furniture.store(folder, if i % 2 == 0 then "Bookcase" else "BookcaseB", frame) then
+			Furniture.shelf(folder, frame, case.X, case.Z, case.Y, Materials.Wood.Walnut, 70 + i)
+		end
 	end
-	for _, dx in { -2.6, 2.6 } do
-		local p = Vector3.new(cx + dx, y, -722.2)
-		Furniture.chair(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, -1)), mahogany, Materials.Leather.Brown)
+	for _, dx in { -2.7, 2.7 } do
+		local p = Vector3.new(cx + dx, y, -721.6)
+		local frame = CFrame.lookAt(p, p + Vector3.new(0, 0, -1))
+		if not Furniture.store(folder, "ArmDiningChair", frame) then
+			Furniture.chair(folder, frame, mahogany, Materials.Leather.Brown)
+		end
 		report.Seats += 1
 	end
 
-	-- Sitting corner by the front windows: sofa, armchairs and a coffee table on a rug.
-	Furniture.rug(
-		folder,
-		CFrame.lookAt(Vector3.new(610, y, -700.5), Vector3.new(610, y, -699.5)),
-		17,
-		11,
-		Materials.Fabric.Beige
-	)
+	-- Sitting group by the front windows: sofa, armchairs, a coffee table on an oriental rug.
+	local corner = CFrame.lookAt(Vector3.new(610, y, -700.5), Vector3.new(610, y, -699.5))
+	if not Furniture.store(folder, "RugLarge", corner) then
+		Furniture.rug(folder, corner, 13.4, 11.8, Materials.Fabric.Beige)
+	end
+	local sofa = Furniture.size("Sofa3")
 	do
-		local p = Vector3.new(610, y, -705)
-		Furniture.sofa(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, 1)), 3, Materials.Leather.Brown)
+		local p = Vector3.new(610, y, -700.5 - 1.5 - 1.3 - sofa.Z / 2)
+		local frame = CFrame.lookAt(p, p + Vector3.new(0, 0, 1))
+		if not Furniture.store(folder, "Sofa3", frame) then
+			Furniture.sofa(folder, frame, 3, Materials.Leather.Brown)
+		end
 		report.Seats += 3
 	end
 	do
 		local p = Vector3.new(610, y, -700.5)
-		Furniture.coffeeTable(folder, CFrame.lookAt(p, p + Vector3.new(0, 0, 1)), 5, 2.6, mahogany)
+		local frame = CFrame.lookAt(p, p + Vector3.new(0, 0, 1))
+		if not Furniture.store(folder, "CoffeeTable", frame) then
+			Furniture.coffeeTable(folder, frame, 5, 2.6, mahogany)
+		end
+		Furniture.store(folder, "Bowl", frame * CFrame.new(0.8, Furniture.size("CoffeeTable").Y, 0))
 	end
 	for _, side in { -1, 1 } do
-		local p = Vector3.new(610 + side * 6.8, y, -700.5)
-		Furniture.armchair(folder, CFrame.lookAt(p, p - Vector3.new(side, 0, 0)), Materials.Leather.Brown)
+		local p = Vector3.new(610 + side * 6.6, y, -700.5)
+		local frame = CFrame.lookAt(p, p - Vector3.new(side, 0, 0))
+		if not Furniture.store(folder, "ArmChair", frame) then
+			Furniture.armchair(folder, frame, Materials.Leather.Brown)
+		end
 		report.Seats += 1
 	end
 
 	-- Conference table at the east end.
 	do
 		local p = Vector3.new(647, y, -712)
-		Furniture.table(folder, CFrame.lookAt(p, p + Vector3.new(1, 0, 0)), 12, 4.4, Materials.Wood.Walnut)
+		local frame = CFrame.lookAt(p, p + Vector3.new(1, 0, 0))
+		if not Furniture.store(folder, "Table", frame) then
+			Furniture.table(folder, frame, 12, 4.4, Materials.Wood.Walnut)
+		end
 		for _, z in { -716, -712, -708 } do
 			for _, side in { -1, 1 } do
-				local c = Vector3.new(647 + side * 3.8, y, z)
-				Furniture.chair(
-					folder,
-					CFrame.lookAt(c, c - Vector3.new(side, 0, 0)),
-					Materials.Wood.Walnut,
-					Materials.Fabric.Green
-				)
+				local c = Vector3.new(647 + side * 3.6, y, z)
+				local at = CFrame.lookAt(c, c - Vector3.new(side, 0, 0))
+				if not Furniture.store(folder, "DiningChair", at) then
+					Furniture.chair(folder, at, Materials.Wood.Walnut, Materials.Fabric.Green)
+				end
 				report.Seats += 1
 			end
 		end
 	end
 
-	-- A cabinet with a painting over it on the west wall, a clock over the door, plants.
+	-- A credenza with a portrait over it on the west wall, a grandfather clock, plants.
 	do
-		local p = Vector3.new(west + 0.95, y, -722)
-		Furniture.cabinet(folder, CFrame.lookAt(p, p + Vector3.new(1, 0, 0)), 6, 1.8, 3.4, Materials.Wood.Walnut)
+		local c = Furniture.size("Credenza")
+		local p = Vector3.new(west + 0.25 + c.Z / 2, y, -722)
+		local frame = CFrame.lookAt(p, p + Vector3.new(1, 0, 0))
+		if not Furniture.store(folder, "Credenza", frame) then
+			Furniture.cabinet(folder, frame, c.X, c.Z, c.Y, Materials.Wood.Walnut)
+		end
 	end
-	Furniture.picture(folder, wallAt(west, y + 6.4, -722, Vector3.new(1, 0, 0)), 5, 3.6, 11)
-	Furniture.clock(folder, wallAt(west, y + 9.6, -705, Vector3.new(1, 0, 0)))
-	for _, corner in { { 597.4, -733 }, { 656.4, -733 }, { 597.4, -693.6 } } do
-		Furniture.plant(folder, Vector3.new(corner[1], y, corner[2]), 6, math.floor(corner[1]))
+	portrait(folder, wallAt(west + 0.02, y + 7, -722, Vector3.new(1, 0, 0)), "PaintingOfficer", 0.62, 11)
+	do
+		local p = Vector3.new(west + 1.2, y, -712)
+		local frame = CFrame.lookAt(p, p + Vector3.new(1, 0, 0))
+		if not Furniture.store(folder, "GrandfatherClock", frame) then
+			Furniture.clock(folder, wallAt(west + 0.2, y + 8.4, -712, Vector3.new(1, 0, 0)))
+		end
 	end
-	Furniture.airConditioner(folder, wallAt(651, ceiling - 1.6, north, Vector3.new(0, 0, 1)))
+	for i, spot in { { 597.4, -730.2 }, { 655.4, -730.2 }, { 597.8, -694.8 } } do
+		Furniture.plant(folder, Vector3.new(spot[1], y, spot[2]), 6.5, math.floor(spot[1]), i == 3, 1.5)
+	end
+	Rooms.curtains(room, Materials.Fabric.Green)
 
-	-- Lights: a chandelier over the desk, ceiling lights over the two corners.
-	Furniture.chandelier(folder, Vector3.new(cx, ceiling, -722), 3.2, 36)
-	Furniture.ceilingLight(folder, Vector3.new(610, ceiling, -700.5), 4, 4, 26)
-	Furniture.ceilingLight(folder, Vector3.new(647, ceiling, -712), 4, 6, 26)
+	-- Lights: chandeliers over the desk, the sitting group and the conference table.
+	Furniture.chandelier(folder, Vector3.new(cx, ceiling, -722), 3.2, 36, 8)
+	Furniture.chandelier(folder, Vector3.new(610, ceiling, -700.5), 3, 28)
+	Furniture.chandelier(folder, Vector3.new(647, ceiling, -712), 3, 28)
 end
 
 local function villaSpaces(report: { [string]: number }): { Space }
@@ -518,6 +598,7 @@ local function villaSpaces(report: { [string]: number }): { Space }
 		Storey = 0,
 		Open = true,
 		Lights = false,
+		Lining = false,
 		Custom = hall,
 	})
 	add({
@@ -598,6 +679,7 @@ local function villaSpaces(report: { [string]: number }): { Space }
 		Open = true,
 		Floor = parquet,
 		Lights = false,
+		Lining = false,
 		Custom = upperHall,
 	})
 	add({ Name = "Bedroom", Kind = "Bedroom", Rect = Plan.rect(502, 535, -735, -692), Storey = 1 })
@@ -794,8 +876,45 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 		Levels = { F, F + H, R },
 		Spaces = villaSpaces(report),
 		DoorSigns = false,
+		-- Interior of a residence: cream walls, painted wainscot and skirting, walnut panelling
+		-- in the Leader's rooms, herringbone parquet, oriental rugs, light upholstery,
+		-- curtains, chandeliers in the reception and private rooms.
 		Style = {
-			Partition = Materials.Wall.Warm,
+			Partition = Materials.Paint.Cream,
+			Skirting = Materials.Panel.Painted,
+			Dado = Materials.Panel.Painted,
+			Panelling = Materials.Panel.Painted,
+			PanellingBy = {
+				Library = Materials.Panel.Walnut,
+				Study = Materials.Panel.Walnut,
+				LeadersOffice = Materials.Panel.Walnut,
+				Dining = Materials.Panel.Walnut,
+			},
+			Representative = {
+				Salon = true,
+				Music = true,
+				Dining = true,
+				Library = true,
+				Study = true,
+				LeadersOffice = true,
+				Family = true,
+				Bedroom = true,
+				Guest = true,
+			},
+			Wood = Materials.Wood.Walnut,
+			Upholstery = Materials.Fabric.Beige,
+			Runner = Materials.Floor.CarpetRed,
+			LightSofas = true,
+			Fixtures = {
+				Salon = "Chandelier",
+				Music = "Chandelier",
+				Dining = "Chandelier",
+				Library = "Chandelier",
+				Study = "Chandelier",
+				Family = "Chandelier",
+				Bedroom = "Chandelier",
+				Guest = "Chandelier",
+			},
 			Door = { Leaf = Materials.Wood.Walnut, Frame = Materials.Frame.White, Handle = Materials.Metal.Brass },
 			GlassDoor = {
 				Leaf = Materials.Wood.Walnut,
@@ -806,11 +925,11 @@ function Residence.build(district: any, parent: Instance): { [string]: number }
 			Stair = {
 				Tread = Materials.Floor.Marble,
 				Landing = Materials.Floor.Marble,
-				Spine = Materials.Wall.Warm,
+				Spine = Materials.Paint.Cream,
 				Rail = Materials.Metal.Brass,
 			},
-			Floors = { Corridor = Materials.Floor.Parquet },
-			Accent = Materials.Wall.Panel,
+			Floors = { Corridor = Materials.Floor.Parquet, Bathroom = Materials.Floor.Marble },
+			Accent = Materials.Panel.Walnut,
 		},
 		Seed = 4,
 	})
