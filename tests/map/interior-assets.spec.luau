@@ -86,6 +86,9 @@ local function fakeModel(parent, key, entry, index)
 	for i = 1, seats do
 		local seat = part("Seat", model, "Seat", origin * CFrame.new((i - 0.5 - seats / 2) * 1.8, 0, 0), Vector3.new(1.6, 0.2, 0.9))
 		seat.Transparency = 1
+		-- As a pack may ship them: switched off and not touchable.
+		seat.Disabled = true
+		seat.CanTouch = false
 	end
 	-- Clutter the importer must leave behind.
 	part("Part", model, "Knob", origin, Vector3.new(0.1, 0.1, 0.1))
@@ -169,6 +172,7 @@ check("every catalogued model became a template", report.Templates == catalogued
 check("the two floor variants are copied (not other variants)", report.Variants == 2, report.Variants)
 check("the library is found by the room recipes", StoreAssets.get() == library)
 
+local sittable = true
 local clean, anchored, untouched, wrongParts, wrongSize, wrongOrigin, wrongSeats = true, true, true, {}, {}, {}, {}
 for key, entry in StoreAssets.Catalog do
 	local template = library:FindFirstChild(key)
@@ -185,10 +189,11 @@ for key, entry in StoreAssets.Catalog do
 		if node:IsA("BasePart") then
 			parts += 1
 			anchored = anchored and node.Anchored
-			untouched = untouched and not node.CanTouch
 			if node:IsA("Seat") then
 				seats += 1
+				sittable = sittable and node.CanTouch and not node.Disabled
 			else
+				untouched = untouched and not node.CanTouch
 				for x = -1, 1, 2 do
 					for y = -1, 1, 2 do
 						for z = -1, 1, 2 do
@@ -220,9 +225,10 @@ for key, entry in StoreAssets.Catalog do
 	end
 end
 check("templates hold no scripts, prompts, lights or sounds", clean)
-check("template parts are anchored and do not touch", anchored and untouched)
+check("template parts are anchored; apart from seats they do not fire touch events", anchored and untouched)
 check("templates keep exactly the visible parts (no knobs, hit boxes, drawer contents, photos)", #wrongParts == 0, table.concat(wrongParts, ", "))
 check("seats stay so players can sit", #wrongSeats == 0, table.concat(wrongSeats, ", "))
+check("seats are enabled and touchable (characters sit down on touch)", sittable)
 check("templates have the catalogued sizes", #wrongSize == 0, table.concat(wrongSize, ", "))
 check("template origins: floor items at their bottom centre, pictures at their back", #wrongOrigin == 0, table.concat(wrongOrigin, ", "))
 local face = library.GrandfatherClock:FindFirstChild("Face")

@@ -448,10 +448,10 @@ function Furniture.evacuationPlan(parent: Instance, wall: CFrame, floor: string)
 	sheet.Name = "EvacuationPlan"
 end
 
--- A panel radiator under a window (cream steel; the corrugated finish shows the fins).
+-- A panel radiator under a window (cream painted steel).
 function Furniture.radiator(parent: Instance, wall: CFrame, w: number)
 	local part = piece(parent, "Radiator", wall, 0, 1.45, -0.3, v(w, 2, 0.35), {
-		Material = Enum.Material.CorrugatedMetal,
+		Material = Enum.Material.Metal,
 		Color = Color3.fromRGB(226, 220, 206),
 		Decoration = true,
 	})

@@ -300,16 +300,22 @@ function StoreAssets.template(node: Instance, key: string, entry: Entry, sourceI
 		local size = copy.Size
 		local largest = math.max(size.X, size.Y, size.Z)
 		copy.Anchored = true
-		copy.CanTouch = false
 		if isSeat(copy) then
+			-- A character sits down when it touches the seat: seats keep touch and are enabled.
+			copy.CanTouch = true
+			local seat: any = copy
+			seat.Disabled = false
 			seats += 1
 		elseif entry.Kind == "Rug" or entry.Kind == "Wall" or largest < 1.5 then
+			copy.CanTouch = false
 			-- Rugs, pictures and small things: no collision, no shadow from tiny pieces.
 			copy.CanCollide = false
 			copy.CanQuery = false
 			if largest < 0.8 or entry.Kind == "Rug" then
 				copy.CastShadow = false
 			end
+		else
+			copy.CanTouch = false
 		end
 		copy.CFrame = normalise * part.CFrame
 		copy.Parent = model

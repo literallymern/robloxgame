@@ -69,7 +69,7 @@ The interiors were reworked with furniture from Roblox's own Duvall Drive packs,
 panelling, skirting and warmer, weaker interior lights ([11-interior-realism.md](../11-interior-realism.md);
 offline previews [1](../interior-previews-1.jpg) and [2](../interior-previews-2.jpg), rendered outside Roblox).
 Tested before this checklist, in the cloud session only: `tests/map/interior-assets.spec.luau`
-(47 checks against synthetic packs) and the whole `test_all.py`. Nothing of revision 3 has
+(48 checks against synthetic packs) and the whole `test_all.py`. Nothing of revision 3 has
 been seen in Roblox Studio yet.
 
 | # | Step | Expected result | Checks |

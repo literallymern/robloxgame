@@ -276,7 +276,6 @@ local ENUMS = {
 		"Limestone",
 		"Pavement",
 		"CorrodedMetal",
-		"CorrugatedMetal",
 		"DiamondPlate",
 		"Foil",
 		"Metal",

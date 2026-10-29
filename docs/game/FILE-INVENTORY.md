@@ -133,7 +133,7 @@ Planned folders: `src/server/{Persistence,Economy,Packages}` (Milestone 4), `src
 | `tests/map/roblox-mock.luau` | Strict stand-in for the Roblox API parts the builders use (since 3 also seats, decals, lights, humanoid characters, `Players`, `ChangeHistoryService`; since rev. 2 signals, tags, prompts, `TweenService`) | 2, 3 |
 | `tests/map/gundiville.spec.luau` | 177 checks of the government district build (plan, budget, buildings, flags, rooms, statue, reruns, store assets) | 3 |
 | `tests/map/architecture.spec.luau` | 71 checks of the four buildings: every window has a room, rooms reachable, budgets, doors, furniture, stairs, DoorService | 3 (rev. 2) |
-| `tests/map/interior-assets.spec.luau` | 47 checks of the interior library (importer against synthetic packs) and of the four buildings furnished with it | 3 (rev. 3) |
+| `tests/map/interior-assets.spec.luau` | 48 checks of the interior library (importer against synthetic packs) and of the four buildings furnished with it | 3 (rev. 3) |
 | `tests/map/preview.luau`, `tests/map/preview.py` | Renders the map preview image (needs Pillow and numpy) | 2 |
 | `tests/map/*.spec.luau` (17 more: river detail, roads realism, vegetation builders, canopy, highland relief, soil, original parity, terrain upgrade, infrastructure, bridge and road ground, Kagundali, Kagundali terrain, junction markings, creator assets, upgrade entry, environment inspection) | Checks of the environment overhaul and the junction benchmark; all run by `test_all.py` | 2 (rev. 3/4) |
 | `tests/map/preview-canopies.luau`, `tests/map/preview-junction.luau` | Geometry data for the tree previews in `tools/` | 2 (rev. 3/4) |

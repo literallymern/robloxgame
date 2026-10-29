@@ -135,10 +135,10 @@ near.
 
 ## 6. Tests
 
-- `tests/map/interior-assets.spec.luau` (new, 47 checks): runs the importer against synthetic
+- `tests/map/interior-assets.spec.luau` (new, 48 checks): runs the importer against synthetic
   packs that mirror the catalogue plus the clutter real packs carry (scripts, prompts,
   lights, sounds, hit boxes, drawer contents, knobs, a foreign material variant); checks the
-  clean-up, seats, template sizes and origins, the turned clock, `place()`, a pack from the
+  clean-up, seats (enabled, touchable), template sizes and origins, the turned clock, `place()`, a pack from the
   wrong creator, then builds the four buildings with the library: every placed model stays
   inside its room (no plant or cabinet reaches into a wall), nothing is unanchored or
   scripted, the chamber keeps its 50 seats, the Leader's chair is the official chair's seat.
@@ -150,5 +150,11 @@ near.
   previews showed one bug (the Hausali entrance lobby treated the passage through the main
   wall as an opening in its own front wall, so that wall got no panelling), fixed.
 
-Not tested: anything in Roblox Studio — the import with `InsertService` in edit mode (A35),
+First Studio run (Justin, 29 October): the build stopped with `CorrugatedMetal is not a valid
+member of "Enum.Material"` and changed nothing. That material does not exist in Roblox; the
+offline stand-in had been given it by mistake. Radiators are now painted `Metal`, and the
+stand-in's material list matches Roblox's again. In the same pass, template seats are kept
+enabled and touchable (characters sit down on touch).
+
+Not tested: anything else in Roblox Studio — the import with `InsertService` in edit mode (A35),
 how the rooms look with Roblox lighting, frame rate. Justin's steps: [testing/m3-district-checklist.md](testing/m3-district-checklist.md), section *Revision 3*.
